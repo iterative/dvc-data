@@ -1,0 +1,14 @@
+{
+    "_template": "https://github.com/iterative/py-template",
+    "author": "Iterative",
+    "copyright_year": "2022",
+    "development_status": "Development Status :: 1 - Planning",
+    "email": "support@dvc.org",
+    "friendly_name": "DVC data",
+    "github_user": "iterative",
+    "license": "Apache-2.0",
+    "package_name": "dvc_data",
+    "project_name": "dvc-data",
+    "short_description": "dvc data",
+    "version": "0.0.0"
+}
