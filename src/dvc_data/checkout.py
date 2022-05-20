@@ -266,8 +266,6 @@ def checkout(
                 fs_path,
             )
         failed.append(fs_path)
-    elif not diff:
-        logger.trace("Data '%s' didn't change.", fs_path)  # type: ignore
 
     try:
         _checkout(
