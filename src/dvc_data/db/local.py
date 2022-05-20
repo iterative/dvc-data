@@ -140,7 +140,7 @@ class LocalObjectDB(ObjectDB):
             # NOTE: not being able to protect cache file is not fatal, it
             # might happen on funky filesystems (e.g. Samba, see #5255),
             # read-only filesystems or in a shared cache scenario.
-            logger.trace("failed to protect '%s'", fs_path, exc_info=True)
+            logger.debug("failed to protect '%s'", fs_path, exc_info=True)
 
     def is_protected(self, fs_path):
         try:
@@ -155,7 +155,7 @@ class LocalObjectDB(ObjectDB):
         try:
             os.chmod(fs_path, mode)
         except OSError:
-            logger.trace(
+            logger.debug(
                 "failed to chmod '%s' '%s'",
                 oct(mode),
                 fs_path,
