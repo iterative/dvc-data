@@ -3,10 +3,9 @@ import logging
 from functools import partial, wraps
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
 
-from funcy import split
-
 from dvc_objects._tqdm import Tqdm
 from dvc_objects.executors import ThreadPoolExecutor
+from funcy import split
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB

@@ -3,11 +3,10 @@ import logging
 import posixpath
 from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
 
-from funcy import cached_property
-
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.file import HashFile
 from dvc_objects.hash import hash_file
+from funcy import cached_property
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
