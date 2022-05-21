@@ -82,7 +82,7 @@ class LocalObjectDB(ObjectDB):
                 return
         else:
             fs_path = self.fs_path
-        yield from self.find(fs_path)
+        yield from self.fs.find(fs_path)
 
     def _remove_unpacked_dir(self, hash_):
         hash_fs_path = self.hash_to_path(hash_)
