@@ -6,7 +6,7 @@ from functools import partial
 from dvc_objects.db import ObjectDB, noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
 from dvc_objects.fs.system import umask
-from dvc_objects.fs.utils import copyfile, relpath, remove, walk_files
+from dvc_objects.fs.utils import copyfile, relpath, remove
 from dvc_objects.hash_info import HashInfo
 from funcy import cached_property
 from shortuuid import uuid
@@ -82,10 +82,7 @@ class LocalObjectDB(ObjectDB):
                 return
         else:
             fs_path = self.fs_path
-
-        # NOTE: use utils.fs walk_files since fs.walk_files will not follow
-        # symlinks
-        yield from walk_files(fs_path)
+        yield from self.fs.find(fs_path)
 
     def _remove_unpacked_dir(self, hash_):
         hash_fs_path = self.hash_to_path(hash_)
