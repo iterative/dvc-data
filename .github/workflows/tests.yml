@@ -32,7 +32,7 @@ jobs:
 
     - name: Upgrade pip and nox
       run: |
-        python -m pip --upgrade pip nox
+        python -m pip install --upgrade pip nox
         pip --version
         nox --version
 
