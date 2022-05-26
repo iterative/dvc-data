@@ -6,7 +6,7 @@ from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import Schemes
 
-from ..reference import ReferenceHashFile
+from ..objects.reference import ReferenceHashFile
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem

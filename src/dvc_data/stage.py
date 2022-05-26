@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
-    from .tree import Tree
+    from .objects.tree import Tree
 
 
 DefaultIgnoreFile = ".dvcignore"
@@ -116,7 +116,7 @@ def _iter_objects(fs_path, fs, name, **kwargs):
 
 
 def _build_tree(fs_path, fs, name, **kwargs):
-    from .tree import Tree
+    from .objects.tree import Tree
 
     tree_meta = Meta(size=0, nfiles=0)
     # assuring mypy that they are not None but integer
@@ -150,7 +150,7 @@ def _build_tree(fs_path, fs, name, **kwargs):
 
 
 def _stage_tree(fs_path, fs, fs_info, name, odb=None, **kwargs):
-    from .tree import Tree
+    from .objects.tree import Tree
 
     value = fs_info.get(name)
     if odb and value:
@@ -221,7 +221,7 @@ def _get_staging(odb: "ObjectDB") -> "ReferenceObjectDB":
 def _load_raw_dir_obj(odb: "ObjectDB", hash_info: "HashInfo") -> "Tree":
     from dvc_objects.errors import ObjectFormatError
 
-    from .tree import Tree
+    from .objects.tree import Tree
 
     try:
         tree = Tree.load(odb, hash_info.as_raw())
@@ -248,7 +248,7 @@ def _load_from_state(
     from dvc_objects.errors import ObjectFormatError
 
     from . import check, load
-    from .tree import Tree
+    from .objects.tree import Tree
 
     state = odb.state
     meta, hash_info = state.get(fs_path, fs)

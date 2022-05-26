@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 from dvc_objects.fs import Schemes
 from dvc_objects.hash_info import HashInfo
 
-from .tree import Tree
+from .objects.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB

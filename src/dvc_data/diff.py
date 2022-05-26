@@ -72,7 +72,7 @@ ROOT = ("",)
 def diff(
     old: Optional["HashFile"], new: Optional["HashFile"], cache
 ) -> DiffResult:
-    from .tree import Tree
+    from .objects.tree import Tree
 
     if old is None and new is None:
         return DiffResult()

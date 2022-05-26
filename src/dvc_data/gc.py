@@ -2,7 +2,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
     from dvc_objects.errors import ObjectDBPermissionError
 
     from ._progress import QueryingProgress
-    from .tree import Tree
+    from .objects.tree import Tree
 
     if odb.read_only:
         raise ObjectDBPermissionError("Cannot gc read-only ODB")

@@ -12,8 +12,8 @@ if TYPE_CHECKING:
     from dvc_objects.hash_info import HashInfo
 
     from .db.index import ObjectDBIndexBase
+    from .objects.tree import Tree
     from .status import CompareStatusResult
-    from .tree import Tree
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ def find_tree_by_obj_id(
 ) -> Optional["Tree"]:
     from dvc_objects.errors import ObjectFormatError
 
-    from .tree import Tree
+    from .objects.tree import Tree
 
     for odb in odbs:
         if odb is not None:
