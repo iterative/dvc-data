@@ -2,7 +2,7 @@
 import logging
 from typing import TYPE_CHECKING, Iterator, Union
 
-from .tree import Tree
+from .objects.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB

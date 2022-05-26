@@ -269,7 +269,7 @@ def _merge(ancestor, our, their):
 
 
 def merge(odb, ancestor_info, our_info, their_info):
-    from . import load
+    from .. import load
 
     assert our_info
     assert their_info
