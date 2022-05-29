@@ -1,4 +1,5 @@
 import logging
+from contextlib import suppress
 from typing import TYPE_CHECKING, Dict
 
 from dvc_objects.db import ObjectDB
@@ -64,3 +65,19 @@ class ReferenceObjectDB(ObjectDB):
         self._obj_cache[hash_info] = obj
 
         return self.raw.add(obj.fs_path, obj.fs, hash_info, **kwargs)
+
+    def check(
+        self,
+        hash_info: "HashInfo",
+        check_hash: bool = True,
+    ):
+        obj = self.get(hash_info)
+
+        try:
+            obj.check(self, check_hash=check_hash)
+        except ObjectFormatError:
+            raw = self.raw.get(hash_info)
+            logger.debug("corrupted cache file '%s'.", raw.fs_path)
+            with suppress(FileNotFoundError):
+                raw.fs.remove(raw.fs_path)
+            raise
