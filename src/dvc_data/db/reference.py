@@ -33,7 +33,7 @@ class ReferenceObjectDB(ObjectDB):
             return raw
 
         try:
-            return self._obj_cache[hash_info].deref()
+            return self._obj_cache[hash_info]
         except KeyError:
             pass
 
@@ -43,9 +43,10 @@ class ReferenceObjectDB(ObjectDB):
             raw.fs.remove(raw.fs_path)
             raise
 
-        self._obj_cache[hash_info] = obj
+        deref = obj.deref()
+        self._obj_cache[hash_info] = deref
 
-        return obj.deref()
+        return deref
 
     def add(
         self,
