@@ -1,6 +1,6 @@
+import json
 import logging
 import os
-import pickle
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -69,7 +69,7 @@ class ReferenceHashFile(HashFile):
 
         return {
             self.PARAM_PATH: self.ref.fs_path,
-            self.PARAM_HASH: self.hash_info,
+            self.PARAM_HASH: self.hash_info.to_dict(),
             self.PARAM_CHECKSUM: self.ref.checksum,
             self.PARAM_FS_CONFIG: fs_config,
             self.PARAM_FS_CLS: mod,
@@ -78,10 +78,10 @@ class ReferenceHashFile(HashFile):
     @classmethod
     def from_dict(cls, dict_, fs_cache=None):
         from dvc_objects.fs import get_fs_cls
+        from dvc_objects.hash_info import HashInfo
 
         try:
             fs_path = dict_[cls.PARAM_PATH]
-            hash_info = dict_[cls.PARAM_HASH]
         except KeyError as exc:
             raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
 
@@ -94,20 +94,20 @@ class ReferenceHashFile(HashFile):
             fs = fs_cls(**config)
 
         checksum = dict_.get(cls.PARAM_CHECKSUM)
-        hash_info = dict_.get(cls.PARAM_HASH)
+        hash_info = HashInfo.from_dict(dict_.get(cls.PARAM_HASH))
 
         ref = Reference(fs_path, fs, checksum)
 
         return cls(None, None, hash_info, ref)
 
     def as_bytes(self):
-        return pickle.dumps(self.as_dict())
+        return json.dumps(self.as_dict(), sort_keys=True).encode("utf-8")
 
     @classmethod
     def from_bytes(cls, byts, **kwargs):
         try:
-            data = pickle.loads(byts)
-        except pickle.PickleError as exc:
+            data = json.loads(byts.decode("utf-8"))
+        except ValueError as exc:
             raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
 
         return cls.from_dict(data, **kwargs)
@@ -122,7 +122,8 @@ class ReferenceHashFile(HashFile):
 
         if raw.hash_info != obj.hash_info:
             raise ObjectFormatError(
-                "ReferenceHashFile is corrupted: hash mismatch"
+                "ReferenceHashFile is corrupted: hash mismatch "
+                f"(raw: {raw.hash_info}, obj: {obj.hash_info})"
             )
 
         return obj
