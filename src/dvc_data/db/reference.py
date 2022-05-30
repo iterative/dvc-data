@@ -62,7 +62,7 @@ class ReferenceObjectDB(ObjectDB):
         obj = ReferenceHashFile.from_path(
             fs_path, fs, hash_info, fs_cache=self._fs_cache
         )
-        self._obj_cache[hash_info] = obj
+        self._obj_cache[hash_info] = obj.deref()
 
         return self.raw.add(obj.fs_path, obj.fs, hash_info, **kwargs)
 
