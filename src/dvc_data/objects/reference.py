@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.file import HashFile
 from dvc_objects.fs import FS_MAP, LocalFileSystem
+from dvc_objects.hashfile.obj import HashFile
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class ReferenceHashFile(HashFile):
     @classmethod
     def from_dict(cls, dict_, fs_cache=None):
         from dvc_objects.fs import get_fs_cls
-        from dvc_objects.hash_info import HashInfo
+        from dvc_objects.hashfile.hash_info import HashInfo
 
         try:
             fs_path = dict_[cls.PARAM_PATH]

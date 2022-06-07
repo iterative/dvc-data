@@ -9,7 +9,7 @@ from funcy import split
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.hash_info import HashInfo
 
     from .db.index import ObjectDBIndexBase
     from .objects.tree import Tree

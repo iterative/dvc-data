@@ -3,11 +3,11 @@ import os
 import stat
 from functools import partial
 
-from dvc_objects.db import ObjectDB, noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
 from dvc_objects.fs.system import umask
 from dvc_objects.fs.utils import copyfile, relpath, remove
-from dvc_objects.hash_info import HashInfo
+from dvc_objects.hashfile.db import ObjectDB, noop, wrap_iter
+from dvc_objects.hashfile.hash_info import HashInfo
 from funcy import cached_property
 from shortuuid import uuid
 

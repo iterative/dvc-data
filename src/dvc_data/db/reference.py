@@ -2,14 +2,14 @@ import logging
 from contextlib import suppress
 from typing import TYPE_CHECKING, Dict
 
-from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
+from dvc_objects.hashfile.db import ObjectDB
 
 from ..objects.reference import ReferenceHashFile
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 

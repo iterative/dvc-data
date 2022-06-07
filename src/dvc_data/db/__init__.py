@@ -5,8 +5,8 @@ if TYPE_CHECKING:
 
 
 def get_odb(fs, fs_path, **config):
-    from dvc_objects.db import ObjectDB
     from dvc_objects.fs import Schemes
+    from dvc_objects.hashfile.db import ObjectDB
 
     from .local import LocalObjectDB
 
