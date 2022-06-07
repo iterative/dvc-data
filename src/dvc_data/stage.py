@@ -7,10 +7,10 @@ from functools import partial
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from dvc_objects._tqdm import Tqdm
-from dvc_objects.file import HashFile
-from dvc_objects.hash import hash_file
-from dvc_objects.hash_info import HashInfo
-from dvc_objects.meta import Meta
+from dvc_objects.hashfile.hash import hash_file
+from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_objects.hashfile.meta import Meta
+from dvc_objects.hashfile.obj import HashFile
 
 from .db.reference import ReferenceObjectDB
 
@@ -42,7 +42,7 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
     from dvc_objects.fs.callbacks import Callback
     from dvc_objects.fs.utils import tmp_fname
-    from dvc_objects.hash import HashStreamFile
+    from dvc_objects.hashfile.hash import HashStreamFile
 
     fs_path = upload_odb.fs.path
     tmp_info = fs_path.join(upload_odb.fs_path, tmp_fname())

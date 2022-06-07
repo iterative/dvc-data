@@ -7,7 +7,7 @@ from .objects.tree import Tree
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
     from dvc_objects.file import HashFile
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
