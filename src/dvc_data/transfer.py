@@ -36,8 +36,7 @@ def _log_exceptions(func):
             # pylint: disable=no-member
             if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
                 raise
-
-            logger.debug("failed to transfer '%s'", path)
+            logger.exception("failed to transfer '%s'", path)
             return 1
 
     return wrapper
