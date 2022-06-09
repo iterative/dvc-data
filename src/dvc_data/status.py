@@ -37,7 +37,7 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
     indexed_dir_exists = set()
     if indexed_dirs:
         hashes = QueryingProgress(
-            odb.list_hashes_exists(indexed_dirs, jobs=jobs),
+            odb.list_oids_exists(indexed_dirs, jobs=jobs),
             total=len(indexed_dirs),
         )
         indexed_dir_exists.update(hashes)
@@ -55,7 +55,7 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
     dir_missing = dir_hashes - dir_exists
     dir_exists.update(
         QueryingProgress(
-            odb.list_hashes_exists(dir_missing, jobs=jobs),
+            odb.list_oids_exists(dir_missing, jobs=jobs),
             total=len(dir_missing),
         )
     )
@@ -69,7 +69,7 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
                 tree = Tree.load(cache_odb, HashInfo(name, dir_hash))
             except FileNotFoundError:
                 continue
-        file_hashes = [oid.value for _, _, oid in tree]
+        file_hashes = [hi.value for _, _, hi in tree]
         if dir_hash not in index:
             logger.debug(
                 "Indexing new .dir '%s' with '%s' nested files",
@@ -100,7 +100,7 @@ def status(
         exists: objs that exist in odb
         missing: objs that do not exist in ODB
     """
-    logger.debug("Preparing to collect status from '%s'", odb.fs_path)
+    logger.debug("Preparing to collect status from '%s'", odb.path)
     if not name:
         name = odb.fs.PARAM_CHECKSUM
 
@@ -130,7 +130,7 @@ def status(
     hashes: Set[str] = set(hash_infos.keys())
     exists: Set[str] = set()
 
-    logger.debug("Collecting status from '%s'", odb.fs_path)
+    logger.debug("Collecting status from '%s'", odb.path)
     if index and hashes:
         if dir_objs:
             exists = hashes.intersection(
@@ -146,9 +146,9 @@ def status(
     if hashes:
         from ._progress import QueryingProgress
 
-        with QueryingProgress(phase="Checking", name=odb.fs_path) as pbar:
+        with QueryingProgress(phase="Checking", name=odb.path) as pbar:
             exists.update(
-                odb.hashes_exist(hashes, jobs=jobs, progress=pbar.callback)
+                odb.oids_exist(hashes, jobs=jobs, progress=pbar.callback)
             )
     return StatusResult(
         {hash_infos[hash_] for hash_ in exists},

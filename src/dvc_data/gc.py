@@ -25,11 +25,11 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
     removed = False
     # hashes must be sorted to ensure we always remove .dir files first
 
-    hashes = QueryingProgress(odb.all(jobs), name=odb.fs_path)
+    hashes = QueryingProgress(odb.all(jobs), name=odb.path)
     for hash_ in sorted(hashes, key=_is_dir_hash, reverse=True):
         if hash_ in used_hashes:
             continue
-        fs_path = odb.hash_to_path(hash_)
+        fs_path = odb.oid_to_path(hash_)
         if _is_dir_hash(hash_):
             # backward compatibility
             # pylint: disable=protected-access
