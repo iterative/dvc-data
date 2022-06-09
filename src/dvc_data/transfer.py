@@ -26,9 +26,9 @@ class TransferError(Exception):
 
 def _log_exceptions(func):
     @wraps(func)
-    def wrapper(fs_path, *args, **kwargs):
+    def wrapper(path, *args, **kwargs):
         try:
-            func(fs_path, *args, **kwargs)
+            func(path, *args, **kwargs)
             return 0
         except Exception as exc:  # pylint: disable=broad-except
             # NOTE: this means we ran out of file descriptors and there is no
@@ -37,7 +37,7 @@ def _log_exceptions(func):
             if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
                 raise
 
-            logger.debug("failed to transfer '%s'", fs_path)
+            logger.debug("failed to transfer '%s'", path)
             return 1
 
     return wrapper
@@ -88,12 +88,12 @@ def _do_transfer(
             logger.debug(
                 "failed to upload full contents of '%s', "
                 "aborting .dir file upload",
-                dir_obj.name,
+                dir_hash,
             )
             logger.debug(
                 "failed to upload '%s' to '%s'",
-                src.get(dir_obj.hash_info).fs_path,
-                dest.get(dir_obj.hash_info).fs_path,
+                src.get(dir_obj.oid).path,
+                dest.get(dir_obj.oid).path,
             )
             total_fails += dir_fails + 1
         elif entry_ids.intersection(missing_ids):
@@ -104,7 +104,7 @@ def _do_transfer(
             logger.debug(
                 "directory '%s' contains missing files,"
                 "skipping .dir file upload",
-                dir_obj.name,
+                dir_hash,
             )
         else:
             is_dir_failed = sum(processor([dir_obj.hash_info]))
@@ -150,8 +150,8 @@ def transfer(
 
     logger.debug(
         "Preparing to transfer data from '%s' to '%s'",
-        src.fs_path,
-        dest.fs_path,
+        src.path,
+        dest.path,
     )
     if src == dest:
         return 0
@@ -167,11 +167,11 @@ def transfer(
         return 0
 
     def func(hash_info: "HashInfo") -> None:
-        obj = src.get(hash_info)
+        obj = src.get(hash_info.value)
         return dest.add(
-            obj.fs_path,
+            obj.path,
             obj.fs,
-            obj.hash_info,
+            obj.oid,
             verify=verify,
             hardlink=hardlink,
         )

@@ -6,14 +6,14 @@ if TYPE_CHECKING:
 
 def get_odb(fs, fs_path, **config):
     from dvc_objects.fs import Schemes
-    from dvc_objects.hashfile.db import ObjectDB
+    from dvc_objects.hashfile.db import HashFileDB
 
-    from .local import LocalObjectDB
+    from .local import LocalHashFileDB
 
     if fs.protocol == Schemes.LOCAL:
-        return LocalObjectDB(fs, fs_path, **config)
+        return LocalHashFileDB(fs, fs_path, **config)
 
-    return ObjectDB(fs, fs_path, **config)
+    return HashFileDB(fs, fs_path, **config)
 
 
 def get_index(odb) -> "ObjectDBIndexBase":
@@ -25,6 +25,6 @@ def get_index(odb) -> "ObjectDBIndexBase":
     return cls(
         odb.tmp_dir,
         hashlib.sha256(
-            odb.fs.unstrip_protocol(odb.fs_path).encode("utf-8")
+            odb.fs.unstrip_protocol(odb.path).encode("utf-8")
         ).hexdigest(),
     )

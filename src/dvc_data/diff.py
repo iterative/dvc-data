@@ -101,7 +101,7 @@ def diff(
             return False
 
         try:
-            cache.check(oid)
+            cache.check(oid.value)
             return True
         except (FileNotFoundError, ObjectFormatError):
             return False

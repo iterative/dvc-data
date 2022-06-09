@@ -6,23 +6,24 @@ from typing import TYPE_CHECKING
 
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import FS_MAP, LocalFileSystem
-from dvc_objects.hashfile.obj import HashFile
+from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_objects.obj import Object
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Reference:
-    fs_path: "AnyFSPath"
+    path: "AnyFSPath"
     fs: "FileSystem"
     checksum: int
+    hash_info: "HashInfo"
 
 
-class ReferenceHashFile(HashFile):
+class ReferenceObject(Object):
     PARAM_PATH = "path"
     PARAM_HASH = "hash"
     PARAM_CHECKSUM = "checksum"
@@ -31,16 +32,14 @@ class ReferenceHashFile(HashFile):
 
     def __init__(
         self,
-        fs_path: "AnyFSPath",
+        path: "AnyFSPath",
         fs: "FileSystem",
-        hash_info: "HashInfo",
+        oid: str,
         ref: "Reference",
     ):
-        super().__init__(fs_path, fs, hash_info)
+        assert isinstance(oid, str)
+        super().__init__(path, fs, oid)
         self.ref = ref
-
-    def deref(self):
-        return HashFile(self.ref.fs_path, self.ref.fs, self.hash_info)
 
     @staticmethod
     def config_tuple(fs: "FileSystem"):
@@ -58,7 +57,7 @@ class ReferenceHashFile(HashFile):
         # NOTE: dumping reference FS's this way is insecure, as the
         # fully parsed remote FS config will include credentials
         #
-        # ReferenceHashFiles should currently only be serialized in
+        # ReferenceObject should currently only be serialized in
         # memory and not to disk
         fs_cls = type(self.ref.fs)
         mod = None
@@ -68,8 +67,8 @@ class ReferenceHashFile(HashFile):
         fs_config = self.config_tuple(self.ref.fs)
 
         return {
-            self.PARAM_PATH: self.ref.fs_path,
-            self.PARAM_HASH: self.hash_info.to_dict(),
+            self.PARAM_PATH: self.ref.path,
+            self.PARAM_HASH: self.ref.hash_info.to_dict(),
             self.PARAM_CHECKSUM: self.ref.checksum,
             self.PARAM_FS_CONFIG: fs_config,
             self.PARAM_FS_CLS: mod,
@@ -78,12 +77,11 @@ class ReferenceHashFile(HashFile):
     @classmethod
     def from_dict(cls, dict_, fs_cache=None):
         from dvc_objects.fs import get_fs_cls
-        from dvc_objects.hashfile.hash_info import HashInfo
 
         try:
-            fs_path = dict_[cls.PARAM_PATH]
+            path = dict_[cls.PARAM_PATH]
         except KeyError as exc:
-            raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
+            raise ObjectFormatError("ReferenceObject is corrupted") from exc
 
         protocol, config_pairs = dict_.get(cls.PARAM_FS_CONFIG)
         fs = fs_cache.get((protocol, config_pairs)) if fs_cache else None
@@ -96,9 +94,9 @@ class ReferenceHashFile(HashFile):
         checksum = dict_.get(cls.PARAM_CHECKSUM)
         hash_info = HashInfo.from_dict(dict_.get(cls.PARAM_HASH))
 
-        ref = Reference(fs_path, fs, checksum)
+        ref = Reference(path, fs, checksum, hash_info)
 
-        return cls(None, None, hash_info, ref)
+        return cls(None, None, hash_info.value, ref)
 
     def as_bytes(self):
         return json.dumps(self.as_dict(), sort_keys=True).encode("utf-8")
@@ -108,33 +106,34 @@ class ReferenceHashFile(HashFile):
         try:
             data = json.loads(byts.decode("utf-8"))
         except ValueError as exc:
-            raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
+            raise ObjectFormatError("ReferenceObject is corrupted") from exc
 
         return cls.from_dict(data, **kwargs)
 
     @classmethod
     def from_raw(cls, raw, **kwargs):
-        byts = raw.fs.cat_file(raw.fs_path)
+        byts = raw.fs.cat_file(raw.path)
 
         obj = cls.from_bytes(byts, **kwargs)
-        obj.fs_path = raw.fs_path
+        obj.path = raw.path
         obj.fs = raw.fs
 
-        if raw.hash_info != obj.hash_info:
+        if raw.oid != obj.oid:
             raise ObjectFormatError(
-                "ReferenceHashFile is corrupted: hash mismatch "
-                f"(raw: {raw.hash_info}, obj: {obj.hash_info})"
+                "ReferenceObject is corrupted: hash mismatch "
+                f"(raw: {raw.oid}, obj: {obj.oid})"
             )
 
         return obj
 
     @classmethod
-    def from_path(cls, fs_path, fs, hash_info, fs_cache=None):
+    def from_path(cls, path, fs, hash_info, fs_cache=None):
         from dvc_objects.fs import MemoryFileSystem, Schemes
         from dvc_objects.fs.utils import tmp_fname
 
-        checksum = fs.checksum(fs_path)
-        ref = Reference(fs_path, fs, checksum)
+        checksum = fs.checksum(path)
+        assert isinstance(hash_info, HashInfo)
+        ref = Reference(path, fs, checksum, hash_info)
 
         if fs_cache and fs.protocol != Schemes.LOCAL:
             fs_cache[cls.config_tuple(fs)] = fs
@@ -142,26 +141,26 @@ class ReferenceHashFile(HashFile):
         memfs = MemoryFileSystem()
         memfs_path = "memory://{}".format(tmp_fname(""))
 
-        obj = cls(memfs_path, memfs, hash_info, ref)
+        obj = cls(memfs_path, memfs, hash_info.value, ref)
 
         try:
-            obj.fs.pipe_file(obj.fs_path, obj.as_bytes())
+            obj.fs.pipe_file(obj.path, obj.as_bytes())
         except OSError as exc:
             if isinstance(exc, FileExistsError) or (
                 os.name == "nt"
                 and exc.__context__
                 and isinstance(exc.__context__, FileExistsError)
             ):
-                logger.debug("'%s' file already exists, skipping", obj.fs_path)
+                logger.debug("'%s' file already exists, skipping", obj.path)
             else:
                 raise
 
         return obj
 
     def check(self, *args, **kwargs):
-        if not self.fs.exists(self.fs_path):
+        if not self.fs.exists(self.path):
             raise FileNotFoundError
 
-        actual = self.ref.fs.checksum(self.ref.fs_path)
+        actual = self.ref.fs.checksum(self.ref.path)
         if self.ref.checksum != actual:
             raise ObjectFormatError(f"{self} is changed")

@@ -77,7 +77,7 @@ def _checkout_file(
     """The file is changed we need to checkout a new copy"""
     modified = False
 
-    cache_fs_path = cache.hash_to_path(change.new.oid.value)
+    cache_fs_path = cache.oid_to_path(change.new.oid.value)
     if change.old.oid:
         if relink:
             if fs.iscopy(fs_path) and cache.cache_types[0] == "copy":
@@ -187,7 +187,7 @@ def _checkout(
     if not diff:
         return
 
-    links = test_links(cache.cache_types, cache.fs, cache.fs_path, fs, fs_path)
+    links = test_links(cache.cache_types, cache.fs, cache.path, fs, fs_path)
     if not links:
         raise LinkError(fs_path)
     link = Link(links)

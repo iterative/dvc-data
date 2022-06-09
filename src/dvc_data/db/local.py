@@ -3,25 +3,25 @@ import os
 import stat
 from functools import partial
 
+from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
 from dvc_objects.fs.system import umask
 from dvc_objects.fs.utils import copyfile, relpath, remove
-from dvc_objects.hashfile.db import ObjectDB, noop, wrap_iter
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_objects.hashfile.db import HashFileDB
 from funcy import cached_property
 from shortuuid import uuid
 
 logger = logging.getLogger(__name__)
 
 
-class LocalObjectDB(ObjectDB):
+class LocalHashFileDB(HashFileDB):
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    def __init__(self, fs, fs_path, **config):
-        super().__init__(fs, fs_path, **config)
-        self.cache_dir = fs_path
+    def __init__(self, fs, path, **config):
+        super().__init__(fs, path, **config)
+        self.cache_dir = path
 
         shared = config.get("shared")
         if shared:
@@ -33,11 +33,11 @@ class LocalObjectDB(ObjectDB):
 
     @property
     def cache_dir(self):
-        return self.fs_path if self.fs_path else None
+        return self.path if self.path else None
 
     @cache_dir.setter
     def cache_dir(self, value):
-        self.fs_path = value
+        self.path = value
 
     @cached_property
     def cache_path(self):
@@ -47,50 +47,49 @@ class LocalObjectDB(ObjectDB):
         super().move(from_info, to_info)
         os.chmod(to_info, self._file_mode)
 
-    def makedirs(self, fs_path):
+    def makedirs(self, path):
         from dvc_objects.fs.utils import makedirs
 
-        makedirs(fs_path, exist_ok=True, mode=self._dir_mode)
+        makedirs(path, exist_ok=True, mode=self._dir_mode)
 
-    def hash_to_path(self, hash_):
+    def oid_to_path(self, oid):
         # NOTE: `self.cache_path` is already normalized so we can simply use
         # `os.sep` instead of `os.path.join`. This results in this helper
         # being ~5.5 times faster.
-        return f"{self.cache_path}{os.sep}{hash_[0:2]}{os.sep}{hash_[2:]}"
+        return f"{self.cache_path}{os.sep}{oid[0:2]}{os.sep}{oid[2:]}"
 
-    def hashes_exist(
-        self, hashes, jobs=None, progress=noop
+    def oids_exist(
+        self, oids, jobs=None, progress=noop
     ):  # pylint: disable=unused-argument
         ret = []
-        progress = partial(progress, "querying", len(hashes))
+        progress = partial(progress, "querying", len(oids))
 
-        for hash_ in wrap_iter(hashes, progress):
-            hash_info = HashInfo(self.fs.PARAM_CHECKSUM, hash_)
+        for oid in wrap_iter(oids, progress):
             try:
-                self.check(hash_info)
-                ret.append(hash_)
+                self.check(oid)
+                ret.append(oid)
             except (FileNotFoundError, ObjectFormatError):
                 pass
 
         return ret
 
     def _list_paths(self, prefix=None):
-        assert self.fs_path is not None
+        assert self.path is not None
         if prefix:
-            fs_path = self.fs.path.join(self.fs_path, prefix[:2])
-            if not self.fs.exists(fs_path):
+            path = self.fs.path.join(self.path, prefix[:2])
+            if not self.fs.exists(path):
                 return
         else:
-            fs_path = self.fs_path
-        yield from self.fs.find(fs_path)
+            path = self.path
+        yield from self.fs.find(path)
 
     def _remove_unpacked_dir(self, hash_):
-        hash_fs_path = self.hash_to_path(hash_)
-        fs_path = self.fs.path.with_name(
-            hash_fs_path,
-            self.fs.path.name(hash_fs_path) + self.UNPACKED_DIR_SUFFIX,
+        hash_path = self.oid_to_path(hash_)
+        path = self.fs.path.with_name(
+            hash_path,
+            self.fs.path.name(hash_path) + self.UNPACKED_DIR_SUFFIX,
         )
-        self.fs.remove(fs_path)
+        self.fs.remove(path)
 
     def _unprotect_file(self, path):
         if self.fs.is_symlink(path) or self.fs.is_hardlink(path):
@@ -119,42 +118,40 @@ class LocalObjectDB(ObjectDB):
         for fname in self.fs.find(path):
             self._unprotect_file(fname)
 
-    def unprotect(self, fs_path):
-        if not os.path.exists(fs_path):
-            raise ObjectDBError(
-                f"can't unprotect non-existing data '{fs_path}'"
-            )
+    def unprotect(self, path):
+        if not os.path.exists(path):
+            raise ObjectDBError(f"can't unprotect non-existing data '{path}'")
 
-        if os.path.isdir(fs_path):
-            self._unprotect_dir(fs_path)
+        if os.path.isdir(path):
+            self._unprotect_dir(path)
         else:
-            self._unprotect_file(fs_path)
+            self._unprotect_file(path)
 
-    def protect(self, fs_path):
+    def protect(self, path):
         try:
-            os.chmod(fs_path, self.CACHE_MODE)
+            os.chmod(path, self.CACHE_MODE)
         except OSError:
             # NOTE: not being able to protect cache file is not fatal, it
             # might happen on funky filesystems (e.g. Samba, see #5255),
             # read-only filesystems or in a shared cache scenario.
-            logger.debug("failed to protect '%s'", fs_path, exc_info=True)
+            logger.debug("failed to protect '%s'", path, exc_info=True)
 
-    def is_protected(self, fs_path):
+    def is_protected(self, path):
         try:
-            mode = os.stat(fs_path).st_mode
+            mode = os.stat(path).st_mode
         except FileNotFoundError:
             return False
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
-    def set_exec(self, fs_path):
-        mode = os.stat(fs_path).st_mode | stat.S_IEXEC
+    def set_exec(self, path):
+        mode = os.stat(path).st_mode | stat.S_IEXEC
         try:
-            os.chmod(fs_path, mode)
+            os.chmod(path, mode)
         except OSError:
             logger.debug(
                 "failed to chmod '%s' '%s'",
                 oct(mode),
-                fs_path,
+                path,
                 exc_info=True,
             )

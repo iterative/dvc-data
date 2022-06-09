@@ -2,36 +2,43 @@ import logging
 from contextlib import suppress
 from typing import TYPE_CHECKING, Dict
 
+from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.hashfile.db import ObjectDB
+from dvc_objects.hashfile.db import HashFileDB, HashInfo
+from dvc_objects.hashfile.hash import hash_file
+from dvc_objects.hashfile.obj import HashFile
 
-from ..objects.reference import ReferenceHashFile
+from ..objects.reference import ReferenceObject
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
 
-class ReferenceObjectDB(ObjectDB):
+class ReferenceHashFileDB(HashFileDB):
     """Reference ODB.
 
-    File objects are stored as ReferenceHashFiles which reference paths outside
+    File objects are stored as ReferenceObjects which reference paths outside
     of the staging ODB fs. Tree objects are stored natively.
     """
 
     def __init__(self, fs: "FileSystem", path: str, **config):
         super().__init__(fs, path, **config)
-        self.raw = ObjectDB(self.fs, self.fs_path, **self.config)
+        self.raw = ObjectDB(self.fs, self.path, **self.config)
         self._fs_cache: Dict[tuple, "FileSystem"] = {}
-        self._obj_cache: Dict["HashInfo", "ReferenceHashFile"] = {}
+        self._obj_cache: Dict["HashInfo", "ReferenceObject"] = {}
 
-    def get(self, hash_info: "HashInfo"):
-        raw = self.raw.get(hash_info)
+    def _deref(self, obj):
+        return HashFile(obj.ref.path, obj.ref.fs, obj.ref.hash_info)
+
+    def get(self, oid: str):
+        raw = self.raw.get(oid)
+
+        hash_info = HashInfo(self.hash_name, oid)
 
         if hash_info.isdir:
-            return raw
+            return HashFile(raw.path, raw.fs, hash_info)
 
         try:
             return self._obj_cache[hash_info]
@@ -39,45 +46,52 @@ class ReferenceObjectDB(ObjectDB):
             pass
 
         try:
-            obj = ReferenceHashFile.from_raw(raw, fs_cache=self._fs_cache)
+            obj = ReferenceObject.from_raw(raw, fs_cache=self._fs_cache)
         except ObjectFormatError:
-            raw.fs.remove(raw.fs_path)
+            raw.fs.remove(raw.path)
             raise
 
-        deref = obj.deref()
+        deref = self._deref(obj)
         self._obj_cache[hash_info] = deref
 
         return deref
 
     def add(
         self,
-        fs_path: "AnyFSPath",
+        path: "AnyFSPath",
         fs: "FileSystem",
-        hash_info: "HashInfo",
+        oid: str,
         **kwargs,
     ):  # pylint: disable=arguments-differ
+        hash_info = HashInfo(self.hash_name, oid)
         if hash_info.isdir:
-            return self.raw.add(fs_path, fs, hash_info, **kwargs)
+            return self.raw.add(path, fs, oid, **kwargs)
 
-        obj = ReferenceHashFile.from_path(
-            fs_path, fs, hash_info, fs_cache=self._fs_cache
+        obj = ReferenceObject.from_path(
+            path, fs, hash_info, fs_cache=self._fs_cache
         )
-        self._obj_cache[hash_info] = obj.deref()
+        self._obj_cache[hash_info] = self._deref(obj)
 
-        return self.raw.add(obj.fs_path, obj.fs, hash_info, **kwargs)
+        return self.raw.add(obj.path, obj.fs, oid, **kwargs)
 
     def check(
         self,
-        hash_info: "HashInfo",
+        oid: str,
         check_hash: bool = True,
     ):
-        obj = self.get(hash_info)
+        if not check_hash:
+            if not self.exists(oid):
+                raise FileNotFoundError
+            return
 
-        try:
-            obj.check(self, check_hash=check_hash)
-        except ObjectFormatError:
-            raw = self.raw.get(hash_info)
-            logger.debug("corrupted cache file '%s'.", raw.fs_path)
+        obj = self.get(oid)
+
+        _, actual = hash_file(obj.path, obj.fs, obj.hash_info.name, self.state)
+        assert actual.name == self.hash_name
+        assert actual.value
+        if actual.value.split(".")[0] != oid.split(".")[0]:
+            raw = self.raw.get(oid)
+            logger.debug("corrupted cache file '%s'.", raw.path)
             with suppress(FileNotFoundError):
-                raw.fs.remove(raw.fs_path)
-            raise
+                raw.fs.remove(raw.path)
+            raise ObjectFormatError(f"{obj} is corrupted")
