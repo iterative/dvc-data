@@ -4,16 +4,16 @@ if TYPE_CHECKING:
     from .index import ObjectDBIndexBase
 
 
-def get_odb(fs, fs_path, **config):
+def get_odb(fs, path, **config):
     from dvc_objects.fs import Schemes
     from dvc_objects.hashfile.db import HashFileDB
 
     from .local import LocalHashFileDB
 
     if fs.protocol == Schemes.LOCAL:
-        return LocalHashFileDB(fs, fs_path, **config)
+        return LocalHashFileDB(fs, path, **config)
 
-    return HashFileDB(fs, fs_path, **config)
+    return HashFileDB(fs, path, **config)
 
 
 def get_index(odb) -> "ObjectDBIndexBase":
