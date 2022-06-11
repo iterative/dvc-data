@@ -29,12 +29,12 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
     for hash_ in sorted(hashes, key=_is_dir_hash, reverse=True):
         if hash_ in used_hashes:
             continue
-        fs_path = odb.oid_to_path(hash_)
+        path = odb.oid_to_path(hash_)
         if _is_dir_hash(hash_):
             # backward compatibility
             # pylint: disable=protected-access
             odb._remove_unpacked_dir(hash_)
-        odb.fs.remove(fs_path)
+        odb.fs.remove(path)
         removed = True
 
     return removed

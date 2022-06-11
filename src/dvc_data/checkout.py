@@ -33,24 +33,24 @@ class LinkError(Exception):
         super().__init__("No possible cache link types for '{path}'.")
 
 
-def _remove(fs_path, fs, in_cache, force=False, prompt=None):
-    if not fs.exists(fs_path):
+def _remove(path, fs, in_cache, force=False, prompt=None):
+    if not fs.exists(path):
         return
 
     if force:
-        fs.remove(fs_path)
+        fs.remove(path)
         return
 
     if not in_cache:
         msg = (
-            f"file/directory '{fs_path}' is going to be removed. "
+            f"file/directory '{path}' is going to be removed. "
             "Are you sure you want to proceed?"
         )
 
         if prompt is None or not prompt(msg):
-            raise PromptError(fs_path)
+            raise PromptError(path)
 
-    fs.remove(fs_path)
+    fs.remove(path)
 
 
 def _relink(link, cache, cache_info, fs, path, in_cache, force, prompt=None):
@@ -65,7 +65,7 @@ def _relink(link, cache, cache_info, fs, path, in_cache, force, prompt=None):
 
 def _checkout_file(
     link,
-    fs_path,
+    path,
     fs,
     change,
     cache,
@@ -77,18 +77,18 @@ def _checkout_file(
     """The file is changed we need to checkout a new copy"""
     modified = False
 
-    cache_fs_path = cache.oid_to_path(change.new.oid.value)
+    cache_path = cache.oid_to_path(change.new.oid.value)
     if change.old.oid:
         if relink:
-            if fs.iscopy(fs_path) and cache.cache_types[0] == "copy":
-                cache.unprotect(fs_path)
+            if fs.iscopy(path) and cache.cache_types[0] == "copy":
+                cache.unprotect(path)
             else:
                 _relink(
                     link,
                     cache,
-                    cache_fs_path,
+                    cache_path,
                     fs,
-                    fs_path,
+                    path,
                     change.old.in_cache,
                     force=force,
                     prompt=prompt,
@@ -98,25 +98,25 @@ def _checkout_file(
             _relink(
                 link,
                 cache,
-                cache_fs_path,
+                cache_path,
                 fs,
-                fs_path,
+                path,
                 change.old.in_cache,
                 force=force,
                 prompt=prompt,
             )
     else:
-        link(cache, cache_fs_path, fs, fs_path)
+        link(cache, cache_path, fs, path)
         modified = True
 
     if state:
-        state.save(fs_path, fs, change.new.oid)
+        state.save(path, fs, change.new.oid)
 
     return modified
 
 
 def _diff(
-    fs_path,
+    path,
     fs,
     obj,
     cache,
@@ -127,7 +127,7 @@ def _diff(
     try:
         _, _, old = stage(
             cache,
-            fs_path,
+            path,
             fs,
             obj.hash_info.name if obj else cache.fs.PARAM_CHECKSUM,
             dry_run=True,
@@ -175,7 +175,7 @@ class Link:
 
 def _checkout(
     diff,
-    fs_path,
+    path,
     fs,
     cache,
     force=False,
@@ -187,15 +187,15 @@ def _checkout(
     if not diff:
         return
 
-    links = test_links(cache.cache_types, cache.fs, cache.path, fs, fs_path)
+    links = test_links(cache.cache_types, cache.fs, cache.path, fs, path)
     if not links:
-        raise LinkError(fs_path)
+        raise LinkError(path)
     link = Link(links)
     for change in diff.deleted:
         entry_path = (
-            fs.path.join(fs_path, *change.old.key)
+            fs.path.join(path, *change.old.key)
             if change.old.key != ROOT
-            else fs_path
+            else path
         )
         _remove(
             entry_path, fs, change.old.in_cache, force=force, prompt=prompt
@@ -204,9 +204,9 @@ def _checkout(
     failed = []
     for change in chain(diff.added, diff.modified):
         entry_path = (
-            fs.path.join(fs_path, *change.new.key)
+            fs.path.join(path, *change.new.key)
             if change.new.key != ROOT
-            else fs_path
+            else path
         )
         if change.new.oid.isdir:
             fs.makedirs(entry_path)
@@ -234,7 +234,7 @@ def _checkout(
 
 
 def checkout(
-    fs_path,
+    path,
     fs,
     obj,
     cache,
@@ -246,11 +246,11 @@ def checkout(
     state=None,
     prompt=None,
 ):
-    # if protocol(fs_path) not in ["local", cache.fs.protocol]:
+    # if protocol(path) not in ["local", cache.fs.protocol]:
     #    raise NotImplementedError
 
     diff = _diff(
-        fs_path,
+        path,
         fs,
         obj,
         cache,
@@ -263,14 +263,14 @@ def checkout(
         if not quiet:
             logger.warning(
                 "No file hash info found for '%s'. It won't be created.",
-                fs_path,
+                path,
             )
-        failed.append(fs_path)
+        failed.append(path)
 
     try:
         _checkout(
             diff,
-            fs_path,
+            path,
             fs,
             cache,
             force=force,
@@ -283,13 +283,13 @@ def checkout(
         failed.extend(exc.paths)
 
     if diff and state:
-        state.save_link(fs_path, fs)
+        state.save_link(path, fs)
         if not failed:
-            state.save(fs_path, fs, obj.hash_info)
+            state.save(path, fs, obj.hash_info)
 
     if failed or not diff:
         if progress_callback and obj:
-            progress_callback(fs_path, len(obj))
+            progress_callback(path, len(obj))
         if failed:
             raise CheckoutError(failed)
         return
