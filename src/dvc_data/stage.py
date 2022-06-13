@@ -263,8 +263,8 @@ def _load_from_state(
             continue
 
         try:
-            obj = load(odb_, hash_info)
-            check(odb_, obj, check_hash=False)
+            obj = load(odb, hash_info)
+            check(odb, obj, check_hash=False)
         except (ObjectFormatError, FileNotFoundError):
             continue
 
