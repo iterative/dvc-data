@@ -148,3 +148,6 @@ class HashFileDB(ObjectDB):
             # making cache file read-only so we don't need to check it
             # next time
             self.protect(obj.path)
+
+    def _remove_unpacked_dir(self, hash_):
+        pass
