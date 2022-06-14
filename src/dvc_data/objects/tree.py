@@ -4,15 +4,17 @@ import posixpath
 from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.hashfile.hash import hash_file
-from dvc_objects.hashfile.obj import HashFile
 from dvc_objects.obj import Object
 from funcy import cached_property
 
+from ..hashfile.hash import hash_file
+from ..hashfile.obj import HashFile
+
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
-    from dvc_objects.hashfile.hash_info import HashInfo
-    from dvc_objects.hashfile.meta import Meta
+
+    from ..hashfile.hash_info import HashInfo
+    from ..hashfile.meta import Meta
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +137,7 @@ class Tree(HashFile):
 
     @classmethod
     def from_list(cls, lst):
-        from dvc_objects.hashfile.hash_info import HashInfo
+        from ..hashfile.hash_info import HashInfo
 
         tree = cls()
         for _entry in lst:

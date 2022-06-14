@@ -1,9 +1,9 @@
 from operator import itemgetter
 
 import pytest
-from dvc_objects.hashfile.hash_info import HashInfo
-from dvc_objects.hashfile.meta import Meta
 
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.meta import Meta
 from dvc_data.objects.tree import Tree, _merge
 
 

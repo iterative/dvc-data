@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING
 
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import FS_MAP, LocalFileSystem
-from dvc_objects.hashfile.hash_info import HashInfo
 from dvc_objects.obj import Object
+
+from ..hashfile.hash_info import HashInfo
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem

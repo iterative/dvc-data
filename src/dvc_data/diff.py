@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from dvc_objects.file import HashFile
-    from dvc_objects.hashfile.hash_info import HashInfo
+
+    from .hashfile.hash_info import HashInfo
 
 ADD = "add"
 MODIFY = "modify"
