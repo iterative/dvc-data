@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Dict
 
 from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
+from dvc_objects.fs import FS_MAP, LocalFileSystem, Schemes, get_fs_cls
 
 from ..hashfile.db import HashFileDB, HashInfo
 from ..hashfile.hash import hash_file
@@ -15,6 +16,23 @@ if TYPE_CHECKING:
     from dvc_objects.fs.callbacks import Callback
 
 logger = logging.getLogger(__name__)
+
+
+def _config_tuple(fs: "FileSystem"):
+    fs_cls = type(fs)
+    mod = None
+    if fs_cls not in FS_MAP.values() and fs_cls != LocalFileSystem:
+        mod = ".".join((fs_cls.__module__, fs_cls.__name__))
+    return (
+        fs.protocol,
+        mod,
+        tuple(
+            (key, value)
+            for key, value in sorted(
+                fs.config.items(), key=lambda item: item[0]
+            )
+        ),
+    )
 
 
 class ReferenceHashFileDB(HashFileDB):
@@ -31,7 +49,16 @@ class ReferenceHashFileDB(HashFileDB):
         self._obj_cache: Dict["HashInfo", "ReferenceObject"] = {}
 
     def _deref(self, obj):
-        return HashFile(obj.ref.path, obj.ref.fs, obj.ref.hash_info)
+        protocol, mod, config_pairs = obj.ref.fs_config
+        fs = None
+        if protocol != Schemes.LOCAL:
+            fs = self._fs_cache.get((protocol, config_pairs))
+        if not fs:
+            config = dict(config_pairs)
+            fs_cls = get_fs_cls(config, cls=mod, scheme=protocol)
+            fs = fs_cls(**config)
+
+        return HashFile(obj.ref.path, fs, obj.ref.hash_info)
 
     def get(self, oid: str):
         raw = self.raw.get(oid)
@@ -47,7 +74,7 @@ class ReferenceHashFileDB(HashFileDB):
             pass
 
         try:
-            obj = ReferenceObject.from_raw(raw, fs_cache=self._fs_cache)
+            obj = ReferenceObject.load(raw.path, raw.fs)
         except ObjectFormatError:
             raw.fs.remove(raw.path)
             raise
@@ -72,9 +99,14 @@ class ReferenceHashFileDB(HashFileDB):
                 path, fs, oid, hardlink=hardlink, callback=callback, **kwargs
             )
 
-        obj = ReferenceObject.from_path(
-            path, fs, hash_info, fs_cache=self._fs_cache
-        )
+        checksum = fs.checksum(path)
+        fs_config = _config_tuple(fs)
+        if fs.protocol != Schemes.LOCAL:
+            self._fs_cache[fs_config] = fs
+
+        obj = ReferenceObject(path, fs_config, checksum, hash_info)
+        obj.serialize()
+
         self._obj_cache[hash_info] = self._deref(obj)
 
         return self.raw.add(
