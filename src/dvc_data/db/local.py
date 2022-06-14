@@ -7,9 +7,10 @@ from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
 from dvc_objects.fs.system import umask
 from dvc_objects.fs.utils import copyfile, relpath, remove
-from dvc_objects.hashfile.db import HashFileDB
 from funcy import cached_property
 from shortuuid import uuid
+
+from ..hashfile.db import HashFileDB
 
 logger = logging.getLogger(__name__)
 

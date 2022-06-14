@@ -2,8 +2,8 @@ import logging
 from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
 from dvc_objects.fs import Schemes
-from dvc_objects.hashfile.hash_info import HashInfo
 
+from .hashfile.hash_info import HashInfo
 from .objects.tree import Tree
 
 if TYPE_CHECKING:

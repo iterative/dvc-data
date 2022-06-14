@@ -4,14 +4,15 @@ from typing import TYPE_CHECKING, Dict
 
 from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.hashfile.db import HashFileDB, HashInfo
-from dvc_objects.hashfile.hash import hash_file
-from dvc_objects.hashfile.obj import HashFile
 
+from ..hashfile.db import HashFileDB, HashInfo
+from ..hashfile.hash import hash_file
+from ..hashfile.obj import HashFile
 from ..objects.reference import ReferenceObject
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
+    from dvc_objects.fs.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 
@@ -61,18 +62,29 @@ class ReferenceHashFileDB(HashFileDB):
         path: "AnyFSPath",
         fs: "FileSystem",
         oid: str,
+        hardlink: bool = False,
+        callback: "Callback" = None,
         **kwargs,
     ):  # pylint: disable=arguments-differ
         hash_info = HashInfo(self.hash_name, oid)
         if hash_info.isdir:
-            return self.raw.add(path, fs, oid, **kwargs)
+            return self.raw.add(
+                path, fs, oid, hardlink=hardlink, callback=callback, **kwargs
+            )
 
         obj = ReferenceObject.from_path(
             path, fs, hash_info, fs_cache=self._fs_cache
         )
         self._obj_cache[hash_info] = self._deref(obj)
 
-        return self.raw.add(obj.path, obj.fs, oid, **kwargs)
+        return self.raw.add(
+            obj.path,
+            obj.fs,
+            oid,
+            hardlink=hardlink,
+            callback=callback,
+            **kwargs,
+        )
 
     def check(
         self,

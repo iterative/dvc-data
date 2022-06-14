@@ -6,8 +6,8 @@ if TYPE_CHECKING:
 
 def get_odb(fs, path, **config):
     from dvc_objects.fs import Schemes
-    from dvc_objects.hashfile.db import HashFileDB
 
+    from ..hashfile.db import HashFileDB
     from .local import LocalHashFileDB
 
     if fs.protocol == Schemes.LOCAL:

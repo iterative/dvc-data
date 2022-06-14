@@ -7,18 +7,18 @@ from functools import partial
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from dvc_objects._tqdm import Tqdm
-from dvc_objects.hashfile.hash import hash_file
-from dvc_objects.hashfile.meta import Meta
-from dvc_objects.hashfile.obj import HashFile
 
 from .db.reference import ReferenceHashFileDB
+from .hashfile.hash import hash_file
+from .hashfile.meta import Meta
+from .hashfile.obj import HashFile
 
 if TYPE_CHECKING:
     from dvc_objects._ignore import Ignore
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.hashfile.db import HashFileDB
-    from dvc_objects.hashfile.hash_info import HashInfo
 
+    from .hashfile.db import HashFileDB
+    from .hashfile.hash_info import HashInfo
     from .objects.tree import Tree
 
 
@@ -42,7 +42,8 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     from dvc_objects.fs.callbacks import Callback
     from dvc_objects.fs.utils import tmp_fname
-    from dvc_objects.hashfile.hash import HashStreamFile
+
+    from .hashfile.hash import HashStreamFile
 
     path = upload_odb.fs.path
     tmp_info = path.join(upload_odb.path, tmp_fname())
@@ -152,8 +153,7 @@ def _build_tree(path, fs, name, **kwargs):
 
 
 def _stage_tree(path, fs, fs_info, name, odb=None, **kwargs):
-    from dvc_objects.hashfile.hash_info import HashInfo
-
+    from .hashfile.hash_info import HashInfo
     from .objects.tree import Tree
 
     value = fs_info.get(name)
@@ -228,6 +228,7 @@ def _load_raw_dir_obj(odb: "HashFileDB", hash_info: "HashInfo") -> "Tree":
         raw = hash_info.as_raw()
         oid = raw.value
         tree = Tree.load(odb, raw)
+        assert oid
         odb.check(oid)
         tree.hash_info = hash_info
         tree.oid = hash_info.value

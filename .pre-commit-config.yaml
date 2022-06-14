@@ -24,6 +24,9 @@ repos:
     rev: v2.1.0
     hooks:
       - id: codespell
+        args:
+        - --ignore-words-list
+        - fo
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.31.0
     hooks:
