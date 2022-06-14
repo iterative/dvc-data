@@ -76,6 +76,7 @@ def _stage_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
     else:
         odb.add(path, fs, oid, hardlink=False)
         obj = odb.get(oid)
+        obj.hash_info = hash_info
 
     return path, meta, obj
 
