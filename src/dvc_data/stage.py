@@ -314,8 +314,9 @@ def _stage_external_tree_info(odb, tree, name):
     # that would be universal for all clouds.
     assert odb and name != "md5"
 
-    odb.add(tree.path, tree.fs, tree.hash_info)
-    raw = odb.get(tree.hash_info)
+    oid = tree.hash_info.value
+    odb.add(tree.path, tree.fs, oid)
+    raw = odb.get(oid)
     _, hash_info = hash_file(raw.path, raw.fs, name, state=odb.state)
     tree.path = raw.path
     tree.fs = raw.fs
