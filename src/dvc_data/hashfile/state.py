@@ -1,5 +1,5 @@
 """Manages state database used for checksum caching."""
-
+import json
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -65,12 +65,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return
 
         links_dir = os.path.join(tmp_dir, "links")
-        md5s_dir = os.path.join(tmp_dir, "md5s")
-        self.links = Cache(links_dir, eviction_policy="least-recently-used")
-        self.md5s = Cache(md5s_dir, eviction_policy="least-recently-used")
+        hashes_dir = os.path.join(tmp_dir, "hashes", "local")
+        self.links = Cache(links_dir)
+        self.hashes = Cache(hashes_dir)
 
     def close(self):
-        self.md5s.close()
+        self.hashes.close()
         self.links.close()
 
     def save(self, path, fs, hash_info):
@@ -84,18 +84,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return
 
-        mtime, size = get_mtime_and_size(path, fs, self.ignore)
-        inode = get_inode(path)
+        entry = {
+            "checksum": fs.checksum(path),
+            "hash_info": hash_info.to_dict(),
+        }
 
-        logger.debug(
-            "state save (%s, %s, %s) %s",
-            inode,
-            mtime,
-            str(size),
-            hash_info.value,
-        )
-
-        self.md5s[inode] = (mtime, str(size), hash_info.value)
+        self.hashes[path] = json.dumps(entry)
 
     def get(self, path, fs):
         """Gets the hash for the specified path info. Hash will be
@@ -113,19 +107,24 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return None, None
 
+        raw = self.hashes.get(path)
+        if not raw:
+            return None, None
+
         try:
-            mtime, size = get_mtime_and_size(path, fs, self.ignore)
+            entry = json.loads(raw)
+        except ValueError:
+            return None, None
+
+        try:
+            actual = fs.checksum(path)
         except FileNotFoundError:
             return None, None
 
-        inode = get_inode(path)
-
-        value = self.md5s.get(inode)
-
-        if not value or value[0] != mtime or value[1] != str(size):
+        if entry["checksum"] != actual:
             return None, None
 
-        return Meta(size=size), HashInfo("md5", value[2])
+        return Meta(), HashInfo.from_dict(entry["hash_info"])
 
     def save_link(self, path, fs):
         """Adds the specified path to the list of links created by dvc. This
