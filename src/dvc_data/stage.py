@@ -159,13 +159,7 @@ def _stage_tree(path, fs, fs_info, name, odb=None, **kwargs):
             pass
 
     meta, tree = _build_tree(path, fs, name, odb=odb, **kwargs)
-    state = odb.state if odb and odb.state else None
-    hash_info = None
-    if state:
-        _, hash_info = state.get(  # pylint: disable=assignment-from-none
-            path, fs
-        )
-    tree.digest(hash_info=hash_info)
+    tree.digest()
     odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
     raw = odb.get(tree.oid)
     # cleanup unneeded memfs tmpfile and return tree based on the
