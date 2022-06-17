@@ -86,6 +86,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         entry = {
             "checksum": fs.checksum(path),
+            "size": fs.size(path),
             "hash_info": hash_info.to_dict(),
         }
 
@@ -124,7 +125,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if entry["checksum"] != actual:
             return None, None
 
-        return Meta(), HashInfo.from_dict(entry["hash_info"])
+        return Meta(size=entry["size"]), HashInfo.from_dict(entry["hash_info"])
 
     def save_link(self, path, fs):
         """Adds the specified path to the list of links created by dvc. This
