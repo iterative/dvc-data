@@ -16,6 +16,9 @@ class ReferenceHashFileDB(HashFileDB):
         super().__init__(fs, path, **config)
         self._obj_cache: Dict["str", "HashFile"] = {}
 
+    def __hash__(self):
+        return hash((self.fs.protocol, self.path, *self._obj_cache.keys()))
+
     def exists(self, oid: str) -> bool:
         return oid in self._obj_cache
 
