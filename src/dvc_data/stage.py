@@ -275,12 +275,6 @@ def stage(
         logger.debug("staged tree '%s'", obj)
         if name != "md5":
             obj = _stage_external_tree_info(odb, obj, name)
-
-        # In order to avoid re-building the tree when it is not committed to
-        # the local odb (e.g. for a status call), we save it as a raw object.
-        # Loading this instead of building the tree can speed up `dvc status`
-        # for modified directories, see #7390
-        odb.add(obj.path, obj.fs, obj.hash_info.as_raw().value)
     else:
         _, meta, obj = _stage_file(
             path,
