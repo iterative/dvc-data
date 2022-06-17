@@ -284,8 +284,6 @@ def checkout(
 
     if diff and state:
         state.save_link(path, fs)
-        if not failed:
-            state.save(path, fs, obj.hash_info)
 
     if failed or not diff:
         if progress_callback and obj:

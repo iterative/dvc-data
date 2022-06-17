@@ -63,7 +63,7 @@ class Tree(HashFile):
         self.__dict__.pop("trie", None)
         self._dict[key] = (meta, oid)
 
-    def digest(self, hash_info: Optional["HashInfo"] = None):
+    def digest(self):
         from dvc_objects.fs import MemoryFileSystem
         from dvc_objects.fs.utils import tmp_fname
 
@@ -72,12 +72,9 @@ class Tree(HashFile):
         memfs.pipe_file(path, self.as_bytes())
         self.fs = memfs
         self.path = path
-        if hash_info:
-            self.hash_info = hash_info
-        else:
-            _, self.hash_info = hash_file(path, memfs, "md5")
-            assert self.hash_info.value
-            self.hash_info.value += ".dir"
+        _, self.hash_info = hash_file(path, memfs, "md5")
+        assert self.hash_info.value
+        self.hash_info.value += ".dir"
         self.oid = self.hash_info.value
 
     def _load(self, key, meta, hash_info):
