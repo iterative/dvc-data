@@ -17,7 +17,10 @@ class ReferenceHashFileDB(HashFileDB):
         self._obj_cache: Dict["str", "HashFile"] = {}
 
     def get(self, oid: str):
-        return self._obj_cache[oid]
+        try:
+            return self._obj_cache[oid]
+        except KeyError:
+            return super().get(oid)
 
     def add(
         self,
