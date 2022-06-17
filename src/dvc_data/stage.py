@@ -1,7 +1,6 @@
 import hashlib
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
@@ -84,7 +83,6 @@ def _build_objects(
     fs,
     name,
     ignore: "Ignore" = None,
-    jobs=None,
     no_progress_bar=False,
     **kwargs,
 ):
@@ -105,10 +103,7 @@ def _build_objects(
                 **kwargs,
             )
         )
-        with ThreadPoolExecutor(
-            max_workers=jobs if jobs is not None else fs.hash_jobs
-        ) as executor:
-            yield from executor.map(worker, walk_iterator)
+        yield from map(worker, walk_iterator)
 
 
 def _iter_objects(path, fs, name, **kwargs):
