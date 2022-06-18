@@ -1,7 +1,7 @@
 import json
 import logging
 import posixpath
-from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Final, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.obj import Object
@@ -44,14 +44,14 @@ def _try_load(
 
 
 class Tree(HashFile):
-    PARAM_RELPATH = "relpath"
+    PARAM_RELPATH: Final = "relpath"
 
     def __init__(self):  # pylint: disable=super-init-not-called
         self.fs = None
         self.path = None
         self.hash_info = None
         self.oid = None
-        self._dict: Dict[Tuple[str], Tuple["Meta", "HashInfo"]] = {}
+        self._dict: Dict[Tuple[str, ...], Tuple["Meta", "HashInfo"]] = {}
 
     @cached_property
     def _trie(self):
@@ -59,7 +59,7 @@ class Tree(HashFile):
 
         return Trie(self._dict)
 
-    def add(self, key: Tuple[str], meta: "Meta", oid: "HashInfo"):
+    def add(self, key: Tuple[str, ...], meta: "Meta", oid: "HashInfo"):
         self.__dict__.pop("trie", None)
         self._dict[key] = (meta, oid)
 
