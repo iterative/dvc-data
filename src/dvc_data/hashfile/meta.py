@@ -1,28 +1,43 @@
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Final, Optional
 
 if TYPE_CHECKING:
     from .db import ObjectDB
     from .file import HashFile
 
 
-@dataclass
 class Meta:
-    PARAM_SIZE = "size"
-    PARAM_NFILES = "nfiles"
-    PARAM_ISEXEC = "isexec"
+    __slots__ = [
+        "size",
+        "nfiles",
+        "isexec",
+        "obj",
+        "odb",
+        "remote",
+    ]
 
-    size: Optional[int] = field(default=None)
-    nfiles: Optional[int] = field(default=None)
-    isexec: Optional[bool] = field(default=False)
+    PARAM_SIZE: Final = "size"
+    PARAM_NFILES: Final = "nfiles"
+    PARAM_ISEXEC: Final = "isexec"
 
-    obj: Optional["HashFile"] = field(default=None)
-    odb: Optional["ObjectDB"] = field(default=None)
-    remote: Optional[str] = field(default=None)
+    def __init__(
+        self,
+        size: Optional[int] = None,
+        nfiles: Optional[int] = None,
+        isexec: Optional[bool] = None,
+        obj: Optional["HashFile"] = None,
+        odb: Optional["ObjectDB"] = None,
+        remote: Optional[str] = None,
+    ):
+        self.size = size
+        self.nfiles = nfiles
+        self.isexec = isexec
+        self.obj = obj
+        self.odb = odb
+        self.remote = remote
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d: dict) -> "Meta":
         if not d:
             return cls()
 
@@ -32,8 +47,8 @@ class Meta:
 
         return cls(size=size, nfiles=nfiles, isexec=isexec)
 
-    def to_dict(self):
-        ret = OrderedDict()
+    def to_dict(self) -> dict:
+        ret: dict = OrderedDict()
 
         if self.size is not None:
             ret[self.PARAM_SIZE] = self.size
