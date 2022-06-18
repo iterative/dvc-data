@@ -12,11 +12,18 @@ DELETE = "delete"
 UNCHANGED = "unchanged"
 
 
-@dataclass
 class TreeEntry:
-    in_cache: bool
-    key: Tuple[str]
-    oid: Optional["HashInfo"] = field(default=None)
+    __slots__ = ("in_cache", "key", "oid")
+
+    def __init__(
+        self,
+        in_cache: bool,
+        key: Tuple[str],
+        oid: Optional["HashInfo"],
+    ):
+        self.in_cache = in_cache
+        self.key = key
+        self.oid = oid
 
     def __bool__(self):
         return bool(self.oid)
@@ -31,10 +38,12 @@ class TreeEntry:
         return self.oid == other.oid
 
 
-@dataclass
 class Change:
-    old: TreeEntry
-    new: TreeEntry
+    __slots__ = ("old", "new")
+
+    def __init__(self, old: TreeEntry, new: TreeEntry):
+        self.old = old
+        self.new = new
 
     @property
     def typ(self):
