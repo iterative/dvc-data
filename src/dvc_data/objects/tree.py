@@ -51,7 +51,9 @@ class Tree(HashFile):
         self.path = None
         self.hash_info = None
         self.oid = None
-        self._dict: Dict[Tuple[str, ...], Tuple["Meta", "HashInfo"]] = {}
+        self._dict: Dict[
+            Tuple[str, ...], Tuple[Optional["Meta"], "HashInfo"]
+        ] = {}
 
     @cached_property
     def _trie(self):
@@ -59,7 +61,9 @@ class Tree(HashFile):
 
         return Trie(self._dict)
 
-    def add(self, key: Tuple[str, ...], meta: "Meta", oid: "HashInfo"):
+    def add(
+        self, key: Tuple[str, ...], meta: Optional["Meta"], oid: "HashInfo"
+    ):
         self.__dict__.pop("trie", None)
         self._dict[key] = (meta, oid)
 
