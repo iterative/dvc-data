@@ -35,7 +35,7 @@ class HashFileDB(ObjectDB):
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
         self.read_only = config.get("read_only", False)
-        self.hash_name = config.get("hash_name", "md5")
+        self.hash_name = config.get("hash_name", self.fs.PARAM_CHECKSUM)
 
     @property
     def config(self):
