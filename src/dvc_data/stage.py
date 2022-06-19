@@ -199,7 +199,7 @@ def _get_staging(odb: "HashFileDB") -> "ReferenceHashFileDB":
     fs = MemoryFileSystem()
     path = _make_staging_url(fs, odb, odb.path)
     state = odb.state
-    return ReferenceHashFileDB(fs, path, state=state)
+    return ReferenceHashFileDB(fs, path, state=state, hash_name=odb.hash_name)
 
 
 def _stage_external_tree_info(odb, tree, name):
