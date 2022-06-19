@@ -162,10 +162,6 @@ def _stage_tree(path, fs, fs_info, name, odb=None, **kwargs):
     tree.digest()
     odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
     raw = odb.get(tree.oid)
-    # cleanup unneeded memfs tmpfile and return tree based on the
-    # ODB fs/path
-    if odb.fs != tree.fs:
-        tree.fs.remove(tree.path)
     tree.fs = raw.fs
     tree.path = raw.path
     return meta, tree
