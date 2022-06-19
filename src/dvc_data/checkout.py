@@ -129,7 +129,7 @@ def _diff(
             cache,
             path,
             fs,
-            obj.hash_info.name if obj else cache.fs.PARAM_CHECKSUM,
+            obj.hash_info.name if obj else cache.hash_name,
             dry_run=True,
             ignore=ignore,
         )

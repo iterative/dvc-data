@@ -102,7 +102,7 @@ def status(
     """
     logger.debug("Preparing to collect status from '%s'", odb.path)
     if not name:
-        name = odb.fs.PARAM_CHECKSUM
+        name = odb.hash_name
 
     if cache_odb is None:
         cache_odb = odb
