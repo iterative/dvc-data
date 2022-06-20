@@ -8,6 +8,8 @@ if TYPE_CHECKING:
 
 
 class HashFile(Object):
+    __slots__ = ("hash_info",)
+
     def __init__(
         self, path: "AnyFSPath", fs: "FileSystem", hash_info: "HashInfo"
     ):
