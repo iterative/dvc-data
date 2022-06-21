@@ -67,6 +67,11 @@ class Tree(HashFile):
         self.__dict__.pop("trie", None)
         self._dict[key] = (meta, oid)
 
+    def get(
+        self, key: Tuple[str, ...], default=None
+    ) -> Optional[Tuple[Optional["Meta"], "HashInfo"]]:
+        return self._dict.get(key, default)
+
     def digest(self):
         from dvc_objects.fs import MemoryFileSystem
         from dvc_objects.fs.utils import tmp_fname
