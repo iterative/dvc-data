@@ -195,7 +195,7 @@ class Tree(HashFile):
             pass
         return tree
 
-    def get(self, odb, prefix: Tuple[str]) -> Optional[Object]:
+    def get_obj(self, odb, prefix: Tuple[str]) -> Optional[Object]:
         """Return object at the specified prefix in this tree.
 
         Returns None if no object exists at the specified prefix.
