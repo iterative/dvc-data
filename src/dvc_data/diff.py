@@ -101,7 +101,7 @@ def diff(
         if not obj or key == ROOT:
             return obj.hash_info if obj else None
 
-        entry_obj = obj.get(cache, key)
+        entry_obj = obj.get_obj(cache, key)
         return entry_obj.hash_info if entry_obj else None
 
     def _in_cache(oid, cache):
