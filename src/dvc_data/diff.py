@@ -5,6 +5,8 @@ if TYPE_CHECKING:
     from dvc_objects.file import HashFile
 
     from .hashfile.hash_info import HashInfo
+    from .hashfile.meta import Meta
+
 
 ADD = "add"
 MODIFY = "modify"
@@ -13,16 +15,18 @@ UNCHANGED = "unchanged"
 
 
 class TreeEntry:
-    __slots__ = ("in_cache", "key", "oid")
+    __slots__ = ("in_cache", "key", "meta", "oid")
 
     def __init__(
         self,
         in_cache: bool,
         key: Tuple[str],
+        meta: Optional["Meta"],
         oid: Optional["HashInfo"],
     ):
         self.in_cache = in_cache
         self.key = key
+        self.meta = meta
         self.oid = oid
 
     def __bool__(self):
@@ -97,12 +101,11 @@ def diff(
     old_keys = set(_get_keys(old))
     new_keys = set(_get_keys(new))
 
-    def _get_oid(obj, key):
+    def _get(obj, key):
         if not obj or key == ROOT:
-            return obj.hash_info if obj else None
+            return None, (obj.hash_info if obj else None)
 
-        _, oid = obj.get(key, (None, None))
-        return oid
+        return obj.get(key, (None, None))
 
     def _in_cache(oid, cache):
         from dvc_objects.errors import ObjectFormatError
@@ -118,12 +121,12 @@ def diff(
 
     ret = DiffResult()
     for key in old_keys | new_keys:
-        old_oid = _get_oid(old, key)
-        new_oid = _get_oid(new, key)
+        old_meta, old_oid = _get(old, key)
+        new_meta, new_oid = _get(new, key)
 
         change = Change(
-            old=TreeEntry(_in_cache(old_oid, cache), key, old_oid),
-            new=TreeEntry(_in_cache(new_oid, cache), key, new_oid),
+            old=TreeEntry(_in_cache(old_oid, cache), key, old_meta, old_oid),
+            new=TreeEntry(_in_cache(new_oid, cache), key, new_meta, new_oid),
         )
 
         if change.typ == ADD:
