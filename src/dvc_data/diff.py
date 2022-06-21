@@ -101,8 +101,8 @@ def diff(
         if not obj or key == ROOT:
             return obj.hash_info if obj else None
 
-        entry_obj = obj.get_obj(cache, key)
-        return entry_obj.hash_info if entry_obj else None
+        _, oid = obj.get(key, (None, None))
+        return oid
 
     def _in_cache(oid, cache):
         from dvc_objects.errors import ObjectFormatError
