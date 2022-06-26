@@ -89,9 +89,10 @@ def _build_objects(
         walk_iterator = ignore.find(fs, path)
     else:
         walk_iterator = fs.find(path)
+    relpath = fs.path.relpath(path)
     with Tqdm(
-        unit="md5",
-        desc="Computing file/dir hashes (only done once)",
+        unit="obj",
+        desc=f"Building data objects from {relpath}",
         disable=no_progress_bar,
     ) as pbar:
         worker = pbar.wrap_fn(
