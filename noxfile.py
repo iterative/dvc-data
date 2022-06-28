@@ -8,7 +8,7 @@ nox.options.reuse_existing_virtualenvs = True
 nox.options.sessions = "lint", "tests"
 
 
-@nox.session(python=["3.8", "3.9", "3.10"])
+@nox.session(python=["3.8", "3.9", "3.10", "3.11", "pypy3.8", "pypy-3.9"])
 def tests(session: nox.Session) -> None:
     session.install(".[tests]")
     session.run(

@@ -53,6 +53,7 @@ class MockedS3Server:
 
 @pytest.fixture
 def s3_server(monkeypatch):
+    pytest.importorskip("s3fs")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "foo")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "foo")
     with MockedS3Server() as server:
@@ -61,23 +62,20 @@ def s3_server(monkeypatch):
 
 @pytest.fixture
 def s3path(s3_server):
-    path = UPath(
-        "s3://test",
-        client_kwargs={"endpoint_url": s3_server.endpoint_url},
-    )
-    path.mkdir()
+    try:
+        path = UPath(
+            "s3://test",
+            client_kwargs={"endpoint_url": s3_server.endpoint_url},
+        )
+        path.mkdir()
+    except ImportError as exc:
+        pytest.skip(str(exc))
+
     yield path
 
 
 class LocalPath(type(pathlib.Path())):  # type: ignore[misc]
-    def __init__(self, *args):
-        super().__init__()
-        if not getattr(self._accessor, "_fs", None):
-            self._accessor._fs = LocalFileSystem()
-
-    @property
-    def fs(self):
-        return self._accessor._fs
+    fs = LocalFileSystem()
 
 
 @pytest.fixture

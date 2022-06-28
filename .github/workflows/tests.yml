@@ -18,6 +18,12 @@ jobs:
       matrix:
         os: [ubuntu-20.04, windows-latest, macos-latest]
         pyv: ['3.8', '3.9', '3.10']
+        include:
+        - os: ubuntu-latest
+          pyv: 'pypy3.8'
+        - os: ubuntu-latest
+          pyv: '3.11-dev'
+          nox_session: 'tests-3.11'
 
     steps:
     - name: Check out the repository
@@ -37,10 +43,14 @@ jobs:
         nox --version
 
     - name: Lint code and check dependencies
+      if: matrix.pyv != '3.11-dev'
       run: nox -s lint safety
 
     - name: Run tests
-      run: nox -s tests-${{ matrix.pyv }} -- --cov-report=xml
+      run: nox -s $TEST_SESSION -- --cov-report=xml
+      shell: bash
+      env:
+        TEST_SESSION: ${{ matrix.nox_session || format('tests-{0}', matrix.pyv) }}
 
     - name: Upload coverage report
       uses: codecov/codecov-action@v3.1.0
