@@ -3,9 +3,10 @@ import shlex
 import subprocess
 import time
 
+import dvc_objects.fs
 import pytest
 import requests
-from dvc_objects.fs.implementations.local import LocalFileSystem
+from fsspec.implementations.local import LocalFileSystem
 from funcy import silent
 from upath import UPath
 
@@ -93,3 +94,8 @@ def tmp_upath(request):
     elif param == "s3":
         return request.getfixturevalue("s3path")
     raise ValueError(f"unknown {param=}")
+
+
+@pytest.fixture
+def as_filesystem():
+    return dvc_objects.fs.as_filesystem
