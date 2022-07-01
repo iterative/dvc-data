@@ -1,8 +1,7 @@
 import hashlib
 import logging
 import os
-from functools import partial
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from dvc_objects._tqdm import Tqdm
 
@@ -57,7 +56,7 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     oid = stream.hash_value
     odb.add(tmp_info, upload_odb.fs, oid)
     meta = Meta(size=size)
-    return from_path, meta, odb.get(oid)
+    return meta, odb.get(oid)
 
 
 def _stage_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
@@ -74,44 +73,18 @@ def _stage_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
         odb.add(path, fs, oid, hardlink=False)
         obj = odb.get(oid)
 
-    return path, meta, obj
+    return meta, obj
 
 
-def _build_objects(
-    path,
-    fs,
-    name,
-    ignore: "Ignore" = None,
-    no_progress_bar=False,
-    **kwargs,
+def _build_tree(
+    path, fs, name, ignore: "Ignore" = None, no_progress_bar=False, **kwargs
 ):
-    if ignore:
-        walk_iterator = ignore.find(fs, path)
-    else:
-        walk_iterator = fs.find(path)
-    relpath = fs.path.relpath(path)
-    with Tqdm(
-        unit="obj",
-        desc=f"Building data objects from {relpath}",
-        disable=no_progress_bar,
-    ) as pbar:
-        worker = pbar.wrap_fn(
-            partial(
-                _stage_file,
-                fs=fs,
-                name=name,
-                **kwargs,
-            )
-        )
-        yield from map(worker, walk_iterator)
-
-
-def _iter_objects(path, fs, name, **kwargs):
-    yield from _build_objects(path, fs, name, **kwargs)
-
-
-def _build_tree(path, fs, name, **kwargs):
     from .objects.tree import Tree
+
+    if ignore:
+        walk_iter = ignore.walk(fs, path)
+    else:
+        walk_iter = fs.walk(path)
 
     tree_meta = Meta(size=0, nfiles=0)
     # assuring mypy that they are not None but integer
@@ -119,20 +92,35 @@ def _build_tree(path, fs, name, **kwargs):
     assert tree_meta.nfiles is not None
 
     tree = Tree()
-    for file_path, meta, obj in _iter_objects(path, fs, name, **kwargs):
-        if fs.path.name(file_path) == DefaultIgnoreFile:
-            raise IgnoreInCollectedDirError(
-                DefaultIgnoreFile, fs.path.parent(file_path)
-            )
+    relpath = fs.path.relpath(path)
 
-        # NOTE: we know for sure that file_path starts with path, so we can
-        # use faster string manipulation instead of a more robust relparts()
-        key = tuple(file_path[len(path) + 1 :].split(fs.sep))
-        assert key
-        tree.add(key, meta, obj.hash_info)
+    with Tqdm(
+        unit="obj",
+        desc=f"Building data objects from {relpath}",
+        disable=no_progress_bar,
+    ) as pbar:
+        for root, _, fnames in walk_iter:
+            if DefaultIgnoreFile in fnames:
+                raise IgnoreInCollectedDirError(
+                    DefaultIgnoreFile, fs.path.join(root, DefaultIgnoreFile)
+                )
 
-        tree_meta.size += meta.size or 0
-        tree_meta.nfiles += 1
+            # NOTE: we know for sure that root starts with path, so we can use
+            # faster string manipulation instead of a more robust relparts()
+            rel_key: Tuple[Optional[Any], ...] = ()
+            if root != path:
+                rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
+
+            for fname in fnames:
+                pbar.update()
+                meta, obj = _stage_file(
+                    f"{root}{fs.sep}{fname}", fs, name, **kwargs
+                )
+                key = (*rel_key, fname)
+                tree.add(key, meta, obj.hash_info)
+                tree_meta.size += meta.size or 0
+
+            tree_meta.nfiles += len(fnames)
 
     return tree_meta, tree
 
@@ -257,7 +245,7 @@ def stage(
         if name != "md5":
             obj = _stage_external_tree_info(odb, obj, name)
     else:
-        _, meta, obj = _stage_file(
+        meta, obj = _stage_file(
             path,
             fs,
             name,
