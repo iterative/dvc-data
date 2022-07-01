@@ -125,15 +125,6 @@ def _build_tree(path, fs, name, **kwargs):
                 DefaultIgnoreFile, fs.path.parent(file_path)
             )
 
-        # NOTE: this is lossy transformation:
-        #   "hey\there" -> "hey/there"
-        #   "hey/there" -> "hey/there"
-        # The latter is fine filename on Windows, which
-        # will transform to dir/file on back transform.
-        #
-        # Yes, this is a BUG, as long as we permit "/" in
-        # filenames on Windows and "\" on Unix
-
         # NOTE: we know for sure that file_path starts with path, so we can
         # use faster string manipulation instead of a more robust relparts()
         key = tuple(file_path[len(path) + 1 :].split(fs.sep))
