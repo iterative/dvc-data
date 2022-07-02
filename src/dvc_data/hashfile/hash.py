@@ -70,13 +70,16 @@ class HashStreamFile(io.IOBase):
 
 
 def fobj_md5(
-    fobj: BinaryIO, chunk_size: int = 2**20, text: Optional[bool] = None
+    fobj: BinaryIO,
+    chunk_size: int = 2**20,
+    text: Optional[bool] = None,
+    name="md5",
 ) -> str:
     # ideally, we want the heuristics to be applied in a similar way,
     # regardless of the size of the first chunk,
     # for which we may need to buffer till DEFAULT_CHUNK_SIZE.
     assert chunk_size >= DEFAULT_CHUNK_SIZE
-    stream = HashStreamFile(fobj, text=text)
+    stream = HashStreamFile(fobj, hash_name=name, text=text)
     while True:
         data = stream.read(chunk_size)
         if not data:
@@ -89,11 +92,12 @@ def file_md5(
     fs: "FileSystem" = localfs,
     callback: "Callback" = DEFAULT_CALLBACK,
     text: Optional[bool] = None,
+    name: str = "md5",
 ) -> str:
     size = fs.size(fname) or 0
     callback.set_size(size)
     with fs.open(fname, "rb") as fobj:
-        return fobj_md5(callback.wrap_attr(fobj), text=text)
+        return fobj_md5(callback.wrap_attr(fobj), text=text, name=name)
 
 
 def _adapt_info(info: Dict[str, Any], scheme: str) -> Dict[str, Any]:
