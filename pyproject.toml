@@ -62,7 +62,7 @@ warn_no_return = true
 warn_redundant_casts = true
 warn_unreachable = true
 ignore_missing_imports = true
-files = ["src", "tests", "cli.py"]
+files = ["src", "tests"]
 
 [tool.pylint.message_control]
 enable = ["c-extension-no-member", "no-else-return"]
