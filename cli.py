@@ -63,10 +63,20 @@ ODB_PATH = typer.Option(
     ".dvc/cache", help="Path to the root of the odb", envvar="ODB_PATH"
 )
 
-app = typer.Typer(
+
+class Application(typer.Typer):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("no_args_is_help", True)
+        super().__init__(*args, **kwargs)
+
+    def command(self, *args, **kwargs):
+        kwargs.setdefault("no_args_is_help", True)
+        return super().command(*args, **kwargs)
+
+
+app = Application(
     name="dvc-data",
     help="dvc-data testingtool",
-    no_args_is_help=True,
     add_completion=False,
 )
 
