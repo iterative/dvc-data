@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 import enum
 import hashlib
 import json
@@ -29,6 +27,7 @@ from dvc_data.hashfile.hash import fobj_md5 as _fobj_md5
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.state import State
 from dvc_data.objects.tree import Tree, merge
+from dvc_data.repo import NotARepo, Repo
 from dvc_data.transfer import transfer as _transfer
 
 file_type = typer.Argument(
@@ -59,9 +58,6 @@ LinkEnum = enum.Enum(  # type: ignore[misc]
     "LinkEnum", {lt: lt for lt in ["reflink", "hardlink", "symlink", "copy"]}
 )
 SIZE_HELP = "Human readable size, eg: '1kb', '100Mb', '10GB' etc"
-ODB_PATH = typer.Option(
-    ".dvc/cache", help="Path to the root of the odb", envvar="ODB_PATH"
-)
 
 
 class Application(typer.Typer):
@@ -138,21 +134,27 @@ def from_shortoid(odb: HashFileDB, oid: str) -> str:
         raise typer.Exit(1) from exc
 
 
-def get_odb(path, **config):
-    state = State(root_dir=os.getcwd(), tmp_dir=os.path.join(path, "tmp"))
-    return HashFileDB(LocalFileSystem(), path, state=state, **config)
+def get_odb(**config):
+    try:
+        repo = Repo.discover()
+    except NotARepo as exc:
+        typer.echo(exc, err=True)
+        raise typer.Abort(1)
+
+    state = State(root_dir=repo.root, tmp_dir=repo.tmp_dir)
+    return HashFileDB(repo.fs, repo.object_dir, state=state, **config)
 
 
 @app.command(help="Oid to path")
-def o2p(oid: str = typer.Argument(..., allow_dash=True), db: str = ODB_PATH):
-    odb = get_odb(db)
+def o2p(oid: str = typer.Argument(..., allow_dash=True)):
+    odb = get_odb()
     path = odb.oid_to_path(from_shortoid(odb, oid))
     typer.echo(path)
 
 
 @app.command(help="Path to Oid")
-def p2o(path: Path = typer.Argument(..., allow_dash=True), db: str = ODB_PATH):
-    odb = get_odb(db)
+def p2o(path: Path = typer.Argument(..., allow_dash=True)):
+    odb = get_odb()
     fs_path = relpath(path)
     if fs_path == "-":
         fs_path = sys.stdin.read().strip()
@@ -164,10 +166,9 @@ def p2o(path: Path = typer.Argument(..., allow_dash=True), db: str = ODB_PATH):
 @app.command(help="Provide content of the objects")
 def cat(
     oid: str = typer.Argument(..., allow_dash=True),
-    db: str = ODB_PATH,
     check: bool = typer.Option(False, "--check", "-c"),
 ):
-    odb = get_odb(db)
+    odb = get_odb()
     oid = from_shortoid(odb, oid)
     if check:
         try:
@@ -184,11 +185,10 @@ def cat(
 @app.command(help="Build and optionally write object to the database")
 def build(
     path: Path = dir_file_type,
-    db: str = ODB_PATH,
     write: bool = typer.Option(False, "--write", "-w"),
     shallow: bool = False,
 ):
-    odb = get_odb(db)
+    odb = get_odb()
     fs_path = relpath(path)
 
     fs = odb.fs
@@ -210,8 +210,8 @@ def build(
 
 @app.command("ls", help="List objects in a tree")
 @app.command("ls-tree", help="List objects in a tree")
-def ls(oid: str = typer.Argument(..., allow_dash=True), db: str = ODB_PATH):
-    odb = get_odb(db)
+def ls(oid: str = typer.Argument(..., allow_dash=True)):
+    odb = get_odb()
     oid = from_shortoid(odb, oid)
     try:
         tree = Tree.load(odb, HashInfo("md5", oid))
@@ -224,8 +224,8 @@ def ls(oid: str = typer.Argument(..., allow_dash=True), db: str = ODB_PATH):
 
 
 @app.command(help="Verify objects in the database")
-def fsck(db: str = ODB_PATH):
-    odb = get_odb(db)
+def fsck():
+    odb = get_odb()
     ret = 0
     for oid in odb.all():
         try:
@@ -237,10 +237,8 @@ def fsck(db: str = ODB_PATH):
 
 
 @app.command(help="Diff two objects in the database")
-def diff(
-    short_oid1, short_oid2: str, db: str = ODB_PATH, unchanged: bool = False
-):
-    odb = get_odb(db)
+def diff(short_oid1, short_oid2: str, unchanged: bool = False):
+    odb = get_odb()
     obj1 = odb.get(from_shortoid(odb, short_oid1))
     obj2 = odb.get(from_shortoid(odb, short_oid2))
     d = _diff(load(odb, obj1.hash_info), load(odb, obj2.hash_info), odb)
@@ -271,8 +269,8 @@ def diff(
 
 
 @app.command(help="Merge two trees and optionally write to the database.")
-def merge_tree(oid1: str, oid2: str, db: str = ODB_PATH, force: bool = False):
-    odb = get_odb(db)
+def merge_tree(oid1: str, oid2: str, force: bool = False):
+    odb = get_odb()
     oid1 = from_shortoid(odb, oid1)
     oid2 = from_shortoid(odb, oid2)
     obj1 = load(odb, odb.get(oid1).hash_info)
@@ -300,7 +298,7 @@ def merge_tree(oid1: str, oid2: str, db: str = ODB_PATH, force: bool = False):
 
 
 @app.command()
-def update_tree(oid: str, patch_file: Path = file_type, db: str = ODB_PATH):
+def update_tree(oid: str, patch_file: Path = file_type):
     """Update tree contents virtually with a patch file in json format.
 
     Example patch file for reference:
@@ -316,7 +314,7 @@ def update_tree(oid: str, patch_file: Path = file_type, db: str = ODB_PATH):
 
     Example: ./cli.py update-tree f23d4 patch.json
     """
-    odb = get_odb(db)
+    odb = get_odb()
     oid = from_shortoid(odb, oid)
     obj = load(odb, odb.get(oid).hash_info)
     assert isinstance(obj, Tree)
@@ -374,9 +372,8 @@ def checkout(
     type: List[LinkEnum] = typer.Option(  # pylint: disable=redefined-builtin
         ["copy"]
     ),
-    db: str = ODB_PATH,
 ):
-    odb = get_odb(db, type=[t.value for t in type])
+    odb = get_odb(type=[t.value for t in type])
     oid = from_shortoid(odb, oid)
     obj = load(odb, odb.get(oid).hash_info)
     with Tqdm(total=len(obj), desc="Checking out", unit="obj") as pbar:
