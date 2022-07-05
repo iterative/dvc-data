@@ -123,12 +123,13 @@ def _hash_file(
     info = _adapt_info(fs.info(path), fs.protocol)
 
     if name in info:
-        assert not info[name].endswith(".dir")
-        return info[name], info
+        value = str(info[name])
+        assert not value.endswith(".dir")
+        return value, info
 
     if hasattr(fs, name):
         func = getattr(fs, name)
-        return func(path), info
+        return str(func(path)), info
 
     if name == "md5":
         return file_md5(path, fs, callback=callback), info
