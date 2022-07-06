@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, List, Optional
 from dvc_objects.fs.callbacks import Callback
 from dvc_objects.fs.generic import test_links, transfer
 
+from .build import build
 from .diff import ROOT
 from .diff import diff as odiff
-from .stage import stage
 
 if TYPE_CHECKING:
     from dvc_objects._ignore import Ignore
@@ -125,7 +125,7 @@ def _diff(
 ):
     old = None
     try:
-        _, _, old = stage(
+        _, _, old = build(
             cache,
             path,
             fs,

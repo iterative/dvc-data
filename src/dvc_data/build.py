@@ -59,7 +59,7 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     return meta, odb.get(oid)
 
 
-def _stage_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
+def _build_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
     state = odb.state if odb else None
     meta, hash_info = hash_file(path, fs, name, state=state)
     if upload_odb and not dry_run:
@@ -77,9 +77,25 @@ def _stage_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
 
 
 def _build_tree(
-    path, fs, name, ignore: "Ignore" = None, no_progress_bar=False, **kwargs
+    path,
+    fs,
+    fs_info,
+    name,
+    odb=None,
+    ignore: "Ignore" = None,
+    no_progress_bar=False,
+    **kwargs,
 ):
+    from .hashfile.hash_info import HashInfo
     from .objects.tree import Tree
+
+    value = fs_info.get(name)
+    if odb and value:
+        try:
+            tree = Tree.load(odb, HashInfo(name, value))
+            return Meta(nfiles=len(tree)), tree
+        except FileNotFoundError:
+            pass
 
     if ignore:
         walk_iter = ignore.walk(fs, path)
@@ -113,8 +129,8 @@ def _build_tree(
 
             for fname in fnames:
                 pbar.update()
-                meta, obj = _stage_file(
-                    f"{root}{fs.sep}{fname}", fs, name, **kwargs
+                meta, obj = _build_file(
+                    f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
                 )
                 key = (*rel_key, fname)
                 tree.add(key, meta, obj.hash_info)
@@ -122,28 +138,13 @@ def _build_tree(
 
             tree_meta.nfiles += len(fnames)
 
-    return tree_meta, tree
-
-
-def _stage_tree(path, fs, fs_info, name, odb=None, **kwargs):
-    from .hashfile.hash_info import HashInfo
-    from .objects.tree import Tree
-
-    value = fs_info.get(name)
-    if odb and value:
-        try:
-            tree = Tree.load(odb, HashInfo(name, value))
-            return Meta(nfiles=len(tree)), tree
-        except FileNotFoundError:
-            pass
-
-    meta, tree = _build_tree(path, fs, name, odb=odb, **kwargs)
     tree.digest()
     odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
     raw = odb.get(tree.oid)
     tree.fs = raw.fs
     tree.path = raw.path
-    return meta, tree
+
+    return tree_meta, tree
 
 
 _url_cache: Dict[str, str] = {}
@@ -182,7 +183,7 @@ def _get_staging(odb: "HashFileDB") -> "ReferenceHashFileDB":
     return ReferenceHashFileDB(fs, path, state=state, hash_name=odb.hash_name)
 
 
-def _stage_external_tree_info(odb, tree, name):
+def _build_external_tree_info(odb, tree, name):
     # NOTE: used only for external outputs. Initial reasoning was to be
     # able to validate .dir files right in the workspace (e.g. check s3
     # etag), but could be dropped for manual validation with regular md5,
@@ -202,7 +203,7 @@ def _stage_external_tree_info(odb, tree, name):
     return tree
 
 
-def stage(
+def build(
     odb: "HashFileDB",
     path: "AnyFSPath",
     fs: "FileSystem",
@@ -213,15 +214,16 @@ def stage(
 ) -> Tuple["HashFileDB", "Meta", "HashFile"]:
     """Stage (prepare) objects from the given path for addition to an ODB.
 
-    Returns at tuple of (staging_odb, object) where addition to the ODB can
-    be completed by transferring the object from staging to the dest ODB.
+    Returns at tuple of (object_store, object) where addition to the ODB can
+    be completed by transferring the object from object_store to the dest ODB.
 
     If dry_run is True, object hashes will be computed and returned, but file
-    objects themselves will not be added to the staging ODB (i.e. the resulting
-    file objects cannot transferred from staging to another ODB).
+    objects themselves will not be added to the object_store ODB (i.e. the
+    resulting file objects cannot transferred from object_store to another
+    ODB).
 
     If upload is True, files will be uploaded to a temporary path on the dest
-    ODB filesystem, and staged objects will reference the uploaded path rather
+    ODB filesystem, and built objects will reference the uploaded path rather
     than the original source path.
     """
     assert path
@@ -231,7 +233,7 @@ def stage(
     staging = _get_staging(odb)
 
     if details["type"] == "directory":
-        meta, obj = _stage_tree(
+        meta, obj = _build_tree(
             path,
             fs,
             details,
@@ -241,11 +243,11 @@ def stage(
             dry_run=dry_run,
             **kwargs,
         )
-        logger.debug("staged tree '%s'", obj)
+        logger.debug("built tree '%s'", obj)
         if name != "md5":
-            obj = _stage_external_tree_info(odb, obj, name)
+            obj = _build_external_tree_info(odb, obj, name)
     else:
-        meta, obj = _stage_file(
+        meta, obj = _build_file(
             path,
             fs,
             name,
