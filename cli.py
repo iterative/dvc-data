@@ -19,6 +19,7 @@ from dvc_objects.fs.callbacks import Callback
 from dvc_objects.fs.utils import human_readable_to_bytes
 
 from dvc_data import load
+from dvc_data.build import build as _build
 from dvc_data.checkout import checkout as _checkout
 from dvc_data.diff import ROOT
 from dvc_data.diff import diff as _diff
@@ -28,7 +29,6 @@ from dvc_data.hashfile.hash import fobj_md5 as _fobj_md5
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.state import State
 from dvc_data.objects.tree import Tree, merge
-from dvc_data.stage import stage as _stage
 from dvc_data.transfer import transfer as _transfer
 
 file_type = typer.Argument(
@@ -181,8 +181,8 @@ def cat(
     return typer.echo(contents)
 
 
-@app.command(help="Stage and optionally write object to the database")
-def stage(
+@app.command(help="Build and optionally write object to the database")
+def build(
     path: Path = dir_file_type,
     db: str = ODB_PATH,
     write: bool = typer.Option(False, "--write", "-w"),
@@ -196,10 +196,10 @@ def stage(
         fs = MemoryFileSystem()
         fs.put_file(sys.stdin.buffer, fs_path)
 
-    staging, _, obj = _stage(odb, fs_path, fs, name="md5")
+    object_store, _, obj = _build(odb, fs_path, fs, name="md5")
     if write:
         _transfer(
-            staging,
+            object_store,
             odb,
             {obj.hash_info},
             hardlink=True,
@@ -343,7 +343,7 @@ def update_tree(oid: str, patch_file: Path = file_type, db: str = ODB_PATH):
             assert "to" in application
             fs = LocalFileSystem()
             fs_path = os.fspath(patch_file.parent.joinpath(path))
-            _, meta, new_obj = _stage(odb, fs_path, fs, "md5")
+            _, meta, new_obj = _build(odb, fs_path, fs, "md5")
             odb.add(path, fs, new_obj.hash_info.value, hardlink=False)
             obj.add(new, meta, new_obj.hash_info)
         elif op == "copy":
