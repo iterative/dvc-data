@@ -21,13 +21,8 @@ class QueryingProgress(Tqdm):
     def callback(self, phase, *args):
         total = args[0] if args else self.total
         completed = args[1] if len(args) > 1 else self.n
-        desc = self.desc
         if phase == "estimating":
-            desc = self._estimating_msg
+            self.desc = self._estimating_msg
         elif phase == "querying":
-            desc = self._listing_msg
-
-        if desc != self.desc:
-            # let Tqdm take care of when to update
-            self.set_description_str(desc, refresh=False)
+            self.desc = self._listing_msg
         self.update_to(completed, total)
