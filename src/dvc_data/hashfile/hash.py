@@ -145,6 +145,7 @@ class LargeFileHashingCallback(TqdmCallback):
         kwargs.setdefault("bytes", True)
         super().__init__(*args, **kwargs)
         self._logged = False
+        self.fname = kwargs.get("desc", "")
 
     # TqdmCallback force renders progress bar on `set_size`.
     set_size = Callback.set_size
@@ -152,9 +153,8 @@ class LargeFileHashingCallback(TqdmCallback):
     def call(self, hook_name=None, **kwargs):
         if self.size and self.size > self.LARGE_FILE_SIZE:
             if not self._logged:
-                desc = self.progress_bar.desc
                 logger.info(
-                    f"Computing md5 for a large file '{desc}'. "
+                    f"Computing md5 for a large file '{self.fname}'. "
                     "This is only done once."
                 )
                 self._logged = True
