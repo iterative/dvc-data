@@ -145,14 +145,16 @@ def from_shortoid(odb: HashFileDB, oid: str) -> str:
         raise typer.Exit(1) from exc
 
 
-def get_odb(**config):
+def get_odb(no_state: bool = False, **config):
     try:
         repo = Repo.discover()
     except NotARepo as exc:
         typer.echo(exc, err=True)
         raise typer.Abort(1)
 
-    state = State(root_dir=repo.root, tmp_dir=repo.tmp_dir)
+    state = None
+    if not no_state:
+        state = State(root_dir=repo.root, tmp_dir=repo.tmp_dir)
     return HashFileDB(repo.fs, repo.object_dir, state=state, **config)
 
 
@@ -201,8 +203,10 @@ def build(
     path: Path = dir_file_type,
     write: bool = typer.Option(False, "--write", "-w"),
     shallow: bool = False,
+    no_state: bool = False,
+    lazy_state: bool = False,
 ):
-    odb = get_odb()
+    odb = get_odb(no_state=no_state)
     fs_path = relpath(path)
 
     fs = odb.fs
@@ -210,7 +214,9 @@ def build(
         fs = MemoryFileSystem()
         fs.put_file(sys.stdin.buffer, fs_path)
 
-    object_store, _, obj = _build(odb, fs_path, fs, name="md5")
+    object_store, _, obj = _build(
+        odb, fs_path, fs, name="md5", lazy_state=lazy_state
+    )
     if write:
         _transfer(
             object_store,

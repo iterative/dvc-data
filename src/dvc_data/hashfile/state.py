@@ -3,7 +3,10 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from contextlib import contextmanager
+from contextvars import ContextVar
+from functools import lru_cache
+from typing import TYPE_CHECKING, Dict
 
 from dvc_objects.fs import LocalFileSystem
 from dvc_objects.fs.system import inode as get_inode
@@ -33,6 +36,11 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
+    @contextmanager
+    def lazy_flushing(self):
+        pass
+
+    @abstractmethod
     def save_link(self, path, fs):
         pass
 
@@ -41,11 +49,15 @@ class StateNoop(StateBase):
     def close(self):
         pass
 
-    def save(self, path, fs, hash_info):
+    def save(self, path, fs, hash_info, **kw):
         pass
 
     def get(self, path, fs):  # pylint: disable=unused-argument
         return None, None
+
+    @contextmanager
+    def lazy_flushing(self):
+        pass
 
     def save_link(self, path, fs):
         pass
@@ -68,12 +80,27 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         hashes_dir = os.path.join(tmp_dir, "hashes", "local")
         self.links = Cache(links_dir)
         self.hashes = Cache(hashes_dir)
+        self.in_mem_hashes: Dict[str, Dict] = {}
+        self.hashes.get = lru_cache(maxsize=10000)(self.hashes.get)
+        self._lazy_flush = ContextVar("lazy_flush", default=False)
 
     def close(self):
         self.hashes.close()
         self.links.close()
 
-    def save(self, path, fs, hash_info):
+    @contextmanager
+    def lazy_flushing(self):
+        tok = self._lazy_flush.set(True)
+        self.in_mem_hashes.clear()
+        yield
+
+        with self.hashes.transact():
+            for path, entry in self.in_mem_hashes.items():
+                self.hashes[path] = json.dumps(entry)
+        self.in_mem_hashes.clear()
+        self._lazy_flush.reset(tok)
+
+    def save(self, path, fs, hash_info, size=None):
         """Save hash for the specified path info.
 
         Args:
@@ -86,11 +113,16 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         entry = {
             "checksum": fs.checksum(path),
-            "size": fs.size(path),
+            "size": size or fs.size(path),
             "hash_info": hash_info.to_dict(),
         }
 
-        self.hashes[path] = json.dumps(entry)
+        if self._lazy_flush.get():
+            self.in_mem_hashes[path] = entry
+            return
+
+        serialized = json.dumps(entry)
+        self.hashes[path] = serialized
 
     def get(self, path, fs):
         """Gets the hash for the specified path info. Hash will be
@@ -108,14 +140,16 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return None, None
 
-        raw = self.hashes.get(path)
-        if not raw:
-            return None, None
+        entry = self.in_mem_hashes.get(path)
+        if entry is None:
+            raw = self.hashes.get(path)
+            if not raw:
+                return None, None
 
-        try:
-            entry = json.loads(raw)
-        except ValueError:
-            return None, None
+            try:
+                entry = json.loads(raw)
+            except ValueError:
+                return None, None
 
         try:
             actual = fs.checksum(path)

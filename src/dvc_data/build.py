@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from dvc_objects._tqdm import Tqdm
@@ -214,6 +215,7 @@ def build(
     name: str,
     upload: bool = False,
     dry_run: bool = False,
+    lazy_state: bool = False,
     **kwargs,
 ) -> Tuple["HashFileDB", "Meta", "HashFile"]:
     """Stage (prepare) objects from the given path for addition to an ODB.
@@ -236,28 +238,34 @@ def build(
     details = fs.info(path)
     staging = _get_staging(odb)
 
-    if details["type"] == "directory":
-        meta, obj = _build_tree(
-            path,
-            fs,
-            details,
-            name,
-            odb=staging,
-            upload_odb=odb if upload else None,
-            dry_run=dry_run,
-            **kwargs,
-        )
-        logger.debug("built tree '%s'", obj)
-        if name != "md5":
-            obj = _build_external_tree_info(odb, obj, name)
+    if odb.state and lazy_state:
+        ctx = odb.state.lazy_flushing()
     else:
-        meta, obj = _build_file(
-            path,
-            fs,
-            name,
-            odb=staging,
-            upload_odb=odb if upload else None,
-            dry_run=dry_run,
-        )
+        ctx = nullcontext()
+
+    with ctx:
+        if details["type"] == "directory":
+            meta, obj = _build_tree(
+                path,
+                fs,
+                details,
+                name,
+                odb=staging,
+                upload_odb=odb if upload else None,
+                dry_run=dry_run,
+                **kwargs,
+            )
+            logger.debug("built tree '%s'", obj)
+            if name != "md5":
+                obj = _build_external_tree_info(odb, obj, name)
+        else:
+            meta, obj = _build_file(
+                path,
+                fs,
+                name,
+                odb=staging,
+                upload_odb=odb if upload else None,
+                dry_run=dry_run,
+            )
 
     return staging, meta, obj
