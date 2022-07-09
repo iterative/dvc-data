@@ -29,7 +29,15 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
+    def save_many(self, items, fs):
+        pass
+
+    @abstractmethod
     def get(self, path, fs):
+        pass
+
+    @abstractmethod
+    def get_many(self, paths, fs):
         pass
 
     @abstractmethod
@@ -52,8 +60,14 @@ class StateNoop(StateBase):
     def save(self, path, fs, hash_info):
         pass
 
+    def save_many(self, items, fs):
+        pass
+
     def get(self, path, fs):  # pylint: disable=unused-argument
         return None, None
+
+    def get_many(self, paths, fs):
+        return ((path, (None, None)) for path in paths)
 
     def save_link(self, path, fs):
         pass
@@ -87,6 +101,15 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.hashes.close()
         self.links.close()
 
+    @staticmethod
+    def _serialize(path, fs, hash_info):
+        entry = {
+            "checksum": fs.checksum(path),
+            "size": fs.size(path),
+            "hash_info": hash_info.to_dict(),
+        }
+        return json.dumps(entry)
+
     def save(self, path, fs, hash_info):
         """Save hash for the specified path info.
 
@@ -94,17 +117,38 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             path (str): path to save hash for.
             hash_info (HashInfo): hash to save.
         """
-
         if not isinstance(fs, LocalFileSystem):
             return
 
-        entry = {
-            "checksum": fs.checksum(path),
-            "size": fs.size(path),
-            "hash_info": hash_info.to_dict(),
-        }
+        self.hashes[path] = self._serialize(path, fs, hash_info)
 
-        self.hashes[path] = json.dumps(entry)
+    def save_many(self, items, fs):
+        if not isinstance(fs, LocalFileSystem):
+            return
+
+        self.hashes.set_many(
+            (path, self._serialize(path, fs, hash_info))
+            for path, hash_info in items
+        )
+
+    @staticmethod
+    def _get(path, fs, raw):
+        if not raw:
+            return
+
+        try:
+            entry = json.loads(raw)
+        except ValueError:
+            return None
+
+        try:
+            actual = fs.checksum(path)
+        except FileNotFoundError:
+            return None
+
+        if entry["checksum"] != actual:
+            return None
+        return entry
 
     def get(self, path, fs):
         """Gets the hash for the specified path info. Hash will be
@@ -123,23 +167,23 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return None, None
 
         raw = self.hashes.get(path)
-        if not raw:
+        entry = self._get(path, fs, raw)
+        if not entry:
             return None, None
-
-        try:
-            entry = json.loads(raw)
-        except ValueError:
-            return None, None
-
-        try:
-            actual = fs.checksum(path)
-        except FileNotFoundError:
-            return None, None
-
-        if entry["checksum"] != actual:
-            return None, None
-
         return Meta(size=entry["size"]), HashInfo.from_dict(entry["hash_info"])
+
+    def get_many(self, paths, fs):
+        from .meta import Meta
+
+        if not isinstance(fs, LocalFileSystem):
+            return
+
+        for path, value in self.hashes.get_many(paths):
+            meta, hash_info = None, None
+            if entry := self._get(path, fs, value):
+                meta = Meta(size=entry["size"])
+                hash_info = HashInfo.from_dict(entry["hash_info"])
+            yield path, (meta, hash_info)
 
     def save_link(self, path, fs):
         """Adds the specified path to the list of links created by dvc. This

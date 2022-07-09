@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from dvc_objects._tqdm import Tqdm
@@ -59,8 +60,9 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     return meta, odb.get(oid)
 
 
-def _build_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
-    state = odb.state if odb else None
+def _build_file(
+    path, fs, name, odb=None, upload_odb=None, state=None, dry_run=False
+):
     meta, hash_info = hash_file(path, fs, name, state=state)
     if upload_odb and not dry_run:
         assert odb and name == "md5"
@@ -74,6 +76,74 @@ def _build_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
         obj = odb.get(oid)
 
     return meta, obj
+
+
+def _find_files(path, fs, ignore=None):
+    if ignore:
+        walk_iter = ignore.walk(fs, path)
+    else:
+        walk_iter = fs.walk(path)
+
+    for root, _, fnames in walk_iter:
+        if DefaultIgnoreFile in fnames:
+            raise IgnoreInCollectedDirError(
+                DefaultIgnoreFile, fs.path.join(root, DefaultIgnoreFile)
+            )
+
+        # NOTE: we know for sure that root starts with path, so we can use
+        # faster string manipulation instead of a more robust relparts()
+        rel_key: Tuple[Optional[Any], ...] = ()
+        if root != path:
+            rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
+
+        # NOTE: empty `fname` might happen with s3/gs/azure/etc, where empty
+        # objects like `dir/` might be used to create an empty dir
+        yield from (
+            (root + fs.sep + fname, (*rel_key, fname))
+            for fname in fnames
+            if fname
+        )
+
+
+def _diff_state_to_dir(path, fs, ignore=None, state=None, pbar=None):
+    files = dict(_find_files(path, fs, ignore=ignore))
+    total = len(files)
+
+    if pbar is not None:
+        pbar.total = total
+        pbar.refresh()
+
+    if not state:
+        return files, {}
+
+    new = {}
+    unchanged = {}
+    for file, (meta, hash_info) in state.get_many(files.keys(), fs):
+        key = files[file]
+        if not hash_info:
+            new[file] = key
+            continue
+
+        if hash_info:
+            unchanged[key] = (meta, hash_info)
+        if pbar:
+            pbar.update()
+    return new, unchanged
+
+
+def _build_new_files(paths, fs, name, odb, pbar=None, **kwargs):
+    new_entries = {}
+    hashes = {}
+    for path, key in paths.items():
+        meta, obj = _build_file(path, fs, name, odb, state=None, **kwargs)
+        new_entries[key] = (meta, obj.hash_info)
+        hashes[path] = obj.hash_info
+        if pbar is not None:
+            pbar.update()
+
+    if hashes and (state := odb.state):
+        state.save_many(hashes.items(), fs)
+    return new_entries
 
 
 def _build_tree(
@@ -97,11 +167,6 @@ def _build_tree(
         except FileNotFoundError:
             pass
 
-    if ignore:
-        walk_iter = ignore.walk(fs, path)
-    else:
-        walk_iter = fs.walk(path)
-
     tree_meta = Meta(size=0, nfiles=0)
     # assuring mypy that they are not None but integer
     assert tree_meta.size is not None
@@ -119,33 +184,21 @@ def _build_tree(
         unit="obj",
         desc=f"Building data objects from {relpath}",
         disable=no_progress_bar,
+        total=-1,
     ) as pbar:
-        for root, _, fnames in walk_iter:
-            if DefaultIgnoreFile in fnames:
-                raise IgnoreInCollectedDirError(
-                    DefaultIgnoreFile, fs.path.join(root, DefaultIgnoreFile)
-                )
-
-            # NOTE: we know for sure that root starts with path, so we can use
-            # faster string manipulation instead of a more robust relparts()
-            rel_key: Tuple[Optional[Any], ...] = ()
-            if root != path:
-                rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
-
-            for fname in fnames:
-                if fname == "":
-                    # NOTE: might happen with s3/gs/azure/etc, where empty
-                    # objects like `dir/` might be used to create an empty dir
-                    continue
-
-                pbar.update()
-                meta, obj = _build_file(
-                    f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
-                )
-                key = (*rel_key, fname)
-                tree.add(key, meta, obj.hash_info)
-                tree_meta.size += meta.size or 0
-                tree_meta.nfiles += 1
+        new, unchanged_entries = _diff_state_to_dir(
+            path,
+            fs,
+            ignore=ignore,
+            state=odb.state,
+            pbar=pbar,
+        )
+        new_entries = _build_new_files(new, fs, name, odb, pbar=pbar, **kwargs)
+        entries = chain(unchanged_entries.items(), new_entries.items())
+        for key, (meta, hash_info) in entries:
+            tree.add(key, meta, hash_info)
+            tree_meta.size += meta.size or 0
+            tree_meta.nfiles += 1
 
     tree.digest()
     odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
@@ -263,6 +316,7 @@ def build(
             odb=staging,
             upload_odb=odb if upload else None,
             dry_run=dry_run,
+            state=staging.state,
         )
 
     return staging, meta, obj
