@@ -1,8 +1,8 @@
 try:
-    from .cli import app
+    from .cli import main
 except ImportError:  # pragma: no cover
 
-    def app():  # type: ignore[misc]
+    def main():  # type: ignore[misc]
         import sys
 
         print(
@@ -14,4 +14,4 @@ except ImportError:  # pragma: no cover
 
 
 if __name__ == "__main__":
-    app()
+    main()
