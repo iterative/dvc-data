@@ -5,7 +5,9 @@ import json
 import os
 import posixpath
 import sys
+from collections import deque
 from dataclasses import asdict
+from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
 from typing import List, Optional
@@ -28,8 +30,11 @@ from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.hash import file_md5 as _file_md5
 from dvc_data.hashfile.hash import fobj_md5 as _fobj_md5
 from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.obj import HashFile
 from dvc_data.hashfile.state import State
-from dvc_data.objects.tree import Tree, merge
+from dvc_data.objects.tree import Tree
+from dvc_data.objects.tree import du as _du
+from dvc_data.objects.tree import merge
 from dvc_data.repo import NotARepo, Repo
 from dvc_data.transfer import transfer as _transfer
 
@@ -169,6 +174,12 @@ def p2o(path: Path = typer.Argument(..., allow_dash=True)):
     typer.echo(oid)
 
 
+def _cat_object(odb, oid):
+    path = odb.oid_to_path(oid)
+    contents = odb.fs.cat_file(path)
+    return typer.echo(contents)
+
+
 @app.command(help="Provide content of the objects")
 def cat(
     oid: str = typer.Argument(..., allow_dash=True),
@@ -182,10 +193,7 @@ def cat(
         except ObjectFormatError as exc:
             typer.echo(exc, err=True)
             raise typer.Exit(1) from exc
-
-    path = odb.oid_to_path(oid)
-    contents = odb.fs.cat_file(path)
-    return typer.echo(contents)
+    return _cat_object(odb, oid)
 
 
 @app.command(help="Build and optionally write object to the database")
@@ -214,6 +222,11 @@ def build(
     typer.echo(obj)
 
 
+def _ls_tree(tree):
+    for key, (_, hash_info) in tree.iteritems():
+        typer.echo(f"{hash_info.value}\t{posixpath.join(*key)}")
+
+
 @app.command("ls", help="List objects in a tree")
 @app.command("ls-tree", help="List objects in a tree")
 def ls(oid: str = typer.Argument(..., allow_dash=True)):
@@ -224,12 +237,58 @@ def ls(oid: str = typer.Argument(..., allow_dash=True)):
     except ObjectFormatError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
-
-    for key, (_, hash_info) in tree.iteritems():
-        typer.echo(f"{hash_info.value}\t{posixpath.join(*key)}")
+    return _ls_tree(tree)
 
 
-@app.command(help="Verify objects in the database")
+@app.command(help="Show various types of objects")
+def show(oid: str = typer.Argument(..., allow_dash=True)):
+    odb = get_odb()
+    oid = from_shortoid(odb, oid)
+    obj = load(odb, odb.get(oid).hash_info)
+    if isinstance(obj, Tree):
+        return _ls_tree(obj)
+    elif isinstance(obj, HashFile):
+        return _cat_object(odb, obj.oid)
+    raise AssertionError(f"unknown object of type {type(obj)}")
+
+
+@app.command(help="Summarize disk usage by an object")
+def du(oid: str = typer.Argument(..., allow_dash=True)):
+    odb = get_odb()
+    oid = from_shortoid(odb, oid)
+    obj = load(odb, odb.get(oid).hash_info)
+    if isinstance(obj, HashFile):
+        tree = Tree()
+        tree.add(ROOT, None, obj.hash_info)
+    elif isinstance(obj, Tree):
+        tree = obj
+    else:
+        raise AssertionError(f"unknown object of type {type(obj)}")
+    total = _du(odb, tree)
+    typer.echo(Tqdm.format_sizeof(total, suffix="B", divisor=1024))
+
+
+@app.command(help="Remove object from the ODB")
+def rm(oid: str = typer.Argument(..., allow_dash=True)):
+    odb = get_odb()
+    oid = from_shortoid(odb, oid)
+    path = odb.oid_to_path(oid)
+    odb.fs.remove(path)
+
+
+@app.command(
+    help="Count objects and their disk consumption", no_args_is_help=False
+)
+def count_objects():
+    odb = get_odb()
+    it = (odb.fs.size(odb.oid_to_path(oid)) for oid in odb.all())
+    item = deque(enumerate(accumulate(it), 1), maxlen=1)
+    count, total = item[0] if item else (0, 0)
+    hsize = Tqdm.format_sizeof(total, suffix="B", divisor=1024)
+    typer.echo(f"{count} objects, {hsize} size")
+
+
+@app.command(help="Verify objects in the database", no_args_is_help=False)
 def fsck():
     odb = get_odb()
     ret = 0
