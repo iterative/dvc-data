@@ -128,6 +128,11 @@ def _build_tree(
                 rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
 
             for fname in fnames:
+                if fname == "":
+                    # NOTE: might happen with s3/gs/azure/etc, where empty
+                    # objects like `dir/` might be used to create an empty dir
+                    continue
+
                 pbar.update()
                 meta, obj = _build_file(
                     f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
@@ -135,8 +140,7 @@ def _build_tree(
                 key = (*rel_key, fname)
                 tree.add(key, meta, obj.hash_info)
                 tree_meta.size += meta.size or 0
-
-            tree_meta.nfiles += len(fnames)
+                tree_meta.nfiles += 1
 
     tree.digest()
     odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
