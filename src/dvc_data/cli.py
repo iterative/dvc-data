@@ -1,4 +1,5 @@
 import enum
+import errno
 import hashlib
 import json
 import os
@@ -9,12 +10,14 @@ from pathlib import Path
 from posixpath import relpath
 from typing import List, Optional
 
+import click
 import typer  # pylint: disable=import-error
 from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import LocalFileSystem, MemoryFileSystem
 from dvc_objects.fs.callbacks import Callback
 from dvc_objects.fs.utils import human_readable_to_bytes
+from rich.traceback import install
 
 from dvc_data import load
 from dvc_data.build import build as _build
@@ -29,6 +32,9 @@ from dvc_data.hashfile.state import State
 from dvc_data.objects.tree import Tree, merge
 from dvc_data.repo import NotARepo, Repo
 from dvc_data.transfer import transfer as _transfer
+
+install(show_locals=True, suppress=[typer, click])
+
 
 file_type = typer.Argument(
     ...,
@@ -297,8 +303,99 @@ def merge_tree(oid1: str, oid2: str, force: bool = False):
     odb.add(tree.path, tree.fs, tree.oid, hardlink=True)
 
 
-@app.command()
-def update_tree(oid: str, patch_file: Path = file_type):
+def process_patch(patch_file, **kwargs):
+    patch = []
+    if patch_file:
+        with typer.open_file(patch_file) as f:
+            text = f.read()
+            patch = json.loads(text)
+            for appl in patch:
+                op = appl.get("op")
+                path = appl.get("path")
+                if op and path and op in ("add", "modify"):
+                    patch[appl]["path"] = os.fspath(
+                        patch_file.parent.joinpath(path)
+                    )
+
+    for op, items in kwargs.items():
+        for item in items:
+            if isinstance(item, tuple):
+                path, to = item
+                extra = {"path": path, "to": to}
+            else:
+                extra = {"path": item}
+            patch.append({"op": op, **extra})
+
+    return patch
+
+
+def apply_op(odb, obj, application):
+    assert "op" in application
+    op = application["op"]
+    path = application["path"]
+    keys = tuple(path.split("/"))
+    # pylint: disable=protected-access
+    if op in ("add", "modify"):
+        new = tuple(application["to"].split("/"))
+        if op == "add" and new in obj._dict:
+            raise FileExistsError(
+                errno.EEXIST, os.strerror(errno.EEXIST), path
+            )
+
+        fs = LocalFileSystem()
+        _, meta, new_obj = _build(odb, path, fs, "md5")
+        odb.add(path, fs, new_obj.hash_info.value, hardlink=False)
+        return obj.add(new, meta, new_obj.hash_info)
+
+    if keys not in obj._dict:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
+    if op == "test":
+        return
+    if op == "remove":
+        obj._dict.pop(keys)
+        obj.__dict__.pop("trie", None)
+        return
+    if op in ("copy", "move"):
+        new = tuple(application["to"].split("/"))
+        obj.add(new, *obj.get(keys))
+        if op == "move":
+            obj._dict.pop(keys)
+        return
+    raise ValueError(f"unknown {op=}")
+
+
+def multi_value(*opts, **kwargs):
+    return click.option(*opts, multiple=True, required=False, **kwargs)
+
+
+cl_path = click.Path(
+    exists=True, file_okay=True, dir_okay=False, readable=True
+)
+cl_path_dash = click.Path(
+    exists=True, file_okay=True, dir_okay=False, readable=True, allow_dash=True
+)
+
+
+@click.command()
+@click.argument("oid")
+@click.option("--patch-file", type=cl_path_dash)
+@multi_value(
+    "--add",
+    type=(cl_path, str),
+    help="Add file from specified local path to a given path in the tree",
+)
+@multi_value(
+    "--modify",
+    type=(cl_path, str),
+    help="Modify file with specified local path to a given path in the tree",
+)
+@multi_value("--move", type=(str, str), help="Move a file in the tree")
+@multi_value(
+    "--copy", type=(str, str), help="Copy path from a tree to another path"
+)
+@multi_value("--remove", type=str, help="Remove path from a tree")
+@multi_value("--test", type=str, help="Check for the existence of the path")
+def update_tree(oid, patch_file, add, modify, move, copy, remove, test):
     """Update tree contents virtually with a patch file in json format.
 
     Example patch file for reference:
@@ -319,44 +416,21 @@ def update_tree(oid: str, patch_file: Path = file_type):
     obj = load(odb, odb.get(oid).hash_info)
     assert isinstance(obj, Tree)
 
-    text = (
-        sys.stdin.read()
-        if relpath(patch_file) == "-"
-        else patch_file.read_text(encoding="utf8")
+    patch = process_patch(
+        patch_file,
+        add=add,
+        remove=remove,
+        modify=modify,
+        copy=copy,
+        move=move,
+        test=test,
     )
-    patch = json.loads(text)
     for application in patch:
-        assert "op" in application
-        op = application["op"]
-        path = application["path"]
-        keys = tuple(path.split("/"))
-        # pylint: disable=protected-access
-        if op == "remove":
-            obj._dict.pop(keys)
-        elif op in ("add", "modify"):
-            new = tuple(application["to"].split("/"))
-            if new in obj._dict and op == "add":
-                raise Exception(f"{path} already exists.")
-
-            assert "to" in application
-            fs = LocalFileSystem()
-            fs_path = os.fspath(patch_file.parent.joinpath(path))
-            _, meta, new_obj = _build(odb, fs_path, fs, "md5")
-            odb.add(path, fs, new_obj.hash_info.value, hardlink=False)
-            obj.add(new, meta, new_obj.hash_info)
-        elif op == "copy":
-            new = tuple(application["to"].split("/"))
-            obj._dict[new] = obj._dict[keys]
-        elif op == "move":
-            new = tuple(application["to"].split("/"))
-            obj._dict[new] = obj._dict.pop(keys)
-        elif op == "test":
-            if keys not in obj._dict:
-                raise Exception(f"{path=} does not exist")
-        else:
-            raise Exception(f"unknown {op=}")
-
-        obj.__dict__.pop("trie", None)
+        try:
+            apply_op(odb, obj, application)
+        except (FileExistsError, FileNotFoundError) as exc:
+            typer.echo(exc, err=True, color=True)
+            raise typer.Exit(1) from exc
 
     obj.digest()
     typer.echo(obj)
@@ -390,5 +464,9 @@ def checkout(
         )
 
 
+main = typer.main.get_command(app)
+main.add_command(update_tree, "update-tree")  # type: ignore[attr-defined]
+
+
 if __name__ == "__main__":
-    app()
+    main()
