@@ -412,7 +412,9 @@ def apply_op(odb, obj, application):
         return
     if op == "remove":
         obj._dict.pop(keys)
-        obj.__dict__.pop("trie", None)
+        trie = obj.__dict__.get("_trie")
+        if trie is not None:
+            trie.pop(keys)
         return
     if op in ("copy", "move"):
         new = tuple(application["to"].split("/"))
