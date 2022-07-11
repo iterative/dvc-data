@@ -43,10 +43,11 @@ jobs:
         nox --version
 
     - name: Lint code and check dependencies
-      if: matrix.pyv != '3.11-dev'
+      continue-on-error: ${{ matrix.pyv == '3.11-dev' }}
       run: nox -s lint safety
 
     - name: Run tests
+      continue-on-error: ${{ matrix.pyv == '3.11-dev' }}
       run: nox -s $TEST_SESSION -- --cov-report=xml
       shell: bash
       env:
