@@ -64,7 +64,7 @@ class Tree(HashFile):
     def add(
         self, key: Tuple[str, ...], meta: Optional["Meta"], oid: "HashInfo"
     ):
-        self.__dict__.pop("trie", None)
+        self.__dict__.pop("_trie", None)
         self._dict[key] = (meta, oid)
 
     def get(
