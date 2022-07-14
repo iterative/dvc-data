@@ -23,7 +23,15 @@ def dos2unix(data: bytes) -> bytes:
     return data.replace(b"\r\n", b"\n")
 
 
+algorithms_available = hashlib.algorithms_available | {"blake3"}
+
+
 def get_hasher(name: str) -> "hashlib._Hash":
+    if name == "blake3":
+        from blake3 import blake3
+
+        return blake3(max_threads=blake3.AUTO)
+
     try:
         return getattr(hashlib, name)()
     except AttributeError:

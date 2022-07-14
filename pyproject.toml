@@ -64,6 +64,9 @@ warn_unreachable = true
 ignore_missing_imports = true
 files = ["src", "tests"]
 
+[tool.pylint.master]
+extension-pkg-whitelist = ["blake3"]
+
 [tool.pylint.message_control]
 enable = ["c-extension-no-member", "no-else-return"]
 disable = [
