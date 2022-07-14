@@ -1,6 +1,5 @@
 import enum
 import errno
-import hashlib
 import json
 import os
 import posixpath
@@ -27,6 +26,7 @@ from dvc_data.checkout import checkout as _checkout
 from dvc_data.diff import ROOT
 from dvc_data.diff import diff as _diff
 from dvc_data.hashfile.db import HashFileDB
+from dvc_data.hashfile.hash import algorithms_available
 from dvc_data.hashfile.hash import file_md5 as _file_md5
 from dvc_data.hashfile.hash import fobj_md5 as _fobj_md5
 from dvc_data.hashfile.hash_info import HashInfo
@@ -63,7 +63,7 @@ dir_file_type = typer.Argument(
 )
 
 HashEnum = enum.Enum(  # type: ignore[misc]
-    "HashEnum", {h: h for h in sorted(hashlib.algorithms_available)}
+    "HashEnum", {h: h for h in sorted(algorithms_available)}
 )
 LinkEnum = enum.Enum(  # type: ignore[misc]
     "LinkEnum", {lt: lt for lt in ["reflink", "hardlink", "symlink", "copy"]}
