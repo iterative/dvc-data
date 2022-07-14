@@ -1,8 +1,10 @@
 import enum
 import errno
 import json
+import math
 import os
 import posixpath
+import random
 import sys
 from collections import deque
 from dataclasses import asdict
@@ -12,6 +14,7 @@ from posixpath import relpath
 from typing import List, Optional
 
 import click
+import rich
 import typer  # pylint: disable=import-error
 from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
@@ -131,6 +134,57 @@ def genrand(
 ):
     with file.open("wb") as f:
         f.write(os.urandom(human_readable_to_bytes(size)))
+
+
+def rand_gauss_int(num: int, sigma=0.2) -> int:
+    return round(random.gauss(num, sigma * num))
+
+
+def _gentree(root: Path, num_dirs, num_files, fsize, depth=1):
+    for num in range(rand_gauss_int(num_files)):
+        nzeros = int(math.log10(num_files)) + 1
+        genrand(root / f"{num:0{nzeros}}.txt", size=str(rand_gauss_int(fsize)))
+
+    if depth < 1:
+        return
+
+    for num in range(rand_gauss_int(num_dirs)):
+        nzeros = int(math.log10(num_dirs)) + 1
+        (dir_ := root / f"dir{num:0{nzeros}}").mkdir()
+        _gentree(dir_, num_dirs, num_files, fsize, depth=depth - 1)
+
+
+@app.command()
+def gentree(
+    path: Path,
+    num: int,
+    size: str = typer.Argument(0, help=SIZE_HELP),
+    depth: int = 2,
+    seed: int = 0,
+):
+    """Generate a random tree structure.
+
+    Example:
+
+    gentree dataset 10000
+
+    gentree dataset 10000 1Gb
+
+    gentree dataset 10000 --depth 5
+    """
+    assert depth >= 1
+    files_per_dir = max(num // 1000, 1)
+    total_dirs = num / files_per_dir
+    dirs_per_dir = round(math.pow(total_dirs, 1 / depth))
+    file_size = round(human_readable_to_bytes(size) / num)
+
+    path.mkdir(parents=True)
+    rich.print(
+        f"{total_dirs=}, {dirs_per_dir=}, {files_per_dir=}, "
+        f"{file_size=}, {depth=}"
+    )
+    random.seed(seed)
+    _gentree(path, dirs_per_dir, files_per_dir, file_size, depth=depth)
 
 
 def from_shortoid(odb: HashFileDB, oid: str) -> str:
