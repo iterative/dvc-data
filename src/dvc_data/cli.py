@@ -311,13 +311,15 @@ def du(oid: str = typer.Argument(..., allow_dash=True)):
     odb = get_odb()
     oid = from_shortoid(odb, oid)
     obj = load(odb, odb.get(oid).hash_info)
-    if isinstance(obj, HashFile):
-        tree = Tree()
-        tree.add(ROOT, None, obj.hash_info)
-    elif isinstance(obj, Tree):
+    if not isinstance(obj, HashFile):
+        raise AssertionError(f"unknown object of type {type(obj)}")
+
+    if isinstance(obj, Tree):
         tree = obj
     else:
-        raise AssertionError(f"unknown object of type {type(obj)}")
+        tree = Tree()
+        tree.add(ROOT, None, obj.hash_info)
+
     total = _du(odb, tree)
     typer.echo(Tqdm.format_sizeof(total, suffix="B", divisor=1024))
 
