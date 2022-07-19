@@ -119,7 +119,7 @@ def hash_file(
 
 @app.command(help="Generate sparse file")
 def gensparse(
-    file: Path = typer.Argument(..., allow_dash=True),
+    file: Path = typer.Argument(...),
     size: str = typer.Argument(..., help=SIZE_HELP),
 ):
     with file.open("wb") as f:
@@ -129,7 +129,7 @@ def gensparse(
 
 @app.command(help="Generate file with random contents")
 def genrand(
-    file: Path = typer.Argument(..., allow_dash=True),
+    file: Path = typer.Argument(...),
     size: str = typer.Argument(..., help=SIZE_HELP),
 ):
     with file.open("wb") as f:
@@ -257,8 +257,7 @@ def build(
     shallow: bool = False,
 ):
     odb = get_odb()
-    fs_path = relpath(path)
-
+    fs_path = os.fspath(path)
     fs = odb.fs
     if fs_path == "-":
         fs = MemoryFileSystem()
