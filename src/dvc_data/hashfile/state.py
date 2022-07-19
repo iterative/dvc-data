@@ -94,9 +94,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.in_mem_hashes.clear()
         yield
 
-        with self.hashes.transact():
-            for path, entry in self.in_mem_hashes.items():
-                self.hashes[path] = json.dumps(entry)
+        it = (
+            (path, json.dumps(entry))
+            for path, entry in self.in_mem_hashes.items()
+        )
+        self.hashes.set_many(it)
         self.in_mem_hashes.clear()
         self._lazy_flush.reset(tok)
 

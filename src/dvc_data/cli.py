@@ -207,7 +207,7 @@ def build(
     lazy_state: bool = False,
 ):
     odb = get_odb(no_state=no_state)
-    fs_path = relpath(path)
+    fs_path = os.fspath(path)
 
     fs = odb.fs
     if fs_path == "-":
