@@ -14,7 +14,6 @@ from posixpath import relpath
 from typing import List, Optional
 
 import click
-import rich
 import typer  # pylint: disable=import-error
 from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
@@ -114,7 +113,7 @@ def hash_file(
             hash_value = _file_md5(
                 path, name=hash_name, callback=callback, text=text
             )
-    typer.echo(f"{hash_name}: {hash_value}")
+    print(hash_name, hash_value, sep=": ")
 
 
 @app.command(help="Generate sparse file")
@@ -179,7 +178,7 @@ def gentree(
     file_size = round(human_readable_to_bytes(size) / num)
 
     path.mkdir(parents=True)
-    rich.print(
+    print(
         f"{total_dirs=}, {dirs_per_dir=}, {files_per_dir=}, "
         f"{file_size=}, {depth=}"
     )
@@ -214,7 +213,7 @@ def get_odb(**config):
 def o2p(oid: str = typer.Argument(..., allow_dash=True)):
     odb = get_odb()
     path = odb.oid_to_path(from_shortoid(odb, oid))
-    typer.echo(path)
+    print(path)
 
 
 @app.command(help="Path to Oid")
@@ -225,7 +224,7 @@ def p2o(path: Path = typer.Argument(..., allow_dash=True)):
         fs_path = sys.stdin.read().strip()
 
     oid = odb.path_to_oid(fs_path)
-    typer.echo(oid)
+    print(oid)
 
 
 def _cat_object(odb, oid):
@@ -272,12 +271,12 @@ def build(
             hardlink=True,
             shallow=shallow,
         )
-    typer.echo(obj)
+    print(obj)
 
 
 def _ls_tree(tree):
-    for key, (_, hash_info) in tree.iteritems():
-        typer.echo(f"{hash_info.value}\t{posixpath.join(*key)}")
+    for key, _, hash_info in tree:
+        print(hash_info.value, posixpath.sep.join(key), sep="\t")
 
 
 @app.command("ls", help="List objects in a tree")
@@ -288,7 +287,7 @@ def ls(oid: str = typer.Argument(..., allow_dash=True)):
     try:
         tree = Tree.load(odb, HashInfo("md5", oid))
     except ObjectFormatError as exc:
-        typer.echo(str(exc), err=True)
+        typer.echo(exc, err=True)
         raise typer.Exit(1) from exc
     return _ls_tree(tree)
 
@@ -320,7 +319,7 @@ def du(oid: str = typer.Argument(..., allow_dash=True)):
         tree.add(ROOT, None, obj.hash_info)
 
     total = _du(odb, tree)
-    typer.echo(Tqdm.format_sizeof(total, suffix="B", divisor=1024))
+    print(Tqdm.format_sizeof(total, suffix="B", divisor=1024))
 
 
 @app.command(help="Remove object from the ODB")
@@ -340,7 +339,7 @@ def count_objects():
     item = deque(enumerate(accumulate(it), 1), maxlen=1)
     count, total = item[0] if item else (0, 0)
     hsize = Tqdm.format_sizeof(total, suffix="B", divisor=1024)
-    typer.echo(f"{count} objects, {hsize} size")
+    print(f"{count} objects, {hsize} size")
 
 
 @app.command(help="Verify objects in the database", no_args_is_help=False)
@@ -352,7 +351,7 @@ def fsck():
             odb.check(oid, check_hash=True)
         except ObjectFormatError as exc:
             ret = 1
-            typer.echo(exc)
+            print(exc)
     raise typer.Exit(ret)
 
 
@@ -385,7 +384,7 @@ def diff(short_oid1, short_oid2: str, unchanged: bool = False):
                 # for unchanged, it does not matter which entry we use
                 # for deleted, we should be using old entry
                 info = _prepare_info(change.old)
-            typer.echo(f"{state}: {info}")
+            print(state, info, sep=": ")
 
 
 @app.command(help="Merge two trees and optionally write to the database.")
@@ -406,14 +405,12 @@ def merge_tree(oid1: str, oid2: str, force: bool = False):
             if change.old.key != ROOT
         ]
         if modified:
-            typer.echo("Following files in conflicts:")
-            for file in modified:
-                typer.echo(file)
+            print("Following files in conflicts:", *modified, sep="\n")
             raise typer.Exit(1)
 
     tree = merge(odb, None, obj1.hash_info, obj2.hash_info)
     tree.digest()
-    typer.echo(tree)
+    print(tree)
     odb.add(tree.path, tree.fs, tree.oid, hardlink=True)
 
 
@@ -543,11 +540,11 @@ def update_tree(oid, patch_file, add, modify, move, copy, remove, test):
         try:
             apply_op(odb, obj, application)
         except (FileExistsError, FileNotFoundError) as exc:
-            typer.echo(exc, err=True, color=True)
+            typer.echo(exc, err=True)
             raise typer.Exit(1) from exc
 
     obj.digest()
-    typer.echo(obj)
+    print(obj)
     odb.add(obj.path, obj.fs, obj.oid, hardlink=True)
 
 
