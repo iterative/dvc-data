@@ -3,6 +3,8 @@ import os
 from dvc_objects.fs import LocalFileSystem
 from dvc_objects.fs.base import FileSystem
 
+from .index import DataIndex
+
 
 class NotARepo(Exception):
     pass
@@ -25,6 +27,8 @@ class Repo:
         self._control_dir = control_dir
         self._tmp_dir: str = fs.path.join(self._control_dir, "tmp")
         self._object_dir: str = fs.path.join(self._control_dir, "cache")
+
+        self.index = DataIndex()
 
     @classmethod
     def discover(
