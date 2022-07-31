@@ -108,7 +108,12 @@ def _build_tree(
     assert tree_meta.nfiles is not None
 
     tree = Tree()
-    relpath = fs.path.relpath(path)
+
+    try:
+        relpath = fs.path.relpath(path)
+    except ValueError:
+        # NOTE: relpath might not exist
+        relpath = path
 
     with Tqdm(
         unit="obj",
