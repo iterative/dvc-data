@@ -1,5 +1,6 @@
 import pytest
 
+from dvc_data.fs import DataFileSystem
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.index import DataIndex, DataIndexEntry, build, checkout
@@ -12,9 +13,24 @@ def odb(tmp_upath_factory, as_filesystem):
     odb = HashFileDB(fs, path)
 
     foo = tmp_upath_factory.mktemp() / "foo"
-    foo.write_text("foo\n")
+    foo.write_bytes(b"foo\n")
+
+    data = tmp_upath_factory.mktemp() / "data.dir"
+    data.write_bytes(
+        b'[{"md5": "c157a79031e1c40f85931829bc5fc552", "relpath": "bar"}, '
+        b'{"md5": "258622b1688250cb619f3c9ccaefb7eb", "relpath": "baz"}]'
+    )
+
+    bar = tmp_upath_factory.mktemp() / "bar"
+    bar.write_bytes(b"bar\n")
+
+    baz = tmp_upath_factory.mktemp() / "baz"
+    baz.write_bytes(b"baz\n")
 
     odb.add(str(foo), fs, "d3b07384d113edec49eaa6238ad5ff00")
+    odb.add(str(data), fs, "1f69c66028c35037e8bf67e5bc4ceb6a.dir")
+    odb.add(str(bar), fs, "c157a79031e1c40f85931829bc5fc552")
+    odb.add(str(baz), fs, "258622b1688250cb619f3c9ccaefb7eb")
 
     return odb
 
@@ -24,15 +40,66 @@ def test_index():
     index[("foo",)] = DataIndexEntry()
 
 
+def test_fs(tmp_upath, odb, as_filesystem):
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(
+                odb=odb,
+                hash_info=HashInfo(
+                    name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
+                ),
+            ),
+            ("data",): DataIndexEntry(
+                odb=odb,
+                hash_info=HashInfo(
+                    name="md5",
+                    value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
+                ),
+            ),
+        }
+    )
+    fs = DataFileSystem(index)
+    assert fs.exists("foo")
+    assert fs.cat("foo") == b"foo\n"
+    assert fs.ls("/", detail=False) == ["/foo", "/data"]
+    assert fs.cat("/data/bar") == b"bar\n"
+    assert fs.cat("/data/baz") == b"baz\n"
+    assert fs.ls("/data", detail=False) == ["/data/bar", "/data/baz"]
+
+
 def test_build(tmp_upath, odb, as_filesystem):
     (tmp_upath / "foo").write_text("foo\n")
-    index = DataIndex({("foo",): DataIndexEntry(odb=odb)})
+    (tmp_upath / "data").mkdir()
+    (tmp_upath / "data" / "bar").write_text("bar\n")
+    (tmp_upath / "data" / "baz").write_text("baz\n")
+
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(odb=odb),
+            ("data",): DataIndexEntry(odb=odb),
+        },
+    )
     build(index, tmp_upath, as_filesystem(tmp_upath.fs))
     assert index[("foo",)].hash_info.name == "md5"
     assert (
         index[("foo",)].hash_info.value == "d3b07384d113edec49eaa6238ad5ff00"
     )
     assert index[("foo",)].odb == odb
+    assert index[("data",)].hash_info.name == "md5"
+    assert (
+        index[("data",)].hash_info.value
+        == "1f69c66028c35037e8bf67e5bc4ceb6a.dir"
+    )
+    assert index[("data", "bar")].hash_info.name == "md5"
+    assert (
+        index[("data", "bar")].hash_info.value
+        == "c157a79031e1c40f85931829bc5fc552"
+    )
+    assert index[("data", "baz")].hash_info.name == "md5"
+    assert (
+        index[("data", "baz")].hash_info.value
+        == "258622b1688250cb619f3c9ccaefb7eb"
+    )
 
 
 def test_checkout(tmp_upath, odb, as_filesystem):
@@ -43,8 +110,26 @@ def test_checkout(tmp_upath, odb, as_filesystem):
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
-            )
+            ),
+            ("data",): DataIndexEntry(
+                odb=odb,
+                hash_info=HashInfo(
+                    name="md5",
+                    value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
+                ),
+            ),
         }
     )
     checkout(index, str(tmp_upath), as_filesystem(tmp_upath.fs))
     assert (tmp_upath / "foo").read_text() == "foo\n"
+    assert (tmp_upath / "data").is_dir()
+    assert (tmp_upath / "data" / "bar").read_text() == "bar\n"
+    assert (tmp_upath / "data" / "baz").read_text() == "baz\n"
+    assert set(tmp_upath.iterdir()) == {
+        (tmp_upath / "foo"),
+        (tmp_upath / "data"),
+    }
+    assert set((tmp_upath / "data").iterdir()) == {
+        (tmp_upath / "data" / "bar"),
+        (tmp_upath / "data" / "baz"),
+    }
