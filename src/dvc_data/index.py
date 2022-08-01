@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from dvc_objects.errors import ObjectFormatError
 from pygtrie import Trie
 
-from dvc_data.objects.tree import Tree
+from dvc_data.objects.tree import Tree, TreeError
 
 if TYPE_CHECKING:
     from .hashfile.db import HashFileDB
@@ -121,7 +121,7 @@ class DataIndex(MutableMapping):
             and entry.hash_info.isdir
             and not entry.obj
         ):
-            raise KeyError
+            raise TreeError
 
         ret = []
 
