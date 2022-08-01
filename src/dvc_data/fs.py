@@ -108,6 +108,9 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         except KeyError as exc:
             raise FileNotFoundError from exc
 
+        if not items:
+            raise FileNotFoundError
+
         ret = {
             "type": "file",
             "size": 0,
@@ -142,6 +145,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         ret["isdvc"] = True
         ret["isout"] = True
         ret["meta"] = meta
+        ret["obj"] = item_entry.obj
         if item_entry.hash_info and item_entry.hash_info.isdir:
             ret["type"] = "directory"
         return ret
