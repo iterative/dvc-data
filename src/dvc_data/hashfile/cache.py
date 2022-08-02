@@ -2,6 +2,7 @@ import os
 import pickle
 import time
 from functools import wraps
+from itertools import chain, repeat
 from typing import Any
 
 import diskcache
@@ -67,6 +68,10 @@ class Cache(diskcache.Cache):
         return (*super().__getstate__(), self._type)
 
     def get_many(self, keys):
+        if self.is_empty():
+            yield from zip(keys, repeat(None))
+            return
+
         for chunk in chunks(999, keys):
             select = (
                 "SELECT key, value FROM Cache WHERE key IN (%s) and raw = 1"
@@ -81,34 +86,24 @@ class Cache(diskcache.Cache):
 
             yield from ((key, None) for key in chunk)
 
-    def set_many(self, d, expire=None, retry=False):
+    def set_many(self, d):
         if not d:
             return
 
-        raw = True
-        access_time = store_time = now = time.time()
-        expire_time = None if expire is None else now + expire
-        access_count, tag, size, mode, filename = 0, None, 0, 1, None
-        with self._transact(retry):
-            self._con.executemany(
-                "INSERT OR REPLACE INTO Cache("
-                " key, raw, store_time, expire_time, access_time,"
-                " access_count, tag, size, mode, filename, value"
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    (
-                        key,
-                        raw,
-                        store_time,
-                        expire_time,
-                        access_time,
-                        access_count,
-                        tag,
-                        size,
-                        mode,
-                        filename,
-                        value,
-                    )
-                    for (key, value) in d
-                ),
-            )
+        now = time.time()
+        param_fmt = f"(?, 1, {now}, {now}, {now}, 0, NULL, 0, 1, NULL, ?)"
+        with self._transact():
+            for chunk in chunks(999 // 2, d):
+                params = ", ".join(repeat(param_fmt, len(chunk)))
+                insert = (
+                    "INSERT OR REPLACE INTO Cache("
+                    " key, raw, store_time, expire_time, access_time,"
+                    " access_count, tag, size, mode, filename, value"
+                    f") VALUES {params}"
+                )
+                self._con.execute(insert, list(chain.from_iterable(chunk)))
+
+    def is_empty(self):
+        res = self._sql("SELECT EXISTS (SELECT 1 FROM Cache)", ())
+        ((exists,),) = res
+        return exists == 0
