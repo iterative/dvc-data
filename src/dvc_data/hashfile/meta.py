@@ -1,9 +1,5 @@
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Final, Optional
-
-if TYPE_CHECKING:
-    from .db import ObjectDB
-    from .file import HashFile
+from typing import Final, Optional
 
 
 class Meta:
