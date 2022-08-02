@@ -11,9 +11,6 @@ class Meta:
         "size",
         "nfiles",
         "isexec",
-        "obj",
-        "odb",
-        "remote",
     ]
 
     PARAM_SIZE: Final = "size"
@@ -25,16 +22,10 @@ class Meta:
         size: Optional[int] = None,
         nfiles: Optional[int] = None,
         isexec: Optional[bool] = None,
-        obj: Optional["HashFile"] = None,
-        odb: Optional["ObjectDB"] = None,
-        remote: Optional[str] = None,
     ):
         self.size = size
         self.nfiles = nfiles
         self.isexec = isexec
-        self.obj = obj
-        self.odb = odb
-        self.remote = remote
 
     @classmethod
     def from_dict(cls, d: dict) -> "Meta":
