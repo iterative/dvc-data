@@ -51,7 +51,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if not value:
             raise FileNotFoundError
 
-        entry = info["entries"][0][1]
+        entry = info["entry"]
 
         cache_path = entry.odb.oid_to_path(value)
 
@@ -96,59 +96,44 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return False
 
         recurse = recursive or not strict
-        return bool(info.get("entries") if recurse else info.get("isout"))
+        if not recurse:
+            return info.get("isout")
+
+        key = self._get_key(path)
+        return self.index.has_node(key)
 
     def info(self, path, **kwargs):
-        from dvc_data.hashfile.meta import Meta
+        from dvc_data.index import ShortKeyError
 
         key = self._get_key(path)
 
         try:
-            items = list(self.index.iteritems(key))  # noqa: B301
+            entry = self.index[key]
+            isdir = entry.hash_info and entry.hash_info.isdir
+            return {
+                "type": "directory" if isdir else "file",
+                "name": path,
+                "size": entry.meta.size if entry.meta else 0,
+                "isexec": entry.meta.isexec if entry.meta else False,
+                "isdvc": True,
+                "isout": True,
+                "obj": entry.obj,
+                "entry": entry,
+                entry.hash_info.name: entry.hash_info.value,
+            }
+        except ShortKeyError:
+            return {
+                "type": "directory",
+                "name": path,
+                "size": 0,
+                "isexec": False,
+                "isdvc": bool(self.index.longest_prefix(key)),
+                "isout": False,
+                "obj": None,
+                "entry": None,
+            }
         except KeyError as exc:
             raise FileNotFoundError from exc
-
-        if not items:
-            raise FileNotFoundError
-
-        ret = {
-            "type": "file",
-            "size": 0,
-            "isexec": False,
-            "isdvc": False,
-            "entries": items,
-            "name": path,
-        }
-
-        if len(items) > 1 and items[0][0] != key:
-            shortest = self.index.shortest_prefix(key)
-            if shortest:
-                assert shortest[1].hash_info.isdir
-                if len(shortest[0]) <= len(key):
-                    ret["isdvc"] = True
-
-            ret["type"] = "directory"
-            return ret
-
-        item_key, item_entry = items[0]
-
-        meta = item_entry.meta or Meta()
-
-        if key != item_key:
-            assert item_key[: len(key)] == key
-            ret["type"] = "directory"
-            return ret
-
-        ret["size"] = meta.size
-        ret["isexec"] = meta.isexec
-        ret[item_entry.hash_info.name] = item_entry.hash_info.value
-        ret["isdvc"] = True
-        ret["isout"] = True
-        ret["meta"] = meta
-        ret["obj"] = item_entry.obj
-        if item_entry.hash_info and item_entry.hash_info.isdir:
-            ret["type"] = "directory"
-        return ret
 
     def get_file(  # pylint: disable=arguments-differ
         self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
