@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, Optional
 
 from dvc_objects.errors import ObjectFormatError
+from pygtrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
 from pygtrie import Trie
 
 from dvc_data.objects.tree import Tree, TreeError
@@ -49,6 +50,12 @@ class DataIndex(MutableMapping):
         self._trie[key] = value
 
     def __getitem__(self, key):
+        item = self._trie.get(key)
+        if item:
+            return item
+
+        dir_key, dir_entry = self._trie.longest_prefix(key)
+        self._load(dir_key, dir_entry)
         return self._trie[key]
 
     def __delitem__(self, key):
@@ -93,8 +100,14 @@ class DataIndex(MutableMapping):
         for key, entry in self.iteritems(shallow=True, **kwargs):
             self._load(key, entry)
 
+    def has_node(self, key):
+        return self._trie.has_node(key)
+
     def shortest_prefix(self, *args, **kwargs):
         return self._trie.shortest_prefix(*args, **kwargs)
+
+    def longest_prefix(self, *args, **kwargs):
+        return self._trie.longest_prefix(*args, **kwargs)
 
     def iteritems(self, prefix=None, shallow=False):
         kwargs = {"shallow": shallow}
@@ -119,9 +132,11 @@ class DataIndex(MutableMapping):
             entry
             and entry.hash_info
             and entry.hash_info.isdir
-            and not entry.obj
+            and not entry.loaded
         ):
-            raise TreeError
+            self._load(prefix, entry)
+            if not entry.obj:
+                raise TreeError
 
         ret = []
 
