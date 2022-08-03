@@ -7,7 +7,6 @@ from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
 from dvc_objects.fs.system import umask
 from dvc_objects.fs.utils import copyfile, relpath, remove
-from funcy import cached_property
 from shortuuid import uuid
 
 from ..hashfile.db import HashFileDB
@@ -22,7 +21,6 @@ class LocalHashFileDB(HashFileDB):
 
     def __init__(self, fs, path, **config):
         super().__init__(fs, path, **config)
-        self.cache_dir = path
 
         shared = config.get("shared")
         if shared:
@@ -31,18 +29,6 @@ class LocalHashFileDB(HashFileDB):
         else:
             self._file_mode = 0o666 & ~umask
             self._dir_mode = 0o777 & ~umask
-
-    @property
-    def cache_dir(self):
-        return self.path if self.path else None
-
-    @cache_dir.setter
-    def cache_dir(self, value):
-        self.path = value
-
-    @cached_property
-    def cache_path(self):
-        return os.path.abspath(self.cache_dir)
 
     def move(self, from_info, to_info):
         super().move(from_info, to_info)
@@ -54,10 +40,10 @@ class LocalHashFileDB(HashFileDB):
         makedirs(path, exist_ok=True, mode=self._dir_mode)
 
     def oid_to_path(self, oid):
-        # NOTE: `self.cache_path` is already normalized so we can simply use
+        # NOTE: `self.path` is already normalized so we can simply use
         # `os.sep` instead of `os.path.join`. This results in this helper
         # being ~5.5 times faster.
-        return f"{self.cache_path}{os.sep}{oid[0:2]}{os.sep}{oid[2:]}"
+        return f"{self.path}{os.sep}{oid[0:2]}{os.sep}{oid[2:]}"
 
     def oids_exist(
         self, oids, jobs=None, progress=noop
