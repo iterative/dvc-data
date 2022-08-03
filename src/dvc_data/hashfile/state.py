@@ -155,7 +155,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             used (list): list of used links that should not be removed.
         """
         if not isinstance(fs, LocalFileSystem):
-            return
+            return []
 
         unused = []
 
