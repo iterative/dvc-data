@@ -11,7 +11,7 @@ from dataclasses import asdict
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import click
 import typer  # pylint: disable=import-error
@@ -272,6 +272,7 @@ def build(
             shallow=shallow,
         )
     print(obj)
+    return obj
 
 
 def _ls_tree(tree):
@@ -573,6 +574,46 @@ def checkout(
             state=odb.state,
             progress_callback=lambda *_: pbar.update(),
         )
+
+
+@app.command(help="Watch directory for changes and periodically build objects")
+def watch(path: Path = dir_file_type):
+    try:
+        import watchfiles
+    except ImportError as exc:
+        typer.echo(exc, err=True)
+        raise typer.Exit(1) from exc
+
+    odb = get_odb()
+    obj = build(path, write=False, shallow=False)
+    assert isinstance(obj, Tree)
+    for changes in watchfiles.watch(path):
+        patch: List[Dict[str, str]] = []
+        for (change, sub) in changes:
+            print(change.raw_str(), sub, sep=": ", file=sys.stderr)
+            if change == change.deleted:
+                prefix = odb.fs.path.relpath(sub, path).split("/")
+                try:
+                    files = ["/".join(key) for key, _ in obj.iteritems(prefix)]
+                except KeyError:
+                    continue
+                patch.extend({"op": "remove", "path": file} for file in files)
+            else:
+                files = list(odb.fs.find(sub)) or [sub]
+                op = "add" if change.value == change.added else "modify"
+                for file in files:
+                    to = odb.fs.path.relpath(file, path)
+                    patch.append({"op": op, "path": file, "to": to})
+
+        for application in patch:
+            try:
+                apply_op(odb, obj, application)
+            except (FileExistsError, FileNotFoundError):
+                pass
+
+        obj.digest()
+        print(obj)
+        odb.add(obj.path, obj.fs, obj.oid, hardlink=True)
 
 
 main = typer.main.get_command(app)
