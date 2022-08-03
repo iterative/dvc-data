@@ -36,6 +36,14 @@ class StateBase(ABC):
     def save_link(self, path, fs):
         pass
 
+    @abstractmethod
+    def get_unused_links(self, used, fs):
+        pass
+
+    @abstractmethod
+    def remove_links(self, unused, fs):
+        pass
+
 
 class StateNoop(StateBase):
     def close(self):
@@ -48,6 +56,12 @@ class StateNoop(StateBase):
         return None, None
 
     def save_link(self, path, fs):
+        pass
+
+    def get_unused_links(self, used, fs):
+        return []
+
+    def remove_links(self, unused, fs):
         pass
 
 
