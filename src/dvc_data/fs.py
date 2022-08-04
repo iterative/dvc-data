@@ -89,14 +89,13 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         return [self.info(epath) for epath in entries]
 
-    def isdvc(self, path, recursive=False, strict=True):
+    def isdvc(self, path, recursive=False):
         try:
             info = self.info(path)
         except FileNotFoundError:
             return False
 
-        recurse = recursive or not strict
-        if not recurse:
+        if not recursive:
             return info.get("isout")
 
         key = self._get_key(path)
