@@ -152,7 +152,8 @@ class Link:
         if to_fs.exists(to_path):
             to_fs.remove(to_path)  # broken symlink
 
-        cache.makedirs(cache.fs.path.parent(to_path))
+        parent = to_fs.path.parent(to_path)
+        to_fs.makedirs(parent)
         try:
             with Callback.as_tqdm_callback(
                 callback,
