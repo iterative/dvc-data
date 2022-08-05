@@ -47,3 +47,11 @@ def test_pickle_backwards_compat(tmp_path, proto_a, proto_b):
         assert ("value1", "value2") == cache["key"]
         set_value(cache, "key", ("value3", "value4"))
         assert ("value3", "value4") == cache["key"]
+
+
+def test_set_many(tmp_path):
+    d = {f"key{i}": f"value-{i}" for i in range(10)}
+    with Cache(directory=fspath(tmp_path / "cache")) as cache:
+        cache.set_many(d.items())
+
+    assert {key: cache[key] for key in cache} == d

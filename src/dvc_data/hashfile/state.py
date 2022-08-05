@@ -3,7 +3,8 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Callable, Iterator
 
 from dvc_objects.fs import LocalFileSystem
 from dvc_objects.fs.system import inode as get_inode
@@ -19,6 +20,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def noop(*args):
+    pass
+
+
 class StateBase(ABC):
     @abstractmethod
     def close(self):
@@ -26,6 +31,11 @@ class StateBase(ABC):
 
     @abstractmethod
     def save(self, path, fs, hash_info):
+        pass
+
+    @abstractmethod
+    @contextmanager
+    def bulk_save(self, fs):
         pass
 
     @abstractmethod
@@ -51,6 +61,10 @@ class StateNoop(StateBase):
 
     def save(self, path, fs, hash_info):
         pass
+
+    @contextmanager
+    def bulk_save(self, fs):
+        yield noop
 
     def get(self, path, fs):  # pylint: disable=unused-argument
         return None, None
@@ -87,6 +101,15 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.hashes.close()
         self.links.close()
 
+    @staticmethod
+    def _serialize(path, fs, hash_info):
+        entry = {
+            "checksum": fs.checksum(path),
+            "size": fs.size(path),
+            "hash_info": hash_info.to_dict(),
+        }
+        return json.dumps(entry)
+
     def save(self, path, fs, hash_info):
         """Save hash for the specified path info.
 
@@ -94,17 +117,26 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             path (str): path to save hash for.
             hash_info (HashInfo): hash to save.
         """
-
         if not isinstance(fs, LocalFileSystem):
             return
 
-        entry = {
-            "checksum": fs.checksum(path),
-            "size": fs.size(path),
-            "hash_info": hash_info.to_dict(),
-        }
+        self.hashes[path] = self._serialize(path, fs, hash_info)
 
-        self.hashes[path] = json.dumps(entry)
+    @contextmanager
+    def bulk_save(self, fs) -> Iterator[Callable[[str, "HashInfo"], None]]:
+        if not isinstance(fs, LocalFileSystem):
+            yield noop
+            return
+
+        d = {}
+
+        def callback(path, hash_info):
+            d[path] = self._serialize(path, fs, hash_info)
+
+        try:
+            yield callback
+        finally:
+            self.hashes.set_many(d.items())
 
     def get(self, path, fs):
         """Gets the hash for the specified path info. Hash will be

@@ -23,6 +23,24 @@ class Meta:
         self.nfiles = nfiles
         self.isexec = isexec
 
+    def __eq__(self, other):
+        if not isinstance(other, Meta):
+            return False
+
+        return (
+            (self.size == other.size)
+            and (self.nfiles == other.nfiles)
+            and (self.isexec == other.isexec)
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"size={self.size}, "
+            f"nfiles={self.nfiles}, "
+            f"isexec={self.isexec})"
+        )
+
     @classmethod
     def from_dict(cls, d: dict) -> "Meta":
         if not d:

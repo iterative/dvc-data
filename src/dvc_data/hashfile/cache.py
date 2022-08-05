@@ -1,7 +1,8 @@
 import os
 import pickle
+import time
 from functools import wraps
-from typing import Any
+from typing import Any, Iterable, Tuple
 
 import diskcache
 from diskcache import Disk as disk
@@ -63,3 +64,14 @@ class Cache(diskcache.Cache):
 
     def __getstate__(self):
         return (*super().__getstate__(), self._type)
+
+    def set_many(self, items: Iterable[Tuple[str, str]]) -> None:
+        now = time.time()
+        insert = (
+            "INSERT OR REPLACE INTO Cache("
+            " key, raw, store_time, expire_time, access_time,"
+            " access_count, tag, size, mode, filename, value"
+            f") VALUES (?, 1, {now}, NULL, {now}, 0, NULL, 0, 1, NULL, ?)"
+        )
+        with self._transact():
+            self._con.executemany(insert, items)

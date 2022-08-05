@@ -1,4 +1,5 @@
 import logging
+from contextlib import nullcontext
 from itertools import chain
 from typing import TYPE_CHECKING, List, Optional
 
@@ -8,9 +9,11 @@ from dvc_objects.fs.generic import test_links, transfer
 from .build import build
 from .diff import ROOT
 from .diff import diff as odiff
+from .hashfile.state import noop
 
 if TYPE_CHECKING:
-    from dvc_objects._ignore import Ignore
+    from .hashfile._ignore import Ignore
+    from .hashfile.state import StateBase
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +74,6 @@ def _checkout_file(
     cache,
     force,
     relink=False,
-    state=None,
     prompt=None,
 ):
     """The file is changed we need to checkout a new copy"""
@@ -108,9 +110,6 @@ def _checkout_file(
     else:
         link(cache, cache_path, fs, path)
         modified = True
-
-    if state:
-        state.save(path, fs, change.new.oid)
 
     return modified
 
@@ -182,7 +181,7 @@ def _checkout(
     force=False,
     progress_callback=None,
     relink=False,
-    state=None,
+    state: "StateBase" = None,
     prompt=None,
 ):
     if not diff:
@@ -203,32 +202,35 @@ def _checkout(
         )
 
     failed = []
-    for change in chain(diff.added, diff.modified):
-        entry_path = (
-            fs.path.join(path, *change.new.key)
-            if change.new.key != ROOT
-            else path
-        )
-        if change.new.oid.isdir:
-            fs.makedirs(entry_path)
-            continue
 
-        try:
-            _checkout_file(
-                link,
-                entry_path,
-                fs,
-                change,
-                cache,
-                force,
-                relink,
-                state=state,
-                prompt=prompt,
+    bulk_save = state.bulk_save(fs) if state else nullcontext(noop)
+    with bulk_save as save:
+        for change in chain(diff.added, diff.modified):
+            entry_path = (
+                fs.path.join(path, *change.new.key)
+                if change.new.key != ROOT
+                else path
             )
-            if progress_callback:
-                progress_callback(entry_path)
-        except CheckoutError as exc:
-            failed.extend(exc.paths)
+            if change.new.oid.isdir:
+                fs.makedirs(entry_path)
+                continue
+
+            try:
+                _checkout_file(
+                    link,
+                    entry_path,
+                    fs,
+                    change,
+                    cache,
+                    force,
+                    relink,
+                    prompt=prompt,
+                )
+                save(entry_path, change.new.oid)
+                if progress_callback:
+                    progress_callback(entry_path)
+            except CheckoutError as exc:
+                failed.extend(exc.paths)
 
     if failed:
         raise CheckoutError(failed)
@@ -244,7 +246,7 @@ def checkout(
     relink=False,
     quiet=False,
     ignore: Optional["Ignore"] = None,
-    state=None,
+    state: "StateBase" = None,
     prompt=None,
 ):
     # if protocol(path) not in ["local", cache.fs.protocol]:
