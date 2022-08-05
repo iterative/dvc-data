@@ -10,13 +10,26 @@ nox.options.sessions = "lint", "tests"
 
 @nox.session(python=["3.8", "3.9", "3.10", "3.11", "pypy-3.8", "pypy-3.9"])
 def tests(session: nox.Session) -> None:
-    session.install(".[tests]")
+    session.install(".[tests,cli]")
     session.run(
         "pytest",
         "--cov",
         "--cov-config=pyproject.toml",
         *session.posargs,
         env={"COVERAGE_FILE": f".coverage.{session.python}"},
+    )
+
+
+@nox.session
+def bench(session: nox.Session) -> None:
+    session.install(".[tests,cli]")
+    storage = os.getenv("PYTEST_BENCHMARK_STORAGE", "file://.benchmarks")
+    session.run(
+        "pytest",
+        "--benchmark-storage",
+        storage,
+        "--benchmark-only",
+        *session.posargs,
     )
 
 
