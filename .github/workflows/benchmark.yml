@@ -6,6 +6,7 @@ on:
 
 env:
   FORCE_COLOR: "1"
+  PY_COLORS: "1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
