@@ -272,6 +272,7 @@ def build(
             shallow=shallow,
         )
     print(obj)
+    return obj
 
 
 def _ls_tree(tree):
