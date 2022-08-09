@@ -418,14 +418,15 @@ def merge_tree(oid1: str, oid2: str, force: bool = False):
 def process_patch(patch_file, **kwargs):
     patch = []
     if patch_file:
+        patch_file = Path(patch_file)
         with typer.open_file(patch_file) as f:
             text = f.read()
             patch = json.loads(text)
-            for appl in patch:
+            for idx, appl in enumerate(patch):
                 op = appl.get("op")
                 path = appl.get("path")
                 if op and path and op in ("add", "modify"):
-                    patch[appl]["path"] = os.fspath(
+                    patch[idx]["path"] = os.fspath(
                         patch_file.parent.joinpath(path)
                     )
 
