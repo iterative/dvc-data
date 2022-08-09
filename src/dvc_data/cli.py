@@ -425,15 +425,13 @@ def process_patch(patch_file, **kwargs):
                 op = appl.get("op")
                 path = appl.get("path")
                 if op and path and op in ("add", "modify"):
-                    patch[appl]["path"] = os.fspath(
-                        patch_file.parent.joinpath(path)
-                    )
+                    appl["path"] = os.fspath(patch_file.parent.joinpath(path))
 
     for op, items in kwargs.items():
         for item in items:
             if isinstance(item, tuple):
                 path, to = item
-                extra = {"path": path, "to": to}
+                extra = {"path": os.fspath(path), "to": to}
             else:
                 extra = {"path": item}
             patch.append({"op": op, **extra})
@@ -481,10 +479,21 @@ def multi_value(*opts, **kwargs):
 
 
 cl_path = click.Path(
-    exists=True, file_okay=True, dir_okay=False, readable=True
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    path_type=Path,
+    resolve_path=True,
 )
 cl_path_dash = click.Path(
-    exists=True, file_okay=True, dir_okay=False, readable=True, allow_dash=True
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    allow_dash=True,
+    path_type=Path,
+    resolve_path=True,
 )
 
 
