@@ -421,7 +421,7 @@ def process_patch(patch_file, **kwargs):
         with typer.open_file(patch_file) as f:
             text = f.read()
             patch = json.loads(text)
-            for idx, appl in enumerate(patch):
+            for appl in patch:
                 op = appl.get("op")
                 path = appl.get("path")
                 if op and path and op in ("add", "modify"):
