@@ -426,7 +426,7 @@ def process_patch(patch_file, **kwargs):
                 op = appl.get("op")
                 path = appl.get("path")
                 if op and path and op in ("add", "modify"):
-                    patch[idx]["path"] = os.fspath(
+                    appl["path"] = os.fspath(
                         patch_file.parent.joinpath(path)
                     )
 
