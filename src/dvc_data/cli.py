@@ -418,7 +418,6 @@ def merge_tree(oid1: str, oid2: str, force: bool = False):
 def process_patch(patch_file, **kwargs):
     patch = []
     if patch_file:
-        patch_file = Path(patch_file)
         with typer.open_file(patch_file) as f:
             text = f.read()
             patch = json.loads(text)
@@ -426,9 +425,7 @@ def process_patch(patch_file, **kwargs):
                 op = appl.get("op")
                 path = appl.get("path")
                 if op and path and op in ("add", "modify"):
-                    appl["path"] = os.fspath(
-                        patch_file.parent.joinpath(path)
-                    )
+                    appl["path"] = os.fspath(patch_file.parent.joinpath(path))
 
     for op, items in kwargs.items():
         for item in items:
@@ -482,10 +479,21 @@ def multi_value(*opts, **kwargs):
 
 
 cl_path = click.Path(
-    exists=True, file_okay=True, dir_okay=False, readable=True
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    path_type=Path,
+    resolve_path=True,
 )
 cl_path_dash = click.Path(
-    exists=True, file_okay=True, dir_okay=False, readable=True, allow_dash=True
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    allow_dash=True,
+    path_type=Path,
+    resolve_path=True,
 )
 
 
