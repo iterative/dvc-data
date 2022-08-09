@@ -431,7 +431,7 @@ def process_patch(patch_file, **kwargs):
         for item in items:
             if isinstance(item, tuple):
                 path, to = item
-                extra = {"path": path, "to": to}
+                extra = {"path": os.fspath(path), "to": to}
             else:
                 extra = {"path": item}
             patch.append({"op": op, **extra})
