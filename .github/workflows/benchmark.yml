@@ -44,11 +44,17 @@ jobs:
         PYTEST_BENCHMARK_STORAGE: file://${{ github.workspace }}/.benchmarks
 
     - name: Benchmark on pull request
-      run: cd pr && nox -s bench -- --benchmark-save=${GITHUB_SHA::7}
+      run: |
+        cd pr
+        nox -s bench -- \
+            --benchmark-save=${GITHUB_SHA::7} \
+            --benchmark-compare=0001 \
+            --benchmark-compare-fail=mean:10%
       env:
         PYTEST_BENCHMARK_STORAGE: file://${{ github.workspace }}/.benchmarks
 
     - name: Compare benchmark
+      if: always()
       run: |
         pip install pytest-benchmark
-        pytest-benchmark compare
+        pytest-benchmark compare --group-by name
