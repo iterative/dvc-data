@@ -1,49 +1,30 @@
-from collections import OrderedDict
-from typing import Final, Optional
+from typing import Any, ClassVar, Dict, Optional
+
+from attrs import Attribute, asdict, define
 
 
+def _filter_default_or_none(field: Attribute, value: Any) -> bool:
+    return value is not None and value != field.default
+
+
+@define
 class Meta:
-    __slots__ = [
-        "size",
-        "nfiles",
-        "isexec",
-    ]
+    PARAM_SIZE: ClassVar[str] = "size"
+    PARAM_NFILES: ClassVar[str] = "nfiles"
+    PARAM_ISEXEC: ClassVar[str] = "isexec"
 
-    PARAM_SIZE: Final = "size"
-    PARAM_NFILES: Final = "nfiles"
-    PARAM_ISEXEC: Final = "isexec"
-
-    def __init__(
-        self,
-        size: Optional[int] = None,
-        nfiles: Optional[int] = None,
-        isexec: Optional[bool] = None,
-    ):
-        self.size = size
-        self.nfiles = nfiles
-        self.isexec = isexec
+    size: Optional[int] = None
+    nfiles: Optional[int] = None
+    isexec: bool = False
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Meta":
-        if not d:
-            return cls()
+    def from_dict(cls, d: Dict[str, Any]) -> "Meta":
+        d = d or {}
+        return cls(
+            size=d.pop(cls.PARAM_SIZE, None),
+            nfiles=d.pop(cls.PARAM_NFILES, None),
+            isexec=d.pop(cls.PARAM_ISEXEC, False),
+        )
 
-        size = d.pop(cls.PARAM_SIZE, None)
-        nfiles = d.pop(cls.PARAM_NFILES, None)
-        isexec = d.pop(cls.PARAM_ISEXEC, False)
-
-        return cls(size=size, nfiles=nfiles, isexec=isexec)
-
-    def to_dict(self) -> dict:
-        ret: dict = OrderedDict()
-
-        if self.size is not None:
-            ret[self.PARAM_SIZE] = self.size
-
-        if self.nfiles is not None:
-            ret[self.PARAM_NFILES] = self.nfiles
-
-        if self.isexec:
-            ret[self.PARAM_ISEXEC] = self.isexec
-
-        return ret
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self, filter=_filter_default_or_none)
