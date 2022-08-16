@@ -1,11 +1,12 @@
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, List, Optional, Tuple
+import reprlib
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+
+from attrs import asdict, define, field
 
 if TYPE_CHECKING:
-    from dvc_objects.file import HashFile
-
     from .hashfile.hash_info import HashInfo
     from .hashfile.meta import Meta
+    from .hashfile.obj import HashFile
 
 
 ADD = "add"
@@ -14,43 +15,25 @@ DELETE = "delete"
 UNCHANGED = "unchanged"
 
 
+@define
 class TreeEntry:
-    __slots__ = ("in_cache", "key", "meta", "oid")
-
-    def __init__(
-        self,
-        in_cache: bool,
-        key: Tuple[str],
-        meta: Optional["Meta"],
-        oid: Optional["HashInfo"],
-    ):
-        self.in_cache = in_cache
-        self.key = key
-        self.meta = meta
-        self.oid = oid
+    in_cache: bool = field(default=False, eq=False)
+    key: Tuple[str, ...] = ()
+    meta: Optional["Meta"] = field(default=None, eq=False)
+    oid: Optional["HashInfo"] = None
 
     def __bool__(self):
         return bool(self.oid)
 
-    def __eq__(self, other):
-        if not isinstance(other, TreeEntry):
-            return False
 
-        if self.key != other.key:
-            return False
-
-        return self.oid == other.oid
-
-
+@define
 class Change:
-    __slots__ = ("old", "new")
+    old: TreeEntry = field(factory=TreeEntry)
+    new: TreeEntry = field(factory=TreeEntry)
+    typ: str = field(init=False)
 
-    def __init__(self, old: TreeEntry, new: TreeEntry):
-        self.old = old
-        self.new = new
-
-    @property
-    def typ(self):
+    @typ.default
+    def _(self):
         if not self.old and not self.new:
             return UNCHANGED
 
@@ -69,15 +52,19 @@ class Change:
         return self.typ != UNCHANGED
 
 
-@dataclass
+@define
 class DiffResult:
-    added: List[Change] = field(default_factory=list, compare=True)
-    modified: List[Change] = field(default_factory=list, compare=True)
-    deleted: List[Change] = field(default_factory=list, compare=True)
-    unchanged: List[Change] = field(default_factory=list, compare=True)
+    added: List[Change] = field(factory=list, repr=reprlib.repr)
+    modified: List[Change] = field(factory=list, repr=reprlib.repr)
+    deleted: List[Change] = field(factory=list, repr=reprlib.repr)
+    unchanged: List[Change] = field(factory=list, repr=reprlib.repr)
 
     def __bool__(self):
         return bool(self.added or self.modified or self.deleted)
+
+    @property
+    def stats(self) -> Dict[str, int]:
+        return {k: len(v) for k, v in asdict(self).items()}
 
 
 ROOT = ("",)

@@ -7,7 +7,6 @@ import posixpath
 import random
 import sys
 from collections import deque
-from dataclasses import asdict
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
@@ -15,6 +14,7 @@ from typing import List, Optional
 
 import click
 import typer  # pylint: disable=import-error
+from attrs import asdict
 from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import LocalFileSystem, MemoryFileSystem
@@ -371,7 +371,7 @@ def diff(short_oid1, short_oid2: str, unchanged: bool = False):
         cache_info = "" if entry.in_cache else ", missing"
         return f"{path} ({oid}{cache_info})"
 
-    for state, changes in asdict(d).items():
+    for state, changes in asdict(d, recurse=False).items():
         for change in changes:
             if not unchanged and state == "unchanged" and change.new.in_cache:
                 continue
@@ -402,7 +402,7 @@ def merge_tree(oid1: str, oid2: str, force: bool = False):
         d = _diff(obj1, obj2, odb)
         modified = [
             posixpath.join(*change.old.key)
-            for change in d.modified
+            for change in d.modified  # pylint: disable=not-an-iterable
             if change.old.key != ROOT
         ]
         if modified:
