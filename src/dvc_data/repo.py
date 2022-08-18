@@ -1,6 +1,6 @@
 import os
 
-from dvc_objects.fs import LocalFileSystem
+from dvc_objects.fs import localfs
 from dvc_objects.fs.base import FileSystem
 
 from .index import DataIndex
@@ -8,9 +8,6 @@ from .index import DataIndex
 
 class NotARepo(Exception):
     pass
-
-
-localfs = LocalFileSystem()
 
 
 class Repo:

@@ -3,8 +3,8 @@ import io
 import logging
 from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Tuple
 
+from dvc_objects.fs import localfs
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
-from dvc_objects.fs.implementations.local import localfs
 from dvc_objects.fs.utils import is_exec
 
 from .hash_info import HashInfo
