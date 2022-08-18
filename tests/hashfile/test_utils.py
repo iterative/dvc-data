@@ -1,6 +1,6 @@
 import os
 
-from dvc_objects.fs.implementations.local import LocalFileSystem
+from dvc_objects.fs import LocalFileSystem
 
 from dvc_data.hashfile.utils import get_mtime_and_size
 

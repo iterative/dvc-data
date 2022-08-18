@@ -2,8 +2,8 @@ import shutil
 from os import fspath
 
 import pytest
+from dvc_objects.fs import localfs
 from dvc_objects.fs.generic import test_links as _test_links
-from dvc_objects.fs.implementations.local import localfs
 
 from dvc_data.checkout import checkout
 from dvc_data.cli import build, gentree, get_odb
