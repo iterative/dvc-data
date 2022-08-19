@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
+
     from .state import StateBase
 
 
