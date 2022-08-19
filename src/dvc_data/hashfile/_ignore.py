@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Iterator
 from typing_extensions import Protocol
 
 if TYPE_CHECKING:
-    from .fs.base import AnyFSPath, FileSystem
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
 
 # pylint: disable=unused-argument
 

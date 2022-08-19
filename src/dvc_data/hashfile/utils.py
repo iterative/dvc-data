@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from ._ignore import Ignore
-    from .fs.base import AnyFSPath, FileSystem
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
 
 
 def get_mtime_and_size(

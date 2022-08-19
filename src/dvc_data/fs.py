@@ -6,7 +6,7 @@ from fsspec import AbstractFileSystem
 from funcy import cached_property
 
 if typing.TYPE_CHECKING:
-    from dvc.types import AnyPath
+    from dvc_objects.fs.base import AnyFSPath
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         return key
 
-    def _get_fs_path(self, path: "AnyPath"):
+    def _get_fs_path(self, path: "AnyFSPath"):
         info = self.info(path)
         if info["type"] == "directory":
             raise IsADirectoryError

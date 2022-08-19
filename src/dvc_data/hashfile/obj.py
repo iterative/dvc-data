@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from dvc_objects.obj import Object
 
 if TYPE_CHECKING:
-    from .fs.base import AnyFSPath, FileSystem
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
     from .hash_info import HashInfo
 
 

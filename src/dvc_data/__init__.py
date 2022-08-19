@@ -6,7 +6,7 @@ from .objects.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
-    from dvc_objects.file import HashFile
+    from .hashfile.obj import HashFile
 
     from .hashfile.hash_info import HashInfo
 

@@ -10,7 +10,7 @@ from .diff import ROOT
 from .diff import diff as odiff
 
 if TYPE_CHECKING:
-    from dvc_objects._ignore import Ignore
+    from .hashfile._ignore import Ignore
 
 logger = logging.getLogger(__name__)
 

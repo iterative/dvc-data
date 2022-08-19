@@ -89,13 +89,12 @@ class ObjectDBIndex(ObjectDBIndexBase):
         name: str,
     ):  # pylint: disable=super-init-not-called
         from dvc_objects.fs import LocalFileSystem
-        from dvc_objects.fs.utils import makedirs
 
         from ..hashfile.cache import Cache, Index
 
         self.index_dir = os.path.join(tmp_dir, self.INDEX_DIR, name)
-        makedirs(self.index_dir, exist_ok=True)
         self.fs = LocalFileSystem()
+        self.fs.makedirs(self.index_dir, exist_ok=True)
         cache = Cache(self.index_dir, eviction_policy="none", type="index")
         self.index = Index.fromcache(cache)
 

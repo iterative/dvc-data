@@ -19,7 +19,6 @@ from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import LocalFileSystem, MemoryFileSystem
 from dvc_objects.fs.callbacks import Callback
-from dvc_objects.fs.utils import human_readable_to_bytes
 from rich.traceback import install
 
 from dvc_data import load
@@ -71,6 +70,31 @@ LinkEnum = enum.Enum(  # type: ignore[misc]
     "LinkEnum", {lt: lt for lt in ["reflink", "hardlink", "symlink", "copy"]}
 )
 SIZE_HELP = "Human readable size, eg: '1kb', '100Mb', '10GB' etc"
+
+
+# https://github.com/aws/aws-cli/blob/5aa599949f60b6af554fd5714d7161aa272716f7/awscli/customizations/s3/utils.py
+MULTIPLIERS = {
+    "kb": 1024,
+    "mb": 1024**2,
+    "gb": 1024**3,
+    "tb": 1024**4,
+    "kib": 1024,
+    "mib": 1024**2,
+    "gib": 1024**3,
+    "tib": 1024**4,
+}
+
+
+def human_readable_to_bytes(value: str) -> int:
+    value = value.lower()
+    suffix = ""
+    if value.endswith(tuple(MULTIPLIERS.keys())):
+        size = 2
+        size += value[-2] == "i"  # KiB, MiB etc
+        value, suffix = value[:-size], value[-size:]
+
+    multiplier = MULTIPLIERS.get(suffix, 1)
+    return int(value) * multiplier
 
 
 class Application(typer.Typer):
