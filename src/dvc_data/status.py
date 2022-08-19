@@ -8,9 +8,9 @@ from .objects.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
-    from dvc_objects.file import HashFile
 
     from .db.index import ObjectDBIndexBase
+    from .hashfile.obj import HashFile
 
 logger = logging.getLogger(__name__)
 

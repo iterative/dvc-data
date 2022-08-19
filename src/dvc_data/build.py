@@ -11,9 +11,9 @@ from .hashfile.meta import Meta
 from .hashfile.obj import HashFile
 
 if TYPE_CHECKING:
-    from dvc_objects._ignore import Ignore
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
+    from .hashfile._ignore import Ignore
     from .hashfile.db import HashFileDB
 
 

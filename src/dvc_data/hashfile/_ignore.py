@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
 from typing_extensions import Protocol
 
 if TYPE_CHECKING:
-    from .fs.base import AnyFSPath, FileSystem
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
 
 # pylint: disable=unused-argument
 
@@ -12,4 +12,7 @@ class Ignore(Protocol):
     def find(
         self, fs: "FileSystem", path: "AnyFSPath"
     ) -> Iterator["AnyFSPath"]:
+        ...
+
+    def walk(self, fs: "FileSystem", path: "AnyFSPath", **kwargs: Any):
         ...
