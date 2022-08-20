@@ -27,4 +27,4 @@ class Meta:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self, filter=_filter_default_or_none)
+        return asdict(self, recurse=False, filter=_filter_default_or_none)
