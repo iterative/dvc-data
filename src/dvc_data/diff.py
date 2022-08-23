@@ -15,7 +15,7 @@ DELETE = "delete"
 UNCHANGED = "unchanged"
 
 
-@define
+@define(hash=True, order=True)
 class TreeEntry:
     in_cache: bool = field(default=False, eq=False)
     key: Tuple[str, ...] = ()
@@ -26,7 +26,7 @@ class TreeEntry:
         return bool(self.oid)
 
 
-@define
+@define(hash=True, order=True)
 class Change:
     old: TreeEntry = field(factory=TreeEntry)
     new: TreeEntry = field(factory=TreeEntry)
@@ -70,7 +70,7 @@ class DiffResult:
 ROOT = ("",)
 
 
-def diff(
+def diff(  # noqa: C901
     old: Optional["HashFile"], new: Optional["HashFile"], cache
 ) -> DiffResult:
     from .objects.tree import Tree
@@ -91,7 +91,10 @@ def diff(
     def _get(obj, key):
         if not obj or key == ROOT:
             return None, (obj.hash_info if obj else None)
-
+        if not isinstance(obj, Tree):
+            # obj is not a Tree and key is not a ROOT
+            # hence object does not exist for a given key
+            return None, None
         return obj.get(key, (None, None))
 
     def _in_cache(oid, cache):
@@ -105,6 +108,9 @@ def diff(
             return True
         except (FileNotFoundError, ObjectFormatError):
             return False
+
+    old_keys = set(_get_keys(old))
+    new_keys = set(_get_keys(new))
 
     ret = DiffResult()
     for key in old_keys | new_keys:
