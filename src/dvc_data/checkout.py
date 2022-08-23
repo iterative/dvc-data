@@ -140,6 +140,12 @@ def _diff(
 
     if relink:
         diff.modified.extend(diff.unchanged)
+    else:
+        for change in diff.unchanged:  # pylint: disable=not-an-iterable
+            if not change.new.in_cache and not (
+                change.new.oid and change.new.oid.isdir
+            ):
+                diff.modified.append(change)
 
     return diff
 

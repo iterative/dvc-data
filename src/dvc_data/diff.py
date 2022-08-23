@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 from attrs import asdict, define, field
 
 if TYPE_CHECKING:
+    from .hashfile.db import HashFileDB
     from .hashfile.hash_info import HashInfo
     from .hashfile.meta import Meta
     from .hashfile.obj import HashFile
@@ -71,7 +72,9 @@ ROOT = ("",)
 
 
 def diff(  # noqa: C901
-    old: Optional["HashFile"], new: Optional["HashFile"], cache
+    old: Optional["HashFile"],
+    new: Optional["HashFile"],
+    cache: "HashFileDB",
 ) -> DiffResult:
     from .objects.tree import Tree
 
@@ -127,10 +130,5 @@ def diff(  # noqa: C901
             ret.deleted.append(change)
         else:
             assert change.typ == UNCHANGED
-            if not change.new.in_cache and not (
-                change.new.oid and change.new.oid.isdir
-            ):
-                ret.modified.append(change)
-            else:
-                ret.unchanged.append(change)
+            ret.unchanged.append(change)
     return ret
