@@ -109,9 +109,6 @@ def diff(  # noqa: C901
         except (FileNotFoundError, ObjectFormatError):
             return False
 
-    old_keys = set(_get_keys(old))
-    new_keys = set(_get_keys(new))
-
     ret = DiffResult()
     for key in old_keys | new_keys:
         old_meta, old_oid = _get(old, key)
