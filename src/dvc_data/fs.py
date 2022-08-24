@@ -102,39 +102,10 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return self.index.has_node(key)
 
     def info(self, path, **kwargs):
-        from dvc_data.index import ShortKeyError
-
         key = self._get_key(path)
-
-        try:
-            entry = self.index[key]
-            isdir = entry.hash_info and entry.hash_info.isdir
-            return {
-                "type": "directory" if isdir else "file",
-                "name": path,
-                "size": entry.meta.size if entry.meta else 0,
-                "isexec": entry.meta.isexec if entry.meta else False,
-                "version_id": entry.meta.version_id if entry.meta else None,
-                "isdvc": True,
-                "isout": True,
-                "obj": entry.obj,
-                "entry": entry,
-                entry.hash_info.name: entry.hash_info.value,
-            }
-        except ShortKeyError:
-            return {
-                "type": "directory",
-                "name": path,
-                "size": 0,
-                "isexec": False,
-                "version_id": None,
-                "isdvc": bool(self.index.longest_prefix(key)),
-                "isout": False,
-                "obj": None,
-                "entry": None,
-            }
-        except KeyError as exc:
-            raise FileNotFoundError from exc
+        info = self.index.info(key)
+        info["name"] = path
+        return info
 
     def get_file(  # pylint: disable=arguments-differ
         self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
