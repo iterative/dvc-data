@@ -125,6 +125,33 @@ class DataIndex(MutableMapping):
             self._load(key, entry)
             yield key, entry
 
+    def info(self, key):
+        try:
+            entry = self[key]
+            isdir = entry.hash_info and entry.hash_info.isdir
+            return {
+                "type": "directory" if isdir else "file",
+                "size": entry.meta.size if entry.meta else 0,
+                "isexec": entry.meta.isexec if entry.meta else False,
+                "isdvc": True,
+                "isout": True,
+                "obj": entry.obj,
+                "entry": entry,
+                entry.hash_info.name: entry.hash_info.value,
+            }
+        except ShortKeyError:
+            return {
+                "type": "directory",
+                "size": 0,
+                "isexec": False,
+                "isdvc": bool(self.longest_prefix(key)),
+                "isout": False,
+                "obj": None,
+                "entry": None,
+            }
+        except KeyError as exc:
+            raise FileNotFoundError from exc
+
     def ls(self, prefix=None):
         kwargs = {}
         if prefix:
