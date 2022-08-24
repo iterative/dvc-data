@@ -11,17 +11,17 @@ from dvc_data.hashfile.state import State
 
 
 @pytest.mark.parametrize("link", ["reflink", "copy", "symlink", "hardlink"])
-def test_checkout(local_path, benchmark, link):
-    (local_path / ".dvc").mkdir()
+def test_checkout(tmp_local_path, benchmark, link):
+    (tmp_local_path / ".dvc").mkdir()
 
-    fs_path = fspath(local_path / "dataset")
+    fs_path = fspath(tmp_local_path / "dataset")
     odb = get_odb(type=[link])
 
     if not _test_links([link], localfs, odb.path, localfs, fs_path):
         pytest.skip(f"unsupported link type: {link}")
 
-    gentree(local_path / "dataset", 1000, "50Mb")
-    obj = build(local_path / "dataset", write=True)
+    gentree(tmp_local_path / "dataset", 1000, "50Mb")
+    obj = build(tmp_local_path / "dataset", write=True)
     state = odb.state
 
     def setup():
