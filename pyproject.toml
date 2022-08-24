@@ -28,7 +28,7 @@ known_first_party = ["dvc_data"]
 line_length = 79
 
 [tool.pytest.ini_options]
-addopts = "-ra --benchmark-skip"
+addopts = "-ra -Werror --benchmark-skip"
 
 [tool.coverage.run]
 branch = true
