@@ -21,6 +21,7 @@ class DataIndexEntry:
     obj: Optional["HashFile"] = None
     hash_info: Optional["HashInfo"] = None
     odb: Optional["HashFileDB"] = None
+    cache: Optional["HashFileDB"] = None
     remote: Optional["HashFileDB"] = None
 
     loaded: Optional[bool] = None
@@ -162,7 +163,7 @@ def build(index, path, fs, **kwargs):
             del index[key:]
 
         try:
-            _, meta, obj = obuild(
+            odb, meta, obj = obuild(
                 entry.odb,
                 fs.path.join(path, *key),
                 fs,
@@ -175,6 +176,7 @@ def build(index, path, fs, **kwargs):
             obj = None
             hash_info = None
 
+        entry.odb = odb
         entry.meta = meta
         entry.obj = obj
         entry.hash_info = hash_info

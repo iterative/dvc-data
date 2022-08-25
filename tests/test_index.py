@@ -75,8 +75,8 @@ def test_build(tmp_upath, odb, as_filesystem):
 
     index = DataIndex(
         {
-            ("foo",): DataIndexEntry(odb=odb),
-            ("data",): DataIndexEntry(odb=odb),
+            ("foo",): DataIndexEntry(odb=odb, cache=odb),
+            ("data",): DataIndexEntry(odb=odb, cache=odb),
         },
     )
     build(index, tmp_upath, as_filesystem(tmp_upath.fs))
@@ -84,7 +84,8 @@ def test_build(tmp_upath, odb, as_filesystem):
     assert (
         index[("foo",)].hash_info.value == "d3b07384d113edec49eaa6238ad5ff00"
     )
-    assert index[("foo",)].odb == odb
+    assert index[("foo",)].odb != odb
+    assert index[("foo",)].cache == odb
     assert index[("data",)].hash_info.name == "md5"
     assert (
         index[("data",)].hash_info.value
