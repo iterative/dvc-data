@@ -3,7 +3,7 @@ import pytest
 from dvc_data.fs import DataFileSystem
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.hash_info import HashInfo
-from dvc_data.index import DataIndex, DataIndexEntry, build, checkout
+from dvc_data.index import DataIndex, DataIndexEntry, build, checkout, commit
 
 
 @pytest.fixture
@@ -134,3 +134,23 @@ def test_checkout(tmp_upath, odb, as_filesystem):
         (tmp_upath / "data" / "bar"),
         (tmp_upath / "data" / "baz"),
     }
+
+
+def test_commit(tmp_upath, odb, as_filesystem):
+    (tmp_upath / "foo").write_text("foo\n")
+    (tmp_upath / "data").mkdir()
+    (tmp_upath / "data" / "bar").write_text("bar\n")
+    (tmp_upath / "data" / "baz").write_text("baz\n")
+
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(odb=odb, cache=odb),
+            ("data",): DataIndexEntry(odb=odb, cache=odb),
+        },
+    )
+    build(index, tmp_upath, as_filesystem(tmp_upath.fs))
+    commit(index)
+    assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
+    assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
+    assert odb.exists("c157a79031e1c40f85931829bc5fc552")
+    assert odb.exists("258622b1688250cb619f3c9ccaefb7eb")
