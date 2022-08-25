@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, Optional
@@ -90,6 +91,7 @@ class DataIndex(MutableMapping):
         for ikey, (meta, hash_info) in entry.obj.iteritems():
             self._trie[key + ikey] = DataIndexEntry(
                 odb=entry.odb,
+                cache=entry.odb,
                 remote=entry.remote,
                 hash_info=hash_info,
                 meta=meta,
@@ -193,3 +195,30 @@ def checkout(index, path, fs, **kwargs):
         if not entry.obj:
             entry.obj = load(entry.odb, entry.hash_info)
         ocheckout(fs.path.join(path, *key), fs, entry.obj, entry.odb, **kwargs)
+
+
+def transfer(index, src, dst):
+    from .transfer import transfer as otransfer
+
+    by_direction = defaultdict(set)
+    for _, entry in index.iteritems():
+        src_odb = getattr(entry, src)
+        assert src_odb
+        dst_odb = getattr(entry, dst)
+        assert dst_odb
+        by_direction[(src_odb, dst_odb)].add(entry.hash_info)
+
+    for (src_odb, dst_odb), hash_infos in by_direction.items():
+        otransfer(src_odb, dst_odb, hash_infos)
+
+
+def commit(index):
+    transfer(index, "odb", "cache")
+
+
+def push(index):
+    transfer(index, "cache", "remote")
+
+
+def fetch(index):
+    transfer(index, "remote", "cache")
