@@ -112,6 +112,9 @@ class DataIndex(MutableMapping):
     def longest_prefix(self, *args, **kwargs):
         return self._trie.longest_prefix(*args, **kwargs)
 
+    def traverse(self, *args, **kwargs):
+        return self._trie.traverse(*args, **kwargs)
+
     def iteritems(self, prefix=None, shallow=False):
         kwargs = {"shallow": shallow}
         if prefix:
@@ -152,11 +155,7 @@ class DataIndex(MutableMapping):
         except KeyError as exc:
             raise FileNotFoundError from exc
 
-    def ls(self, prefix=None):
-        kwargs = {}
-        if prefix:
-            kwargs["prefix"] = prefix
-
+    def _ensure_loaded(self, prefix):
         entry = self._trie.get(prefix)
         if (
             entry
@@ -167,18 +166,6 @@ class DataIndex(MutableMapping):
             self._load(prefix, entry)
             if not entry.obj:
                 raise TreeError
-
-        ret = []
-
-        def node_factory(_, key, children, *args):
-            if key == prefix:
-                list(children)
-            else:
-                ret.append(key[-1])
-
-        self._trie.traverse(node_factory, **kwargs)
-
-        return ret
 
 
 def build(index, path, fs, **kwargs):
