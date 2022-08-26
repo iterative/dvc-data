@@ -8,13 +8,11 @@ welcomes contributions in the form of bug reports, feature requests, and pull re
 Here is a list of important resources for contributors:
 
 - `Source Code`_
-- `Documentation`_
 - `Issue Tracker`_
 - `Code of Conduct`_
 
 .. _Apache 2.0 license: https://opensource.org/licenses/Apache-2.0
 .. _Source Code: https://github.com/iterative/dvc-data
-.. _Documentation: https://dvc-data.readthedocs.io/
 .. _Issue Tracker: https://github.com/iterative/dvc-data/issues
 
 How to report a bug
