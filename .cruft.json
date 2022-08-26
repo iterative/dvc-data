@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/iterative/py-template",
-  "commit": "9b73d0189378507c05329da843cc9f0a781762ad",
+  "commit": "2ed259a908b24fb5e57e355477f517c1cae12bbc",
   "checkout": null,
   "context": {
     "cookiecutter": {
@@ -15,7 +15,8 @@
       "license": "Apache-2.0",
       "short_description": "dvc data",
       "development_status": "Development Status :: 1 - Planning",
-      "_template": "https://github.com/iterative/py-template"
+      "_template": "https://github.com/iterative/py-template",
+      "docs": false
     }
   },
   "directory": null,
