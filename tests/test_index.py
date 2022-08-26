@@ -62,9 +62,14 @@ def test_fs(tmp_upath, odb, as_filesystem):
     assert fs.exists("foo")
     assert fs.cat("foo") == b"foo\n"
     assert fs.ls("/", detail=False) == ["/foo", "/data"]
+    assert fs.ls("/", detail=True) == [fs.info("/foo"), fs.info("/data")]
     assert fs.cat("/data/bar") == b"bar\n"
     assert fs.cat("/data/baz") == b"baz\n"
     assert fs.ls("/data", detail=False) == ["/data/bar", "/data/baz"]
+    assert fs.ls("/data", detail=True) == [
+        fs.info("/data/bar"),
+        fs.info("/data/baz"),
+    ]
 
 
 def test_build(tmp_upath, odb, as_filesystem):
