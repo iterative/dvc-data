@@ -71,11 +71,15 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return fs.open(fspath, mode=mode, encoding=encoding)
 
     def ls(self, path, detail=True, **kwargs):
-        info = self.info(path)
-        if info["type"] != "directory":
-            return [info] if detail else [path]
-
         root_key = self._get_key(path)
+        info = self.index.info(root_key)
+        if info["type"] != "directory":
+            if detail:
+                info["name"] = path
+                return [info]
+            else:
+                return [path]
+
         try:
             entries = [
                 self.path.join(path, name) if path else name
