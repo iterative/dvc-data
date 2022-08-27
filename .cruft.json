@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/iterative/py-template",
-  "commit": "f1ee970dd61d000f61cfd952a6578df645c518c8",
+  "commit": "7e84a4db09bcce97c8c206eb644c409f8ed7b565",
   "checkout": null,
   "context": {
     "cookiecutter": {
