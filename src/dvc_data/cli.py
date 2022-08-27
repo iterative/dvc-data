@@ -110,6 +110,7 @@ class Application(typer.Typer):
 app = Application(
     name="dvc-data",
     help="dvc-data testingtool",
+    context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
 
@@ -609,7 +610,7 @@ def checkout(
         )
 
 
-main = typer.main.get_command(app)
+main = click.version_option()(typer.main.get_command(app))
 main.add_command(update_tree, "update-tree")  # type: ignore[attr-defined]
 
 
