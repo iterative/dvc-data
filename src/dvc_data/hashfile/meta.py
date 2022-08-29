@@ -12,10 +12,12 @@ class Meta:
     PARAM_SIZE: ClassVar[str] = "size"
     PARAM_NFILES: ClassVar[str] = "nfiles"
     PARAM_ISEXEC: ClassVar[str] = "isexec"
+    PARAM_VERSION_ID: ClassVar[str] = "version_id"
 
     size: Optional[int] = None
     nfiles: Optional[int] = None
     isexec: bool = False
+    version_id: Optional[str] = None
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Meta":
@@ -24,6 +26,7 @@ class Meta:
             size=d.pop(cls.PARAM_SIZE, None),
             nfiles=d.pop(cls.PARAM_NFILES, None),
             isexec=d.pop(cls.PARAM_ISEXEC, False),
+            version_id=d.pop(cls.PARAM_VERSION_ID, None),
         )
 
     def to_dict(self) -> Dict[str, Any]:

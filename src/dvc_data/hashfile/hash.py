@@ -120,6 +120,8 @@ def _adapt_info(info: Dict[str, Any], scheme: str) -> Dict[str, Any]:
         "ETag" in info or "Content-MD5" in info
     ):
         info["checksum"] = info.get("ETag") or info.get("Content-MD5")
+    if scheme == "s3" and "VersionId" in info:
+        info["version_id"] = info["VersionId"]
     return info
 
 
@@ -190,5 +192,9 @@ def hash_file(
         assert ".dir" not in hash_info.value
         state.save(path, fs, hash_info)
 
-    meta = Meta(size=info["size"], isexec=is_exec(info.get("mode", 0)))
+    meta = Meta(
+        size=info["size"],
+        isexec=is_exec(info.get("mode", 0)),
+        version_id=info.get("version_id"),
+    )
     return meta, hash_info
