@@ -11,6 +11,7 @@ from dvc_data.index import (
     checkout,
     collect,
     commit,
+    save,
 )
 
 
@@ -81,10 +82,10 @@ def test_fs(tmp_upath, odb, as_filesystem):
 
 
 def test_collect(tmp_upath, odb, as_filesystem):
-    (tmp_upath / "foo").write_text("foo\n")
+    (tmp_upath / "foo").write_bytes(b"foo\n")
     (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_text("bar\n")
-    (tmp_upath / "data" / "baz").write_text("baz\n")
+    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
 
     index = DataIndex(
         {
@@ -106,6 +107,27 @@ def test_collect(tmp_upath, odb, as_filesystem):
     assert index[("data", "baz")].meta == Meta(size=4)
     assert index[("data", "baz")].fs == fs
     assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
+
+
+def test_save(tmp_upath, odb, as_filesystem):
+    (tmp_upath / "foo").write_bytes(b"foo\n")
+    (tmp_upath / "data").mkdir()
+    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(odb=odb, cache=odb),
+            ("data",): DataIndexEntry(odb=odb, cache=odb),
+        },
+    )
+    fs = as_filesystem(tmp_upath.fs)
+    collect(index, tmp_upath, fs)
+    save(index)
+    assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
+    assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
+    assert odb.exists("c157a79031e1c40f85931829bc5fc552")
+    assert odb.exists("258622b1688250cb619f3c9ccaefb7eb")
 
 
 def test_build(tmp_upath, odb, as_filesystem):
