@@ -3,7 +3,15 @@ import pytest
 from dvc_data.fs import DataFileSystem
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.hash_info import HashInfo
-from dvc_data.index import DataIndex, DataIndexEntry, build, checkout, commit
+from dvc_data.hashfile.meta import Meta
+from dvc_data.index import (
+    DataIndex,
+    DataIndexEntry,
+    build,
+    checkout,
+    collect,
+    commit,
+)
 
 
 @pytest.fixture
@@ -70,6 +78,34 @@ def test_fs(tmp_upath, odb, as_filesystem):
         fs.info("/data/bar"),
         fs.info("/data/baz"),
     ]
+
+
+def test_collect(tmp_upath, odb, as_filesystem):
+    (tmp_upath / "foo").write_text("foo\n")
+    (tmp_upath / "data").mkdir()
+    (tmp_upath / "data" / "bar").write_text("bar\n")
+    (tmp_upath / "data" / "baz").write_text("baz\n")
+
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(odb=odb, cache=odb),
+            ("data",): DataIndexEntry(odb=odb, cache=odb),
+        },
+    )
+    fs = as_filesystem(tmp_upath.fs)
+    collect(index, tmp_upath, fs)
+    assert index[("foo",)].meta == Meta(size=4)
+    assert index[("foo",)].fs == fs
+    assert index[("foo",)].path == str(tmp_upath / "foo")
+    assert index[("data",)].meta.isdir
+    assert index[("data",)].fs == fs
+    assert index[("data",)].path == str(tmp_upath / "data")
+    assert index[("data", "bar")].meta == Meta(size=4)
+    assert index[("data", "bar")].fs == fs
+    assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
+    assert index[("data", "baz")].meta == Meta(size=4)
+    assert index[("data", "baz")].fs == fs
+    assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
 
 
 def test_build(tmp_upath, odb, as_filesystem):

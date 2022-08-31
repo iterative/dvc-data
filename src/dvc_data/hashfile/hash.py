@@ -1,11 +1,10 @@
 import hashlib
 import io
 import logging
-from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, BinaryIO, Optional, Tuple
 
 from dvc_objects.fs import localfs
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
-from dvc_objects.fs.utils import is_exec
 
 from .hash_info import HashInfo
 from .istextfile import DEFAULT_CHUNK_SIZE, istextblock
@@ -109,41 +108,25 @@ def file_md5(
         return fobj_md5(callback.wrap_attr(fobj), text=text, name=name)
 
 
-def _adapt_info(info: Dict[str, Any], scheme: str) -> Dict[str, Any]:
-    if scheme == "s3" and "ETag" in info:
-        info["etag"] = info["ETag"].strip('"')
-    elif scheme == "gs" and "etag" in info:
-        import base64
-
-        info["etag"] = base64.b64decode(info["etag"]).hex()
-    elif scheme.startswith("http") and (
-        "ETag" in info or "Content-MD5" in info
-    ):
-        info["checksum"] = info.get("ETag") or info.get("Content-MD5")
-    if scheme == "s3" and "VersionId" in info:
-        info["version_id"] = info["VersionId"]
-    return info
-
-
 def _hash_file(
     path: "AnyFSPath",
     fs: "FileSystem",
     name: str,
     callback: "Callback" = DEFAULT_CALLBACK,
-) -> Tuple["str", Dict[str, Any]]:
-    info = _adapt_info(fs.info(path), fs.protocol)
+) -> Tuple["str", Meta]:
+    meta = Meta.from_info(fs.info(path), fs.protocol)
 
-    if name in info:
-        value = str(info[name])
+    value = getattr(meta, name, None)
+    if value:
         assert not value.endswith(".dir")
-        return value, info
+        return value, meta
 
     if hasattr(fs, name):
         func = getattr(fs, name)
-        return str(func(path)), info
+        return str(func(path)), meta
 
     if name == "md5":
-        return file_md5(path, fs, callback=callback), info
+        return file_md5(path, fs, callback=callback), meta
     raise NotImplementedError
 
 
@@ -186,15 +169,10 @@ def hash_file(
 
     cb = callback or LargeFileHashingCallback(desc=path)
     with cb:
-        hash_value, info = _hash_file(path, fs, name, callback=cb)
+        hash_value, meta = _hash_file(path, fs, name, callback=cb)
     hash_info = HashInfo(name, hash_value)
     if state:
         assert ".dir" not in hash_info.value
         state.save(path, fs, hash_info)
 
-    meta = Meta(
-        size=info["size"],
-        isexec=is_exec(info.get("mode", 0)),
-        version_id=info.get("version_id"),
-    )
     return meta, hash_info
