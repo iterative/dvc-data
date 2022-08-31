@@ -80,28 +80,16 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             else:
                 return [path]
 
-        self.index._ensure_loaded(root_key)  # pylint: disable=protected-access
         if not detail:
-
-            def node_factory(_, key, children, *args):
-                if key == root_key:
-                    list(children)
-                else:
-                    entries.append(self.path.join(path, key[-1]))
-
-        else:
-
-            def node_factory(_, key, children, *args):
-                if key == root_key:
-                    list(children)
-                else:
-                    epath = self.path.join(path, key[-1])
-                    info = self.index.info(key)
-                    info["name"] = epath
-                    entries.append(info)
+            return [
+                self.path.join(path, key[-1])
+                for key in self.index.ls(root_key, detail=False)
+            ]
 
         entries = []
-        self.index.traverse(node_factory, prefix=root_key)
+        for key, info in self.index.ls(root_key, detail=True):
+            info["name"] = self.path.join(path, key[-1])
+            entries.append(info)
         return entries
 
     def isdvc(self, path, recursive=False):

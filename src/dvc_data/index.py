@@ -167,6 +167,26 @@ class DataIndex(MutableMapping):
             if not entry.obj:
                 raise TreeError
 
+    def ls(self, root_key, detail=True):
+        self._ensure_loaded(root_key)
+        if not detail:
+
+            def node_factory(_, key, children, *args):
+                if key == root_key:
+                    return children
+                else:
+                    return key
+
+        else:
+
+            def node_factory(_, key, children, *args):
+                if key == root_key:
+                    return children
+                else:
+                    return key, self.info(key)
+
+        return self.traverse(node_factory, prefix=root_key)
+
 
 def build(index, path, fs, **kwargs):
     from .build import build as obuild
