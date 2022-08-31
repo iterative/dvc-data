@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass
+from itertools import chain
 from typing import TYPE_CHECKING, Iterable, Optional
 
 from dvc_objects.errors import ObjectFormatError
@@ -9,10 +10,13 @@ from pygtrie import Trie
 
 from dvc_data.objects.tree import Tree, TreeError
 
+from .hashfile.meta import Meta
+
 if TYPE_CHECKING:
+    from dvc_objects.fs.base import FileSystem
+
     from .hashfile.db import HashFileDB
     from .hashfile.hash_info import HashInfo
-    from .hashfile.meta import Meta
     from .hashfile.obj import HashFile
 
 
@@ -24,6 +28,9 @@ class DataIndexEntry:
     odb: Optional["HashFileDB"] = None
     cache: Optional["HashFileDB"] = None
     remote: Optional["HashFileDB"] = None
+
+    fs: Optional["FileSystem"] = None
+    path: Optional["str"] = None
 
     loaded: Optional[bool] = None
 
@@ -186,6 +193,41 @@ class DataIndex(MutableMapping):
                     return key, self.info(key)
 
         return self.traverse(node_factory, prefix=root_key)
+
+
+def _collect_dir(index, prefix, path, fs):
+    for root, dnames, fnames in fs.walk(path):
+        for name in chain(dnames, fnames):
+            key = (*prefix, name)
+            entry_path = fs.path.join(root, name)
+
+            # TODO: localfs.walk doesn't currently support detail=True,
+            # so we have to call fs.info() manually
+            meta = Meta.from_info(fs.info(entry_path), fs.protocol)
+            index[key] = DataIndexEntry(
+                meta=meta,
+                fs=fs,
+                path=entry_path,
+            )
+
+
+def collect(index, path, fs):
+    # NOTE: converting to list to avoid iterating and modifying the dict the
+    # same time.
+    items = list(index.iteritems(shallow=True))
+    for key, entry in items:
+        entry_path = fs.path.join(path, *key)
+
+        info = fs.info(entry_path)
+
+        entry.meta = Meta.from_info(info, fs.protocol)
+        entry.fs = fs
+        entry.path = entry_path
+
+        if info["type"] == "file":
+            continue
+
+        _collect_dir(index, key, entry_path, fs)
 
 
 def build(index, path, fs, **kwargs):
