@@ -195,7 +195,7 @@ class DataIndex(MutableMapping):
         return self.traverse(node_factory, prefix=root_key)
 
 
-def _collect_dir(index, prefix, path, fs):
+def _collect_dir(index, prefix, entry, path, fs):
     for root, dnames, fnames in fs.walk(path):
         for name in chain(dnames, fnames):
             key = (*prefix, name)
@@ -208,6 +208,8 @@ def _collect_dir(index, prefix, path, fs):
                 meta=meta,
                 fs=fs,
                 path=entry_path,
+                cache=entry.cache,
+                remote=entry.remote,
             )
 
 
@@ -223,11 +225,46 @@ def collect(index, path, fs):
         entry.meta = Meta.from_info(info, fs.protocol)
         entry.fs = fs
         entry.path = entry_path
+        entry.hash_info = None
 
         if info["type"] == "file":
             continue
 
-        _collect_dir(index, key, entry_path, fs)
+        _collect_dir(index, key, entry, entry_path, fs)
+
+
+def save(index):
+    from .build import _build_file
+
+    for _, entry in index.iteritems():
+        if entry.meta.isdir:
+            continue
+
+        if entry.meta.version_id and entry.fs.version_aware:
+            # NOTE: if we have versioning available - there is no need to check
+            # metadata as we can directly get correct file content using
+            # version_id.
+            path = entry.fs.path.version_path(
+                entry.path, entry.meta.version_id
+            )
+        else:
+            path = entry.path
+
+        if entry.hash_info:
+            entry.cache.add(
+                path,
+                entry.fs,
+                entry.hash_info.value,
+            )
+        else:
+            _, obj = _build_file(
+                path,
+                entry.fs,
+                entry.cache.hash_name,
+                odb=entry.cache,
+                upload_odb=entry.cache,
+            )
+            entry.hash_info = obj.hash_info
 
 
 def build(index, path, fs, **kwargs):
