@@ -254,12 +254,11 @@ def du(odb, tree):
         return None
 
 
-def _diff(ancestor, other, allow_removed=False):
+def _diff(ancestor, other, allowed=None):
     from dictdiffer import diff
 
-    allowed = ["add"]
-    if allow_removed:
-        allowed.append("remove")
+    if not allowed:
+        allowed = ["add"]
 
     result = list(diff(ancestor, other))
     for typ, _, _ in result:
@@ -271,26 +270,35 @@ def _diff(ancestor, other, allow_removed=False):
     return result
 
 
-def _merge(ancestor, our, their):
+def _merge(ancestor, our, their, allowed=None):
     import copy
 
-    from dictdiffer import patch
+    from dictdiffer import diff, patch
 
-    our_diff = _diff(ancestor, our)
+    our_diff = _diff(ancestor, our, allowed=allowed)
     if not our_diff:
         return copy.deepcopy(their)
 
-    their_diff = _diff(ancestor, their)
+    their_diff = _diff(ancestor, their, allowed=allowed)
     if not their_diff:
         return copy.deepcopy(our)
 
     # make sure there are no conflicting files
-    _diff(our, their, allow_removed=True)
+    patch_ours_first = patch(our_diff + their_diff, ancestor)
+    patch_theirs_first = patch(their_diff + our_diff, ancestor)
+    unmergeable = list(diff(patch_ours_first, patch_theirs_first))
+    if unmergeable:
+        unmergeable_paths = []
+        for paths in patch(unmergeable, {}):
+            unmergeable_paths.append(posixpath.join(*paths))
+        raise MergeError(
+            "unable to auto-merge the following paths:\n"
+            + "\n".join(unmergeable_paths)
+        )
+    return patch_ours_first
 
-    return patch(our_diff + their_diff, ancestor)
 
-
-def merge(odb, ancestor_info, our_info, their_info):
+def merge(odb, ancestor_info, our_info, their_info, allowed=None):
     from . import load
 
     assert our_info
@@ -304,7 +312,9 @@ def merge(odb, ancestor_info, our_info, their_info):
     our = load(odb, our_info)
     their = load(odb, their_info)
 
-    merged_dict = _merge(ancestor.as_dict(), our.as_dict(), their.as_dict())
+    merged_dict = _merge(
+        ancestor.as_dict(), our.as_dict(), their.as_dict(), allowed=allowed
+    )
 
     merged = Tree()
     for key, (meta, oid) in merged_dict.items():
