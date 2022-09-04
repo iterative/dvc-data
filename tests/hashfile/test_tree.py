@@ -4,7 +4,7 @@ import pytest
 
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
-from dvc_data.hashfile.tree import Tree, _merge
+from dvc_data.hashfile.tree import MergeError, Tree, _merge
 
 
 @pytest.mark.parametrize(
@@ -153,22 +153,22 @@ def test_items(trie_dict):
         (
             {
                 ("common",): HashInfo("md5", "123"),
-                ("subdir", "foo"): HashInfo("md5", "345"),
+                ("subdir", "foo"): HashInfo("md5", "456"),
             },
             {
                 ("common",): HashInfo("md5", "123"),
-                ("subdir", "foo"): HashInfo("md5", "345"),
-                ("subdir", "bar"): HashInfo("md5", "678"),
+                ("subdir", "foo"): HashInfo("md5", "456"),
+                ("subdir", "bar"): HashInfo("md5", "789"),
             },
             {
                 ("common",): HashInfo("md5", "123"),
-                ("subdir", "foo"): HashInfo("md5", "345"),
+                ("subdir", "foo"): HashInfo("md5", "456"),
                 ("subdir", "baz"): HashInfo("md5", "91011"),
             },
             {
                 ("common",): HashInfo("md5", "123"),
-                ("subdir", "foo"): HashInfo("md5", "345"),
-                ("subdir", "bar"): HashInfo("md5", "678"),
+                ("subdir", "foo"): HashInfo("md5", "456"),
+                ("subdir", "bar"): HashInfo("md5", "789"),
                 ("subdir", "baz"): HashInfo("md5", "91011"),
             },
         ),
@@ -193,8 +193,123 @@ def test_items(trie_dict):
             {},
             {("bar",): HashInfo("md5", "123")},
         ),
+        (
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+                ("subdir", "bar"): HashInfo("md5", "456"),
+                ("subdir", "baz"): HashInfo("md5", "789"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+                ("subdir", "baz"): HashInfo("md5", "789"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+                ("subdir", "bar"): HashInfo("md5", "456"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+            },
+        ),
+        (
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "456"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+                ("subdir", "bar"): HashInfo("md5", "789"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "456"),
+                ("subdir", "bar"): HashInfo("md5", "789"),
+            },
+        ),
+        (
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+                ("subdir", "bar"): HashInfo("md5", "456"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("subdir", "bar"): HashInfo("md5", "456"),
+            },
+            {},
+        ),
     ],
 )
 def test_merge(ancestor_dict, our_dict, their_dict, merged_dict):
-    actual = _merge(ancestor_dict, our_dict, their_dict)
+    actual = _merge(
+        ancestor_dict,
+        our_dict,
+        their_dict,
+        allowed=["add", "remove", "change"],
+    )
     assert actual == merged_dict
+
+
+@pytest.mark.parametrize(
+    "ancestor_dict, our_dict, their_dict, error",
+    [
+        (
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "456"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "789"),
+            },
+            "subdir/foo",
+        ),
+        (
+            {},
+            {
+                ("subdir", "foo"): HashInfo("md5", "456"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "789"),
+            },
+            "subdir/foo",
+        ),
+        (
+            {
+                ("subdir", "foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("subdir", "foo"): HashInfo("md5", "456"),
+            },
+            {},
+            "subdir/foo",
+        ),
+        (
+            {
+                ("foo"): HashInfo("md5", "123"),
+                ("subdir", "foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("foo"): HashInfo("md5", "123"),
+                ("subdir", "foo"): HashInfo("md5", "456"),
+            },
+            {
+                ("foo"): HashInfo("md5", "123"),
+            },
+            "subdir/foo",
+        ),
+    ],
+)
+def test_merge_conflict(ancestor_dict, our_dict, their_dict, error):
+    with pytest.raises(MergeError) as excinfo:
+        _merge(
+            ancestor_dict,
+            our_dict,
+            their_dict,
+            allowed=["add", "remove", "change"],
+        )
+    error_msg = "unable to auto-merge the following paths:\n" + error
+    assert error_msg == str(excinfo.value)
