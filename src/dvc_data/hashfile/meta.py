@@ -67,6 +67,7 @@ class Meta:
             nfiles=d.pop(cls.PARAM_NFILES, None),
             isexec=d.pop(cls.PARAM_ISEXEC, False),
             version_id=d.pop(cls.PARAM_VERSION_ID, None),
+            etag=d.pop(cls.PARAM_ETAG, None),
         )
 
     def to_dict(self) -> Dict[str, Any]:
