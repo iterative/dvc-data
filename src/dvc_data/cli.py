@@ -21,7 +21,7 @@ from dvc_objects.fs import LocalFileSystem, MemoryFileSystem
 from dvc_objects.fs.callbacks import Callback
 from rich.traceback import install
 
-from dvc_data import load
+from dvc_data.hashfile import load
 from dvc_data.hashfile.build import build as _build
 from dvc_data.hashfile.checkout import checkout as _checkout
 from dvc_data.hashfile.db import HashFileDB
