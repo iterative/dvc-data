@@ -3,14 +3,14 @@ from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
 from dvc_objects.fs import Schemes
 
-from .hashfile.hash_info import HashInfo
-from .objects.tree import Tree
+from .hash_info import HashInfo
+from .tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
 
     from .db.index import ObjectDBIndexBase
-    from .hashfile.obj import HashFile
+    from .obj import HashFile
 
 logger = logging.getLogger(__name__)
 

@@ -22,22 +22,22 @@ from dvc_objects.fs.callbacks import Callback
 from rich.traceback import install
 
 from dvc_data import load
-from dvc_data.build import build as _build
-from dvc_data.checkout import checkout as _checkout
-from dvc_data.diff import ROOT
-from dvc_data.diff import diff as _diff
+from dvc_data.hashfile.build import build as _build
+from dvc_data.hashfile.checkout import checkout as _checkout
 from dvc_data.hashfile.db import HashFileDB
+from dvc_data.hashfile.diff import ROOT
+from dvc_data.hashfile.diff import diff as _diff
 from dvc_data.hashfile.hash import algorithms_available
 from dvc_data.hashfile.hash import file_md5 as _file_md5
 from dvc_data.hashfile.hash import fobj_md5 as _fobj_md5
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.obj import HashFile
 from dvc_data.hashfile.state import State
-from dvc_data.objects.tree import Tree
-from dvc_data.objects.tree import du as _du
-from dvc_data.objects.tree import merge
+from dvc_data.hashfile.transfer import transfer as _transfer
+from dvc_data.hashfile.tree import Tree
+from dvc_data.hashfile.tree import du as _du
+from dvc_data.hashfile.tree import merge
 from dvc_data.repo import NotARepo, Repo
-from dvc_data.transfer import transfer as _transfer
 
 install(show_locals=True, suppress=[typer, click])
 

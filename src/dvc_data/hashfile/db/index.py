@@ -90,7 +90,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
     ):  # pylint: disable=super-init-not-called
         from dvc_objects.fs import LocalFileSystem
 
-        from ..hashfile.cache import Cache, Index
+        from ..cache import Cache, Index
 
         self.index_dir = os.path.join(tmp_dir, self.INDEX_DIR, name)
         self.fs = LocalFileSystem()
@@ -110,7 +110,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
 
     def clear(self):
         """Clear this index (to force re-indexing later)."""
-        from ..hashfile.cache import Timeout
+        from ..cache import Timeout
 
         try:
             self.index.clear()
@@ -119,7 +119,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
 
     def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
         """Update this index, adding the specified hashes."""
-        from ..hashfile.cache import Timeout
+        from ..cache import Timeout
 
         try:
             with self.index.transact():

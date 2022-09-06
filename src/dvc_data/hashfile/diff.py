@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 from attrs import asdict, define, field
 
 if TYPE_CHECKING:
-    from .hashfile.db import HashFileDB
-    from .hashfile.hash_info import HashInfo
-    from .hashfile.meta import Meta
-    from .hashfile.obj import HashFile
+    from .db import HashFileDB
+    from .hash_info import HashInfo
+    from .meta import Meta
+    from .obj import HashFile
 
 
 ADD = "add"
@@ -76,7 +76,7 @@ def diff(  # noqa: C901
     new: Optional["HashFile"],
     cache: "HashFileDB",
 ) -> DiffResult:
-    from .objects.tree import Tree
+    from .tree import Tree
 
     if old is None and new is None:
         return DiffResult()

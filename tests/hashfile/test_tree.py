@@ -4,7 +4,7 @@ import pytest
 
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
-from dvc_data.objects.tree import Tree, _merge
+from dvc_data.hashfile.tree import Tree, _merge
 
 
 @pytest.mark.parametrize(

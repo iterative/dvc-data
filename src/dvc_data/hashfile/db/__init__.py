@@ -8,15 +8,42 @@ from typing import TYPE_CHECKING, Optional
 from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
 
-from .hash_info import HashInfo
-from .obj import HashFile
+from ..hash_info import HashInfo
+from ..obj import HashFile
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
     from dvc_objects.fs.callbacks import Callback
 
+    from .index import ObjectDBIndexBase
+
 
 logger = logging.getLogger(__name__)
+
+
+def get_odb(fs, path, **config):
+    from dvc_objects.fs import Schemes
+
+    from .local import LocalHashFileDB
+
+    if fs.protocol == Schemes.LOCAL:
+        return LocalHashFileDB(fs, path, **config)
+
+    return HashFileDB(fs, path, **config)
+
+
+def get_index(odb) -> "ObjectDBIndexBase":
+    import hashlib
+
+    from .index import ObjectDBIndex, ObjectDBIndexNoop
+
+    cls = ObjectDBIndex if odb.tmp_dir else ObjectDBIndexNoop
+    return cls(
+        odb.tmp_dir,
+        hashlib.sha256(
+            odb.fs.unstrip_protocol(odb.path).encode("utf-8")
+        ).hexdigest(),
+    )
 
 
 class HashFileDB(ObjectDB):
@@ -26,7 +53,7 @@ class HashFileDB(ObjectDB):
     CACHE_MODE: Optional[int] = None
 
     def __init__(self, fs: "FileSystem", path: str, **config):
-        from .state import StateNoop
+        from ..state import StateNoop
 
         super().__init__(fs, path)
         self.state = config.get("state", StateNoop())
@@ -119,7 +146,7 @@ class HashFileDB(ObjectDB):
 
         - Remove the file from cache if it doesn't match the actual hash
         """
-        from .hash import hash_file
+        from ..hash import hash_file
 
         obj = self.get(oid)
         if self.is_protected(obj.path):

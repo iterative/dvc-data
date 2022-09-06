@@ -2,7 +2,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
     from dvc_objects.errors import ObjectDBPermissionError
 
     from ._progress import QueryingProgress
-    from .objects.tree import Tree
+    from .tree import Tree
 
     if odb.read_only:
         raise ObjectDBPermissionError("Cannot gc read-only ODB")
@@ -18,7 +18,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
             )
 
     def _is_dir_hash(_hash):
-        from .hashfile.hash_info import HASH_DIR_SUFFIX
+        from .hash_info import HASH_DIR_SUFFIX
 
         return _hash.endswith(HASH_DIR_SUFFIX)
 

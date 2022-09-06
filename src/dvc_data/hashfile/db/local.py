@@ -9,7 +9,7 @@ from dvc_objects.fs.system import umask
 from dvc_objects.fs.utils import copyfile, relpath, remove
 from shortuuid import uuid
 
-from ..hashfile.db import HashFileDB
+from . import HashFileDB
 
 logger = logging.getLogger(__name__)
 

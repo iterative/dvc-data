@@ -8,9 +8,8 @@ from dvc_objects.errors import ObjectFormatError
 from pygtrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
 from pygtrie import Trie
 
-from dvc_data.objects.tree import Tree, TreeError
-
 from .hashfile.meta import Meta
+from .hashfile.tree import Tree, TreeError
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
@@ -234,7 +233,7 @@ def collect(index, path, fs):
 
 
 def save(index):
-    from .build import _build_file
+    from .hashfile.build import _build_file
 
     for _, entry in index.iteritems():
         if entry.meta.isdir:
@@ -268,7 +267,7 @@ def save(index):
 
 
 def build(index, path, fs, **kwargs):
-    from .build import build as obuild
+    from .hashfile.build import build as obuild
 
     # NOTE: converting to list to avoid iterating and modifying the dict the
     # same time.
@@ -302,7 +301,7 @@ def build(index, path, fs, **kwargs):
 
 def checkout(index, path, fs, **kwargs):
     from . import load
-    from .checkout import checkout as ocheckout
+    from .hashfile.checkout import checkout as ocheckout
 
     for key, entry in index.iteritems():
         if not entry.obj:
@@ -311,7 +310,7 @@ def checkout(index, path, fs, **kwargs):
 
 
 def transfer(index, src, dst):
-    from .transfer import transfer as otransfer
+    from .hashfile.transfer import transfer as otransfer
 
     by_direction = defaultdict(set)
     for _, entry in index.iteritems():
