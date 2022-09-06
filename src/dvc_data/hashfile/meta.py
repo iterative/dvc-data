@@ -17,6 +17,7 @@ class Meta:
     PARAM_VERSION_ID: ClassVar[str] = "version_id"
     PARAM_ETAG: ClassVar[str] = "etag"
     PARAM_CHECKSUM: ClassVar[str] = "checksum"
+    PARAM_MD5: ClassVar[str] = "md5"
 
     isdir: bool = False
     size: Optional[int] = None
@@ -25,6 +26,7 @@ class Meta:
     version_id: Optional[str] = None
     etag: Optional[str] = None
     checksum: Optional[str] = None
+    md5: Optional[str] = None
 
     @classmethod
     def from_info(
@@ -36,6 +38,7 @@ class Meta:
             isexec=is_exec(info.get("mode", 0)),
             version_id=info.get("version_id"),
             etag=info.get("etag"),
+            md5=info.get("md5"),
         )
 
         if protocol == "s3" and "ETag" in info:
