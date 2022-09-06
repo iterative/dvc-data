@@ -1,8 +1,8 @@
 import logging
 from typing import TYPE_CHECKING, Dict
 
-from ..hashfile.db import HashFileDB, HashInfo
-from ..hashfile.obj import HashFile
+from ..obj import HashFile
+from . import HashFileDB, HashInfo
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem

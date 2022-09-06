@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 from dvc_objects._tqdm import Tqdm
 
 from .db.reference import ReferenceHashFileDB
-from .hashfile.hash import hash_file
-from .hashfile.meta import Meta
-from .hashfile.obj import HashFile
+from .hash import hash_file
+from .meta import Meta
+from .obj import HashFile
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
-    from .hashfile._ignore import Ignore
-    from .hashfile.db import HashFileDB
+    from ._ignore import Ignore
+    from .db import HashFileDB
 
 
 DefaultIgnoreFile = ".dvcignore"
@@ -38,7 +38,7 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     from dvc_objects.fs.callbacks import Callback
     from dvc_objects.fs.utils import tmp_fname
 
-    from .hashfile.hash import HashStreamFile
+    from .hash import HashStreamFile
 
     path = upload_odb.fs.path
     tmp_info = path.join(upload_odb.path, tmp_fname())
@@ -86,8 +86,8 @@ def _build_tree(
     no_progress_bar=False,
     **kwargs,
 ):
-    from .hashfile.hash_info import HashInfo
-    from .objects.tree import Tree
+    from .hash_info import HashInfo
+    from .tree import Tree
 
     value = fs_info.get(name)
     if odb and value:

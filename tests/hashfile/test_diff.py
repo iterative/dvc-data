@@ -1,8 +1,8 @@
 import pytest
 
-from dvc_data.diff import ROOT, Change, TreeEntry, diff
+from dvc_data.hashfile.diff import ROOT, Change, TreeEntry, diff
 from dvc_data.hashfile.obj import HashFile
-from dvc_data.objects.tree import Tree
+from dvc_data.hashfile.tree import Tree
 
 
 @pytest.fixture
