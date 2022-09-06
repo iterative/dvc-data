@@ -63,12 +63,12 @@ class Meta:
     def from_dict(cls, d: Dict[str, Any]) -> "Meta":
         d = d or {}
         return cls(
-            size=d.pop(cls.PARAM_SIZE, None),
-            nfiles=d.pop(cls.PARAM_NFILES, None),
-            isexec=d.pop(cls.PARAM_ISEXEC, False),
-            version_id=d.pop(cls.PARAM_VERSION_ID, None),
-            etag=d.pop(cls.PARAM_ETAG, None),
-            md5=d.pop(cls.PARAM_MD5, None),
+            size=d.get(cls.PARAM_SIZE),
+            nfiles=d.get(cls.PARAM_NFILES),
+            isexec=d.get(cls.PARAM_ISEXEC, False),
+            version_id=d.get(cls.PARAM_VERSION_ID),
+            etag=d.get(cls.PARAM_ETAG),
+            md5=d.get(cls.PARAM_MD5),
         )
 
     def to_dict(self) -> Dict[str, Any]:
