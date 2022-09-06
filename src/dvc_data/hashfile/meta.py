@@ -68,6 +68,7 @@ class Meta:
             isexec=d.pop(cls.PARAM_ISEXEC, False),
             version_id=d.pop(cls.PARAM_VERSION_ID, None),
             etag=d.pop(cls.PARAM_ETAG, None),
+            md5=d.pop(cls.PARAM_MD5, None),
         )
 
     def to_dict(self) -> Dict[str, Any]:
