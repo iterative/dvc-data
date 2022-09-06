@@ -300,7 +300,7 @@ def build(index, path, fs, **kwargs):
 
 
 def checkout(index, path, fs, **kwargs):
-    from . import load
+    from .hashfile import load
     from .hashfile.checkout import checkout as ocheckout
 
     for key, entry in index.iteritems():
