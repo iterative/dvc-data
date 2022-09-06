@@ -35,6 +35,7 @@ class Meta:
             size=info.get("size"),
             isexec=is_exec(info.get("mode", 0)),
             version_id=info.get("version_id"),
+            etag=info.get("etag"),
         )
 
         if protocol == "s3" and "ETag" in info:
