@@ -222,10 +222,12 @@ def collect(index, path, fs):
 
         info = fs.info(entry_path)
 
-        entry.meta = Meta.from_info(info, fs.protocol)
+        fs_meta = Meta.from_info(info, fs.protocol)
+        if entry.meta != fs_meta:
+            entry.meta = Meta.from_info(info, fs.protocol)
+            entry.hash_info = None
         entry.fs = fs
         entry.path = entry_path
-        entry.hash_info = None
 
         if info["type"] == "file":
             continue
