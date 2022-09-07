@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from attrs import Attribute, asdict, define, fields_dict
 from dvc_objects.fs.utils import is_exec
@@ -18,6 +18,8 @@ class Meta:
     PARAM_ETAG: ClassVar[str] = "etag"
     PARAM_CHECKSUM: ClassVar[str] = "checksum"
     PARAM_MD5: ClassVar[str] = "md5"
+
+    fields: ClassVar[List[str]]
 
     isdir: bool = False
     size: Optional[int] = None
@@ -64,8 +66,14 @@ class Meta:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Meta":
-        kwargs = {field: d[field] for field in fields_dict(cls) if field in d}
+        kwargs = {}
+        for field in cls.fields:
+            if field in d:
+                kwargs[field] = d[field]
         return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self, recurse=False, filter=_filter_default_or_none)
+
+
+Meta.fields = list(fields_dict(Meta))
