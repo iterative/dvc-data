@@ -35,7 +35,7 @@ class Meta:
         cls, info: Dict[str, Any], protocol: Optional[str] = None
     ) -> "Meta":
         etag = info.get("etag")
-        checksum = None
+        checksum = info.get("checksum")
 
         if protocol == "s3" and "ETag" in info:
             etag = info["ETag"].strip('"')
