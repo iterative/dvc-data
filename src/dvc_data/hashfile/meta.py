@@ -1,6 +1,6 @@
 from typing import Any, ClassVar, Dict, Optional
 
-from attrs import Attribute, asdict, define
+from attrs import Attribute, asdict, define, fields_dict
 from dvc_objects.fs.utils import is_exec
 
 
@@ -32,44 +32,40 @@ class Meta:
     def from_info(
         cls, info: Dict[str, Any], protocol: Optional[str] = None
     ) -> "Meta":
-        meta = Meta(
-            isdir=(info["type"] == "directory"),
-            size=info.get("size"),
-            isexec=is_exec(info.get("mode", 0)),
-            version_id=info.get("version_id"),
-            etag=info.get("etag"),
-            md5=info.get("md5"),
-        )
+        etag = info.get("etag")
+        checksum = None
 
         if protocol == "s3" and "ETag" in info:
-            meta.etag = info["ETag"].strip('"')
+            etag = info["ETag"].strip('"')
         elif protocol == "gs" and "etag" in info:
             import base64
 
-            meta.etag = base64.b64decode(info["etag"]).hex()
+            etag = base64.b64decode(info["etag"]).hex()
         elif (
             protocol
             and protocol.startswith("http")
             and ("ETag" in info or "Content-MD5" in info)
         ):
-            meta.checksum = info.get("ETag") or info.get("Content-MD5")
+            checksum = info.get("ETag") or info.get("Content-MD5")
 
+        version_id = info.get("version_id")
         if protocol == "s3" and "VersionId" in info:
-            meta.version_id = info.get("VersionId")
+            version_id = info.get("VersionId")
 
-        return meta
+        return Meta(
+            isdir=info["type"] == "directory",
+            size=info.get("size"),
+            isexec=is_exec(info.get("mode", 0)),
+            version_id=version_id,
+            etag=etag,
+            checksum=checksum,
+            md5=info.get("md5"),
+        )
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Meta":
-        d = d or {}
-        return cls(
-            size=d.get(cls.PARAM_SIZE),
-            nfiles=d.get(cls.PARAM_NFILES),
-            isexec=d.get(cls.PARAM_ISEXEC, False),
-            version_id=d.get(cls.PARAM_VERSION_ID),
-            etag=d.get(cls.PARAM_ETAG),
-            md5=d.get(cls.PARAM_MD5),
-        )
+        kwargs = {field: d[field] for field in fields_dict(cls) if field in d}
+        return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self, recurse=False, filter=_filter_default_or_none)
