@@ -196,8 +196,9 @@ class DataIndex(MutableMapping):
 
 def _collect_dir(index, prefix, entry, path, fs):
     for root, dnames, fnames in fs.walk(path):
+        sub_prefix = fs.path.relparts(root, path) if root != path else ()
         for name in chain(dnames, fnames):
-            key = (*prefix, name)
+            key = (*prefix, *sub_prefix, name)
             entry_path = fs.path.join(root, name)
 
             # TODO: localfs.walk doesn't currently support detail=True,
