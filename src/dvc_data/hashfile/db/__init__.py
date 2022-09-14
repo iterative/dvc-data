@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
     from dvc_objects.fs.callbacks import Callback
 
+    from ..tree import Tree
     from .index import ObjectDBIndexBase
 
 
@@ -178,3 +179,14 @@ class HashFileDB(ObjectDB):
 
     def _remove_unpacked_dir(self, hash_):
         pass
+
+
+def add_update_tree(odb: HashFileDB, tree: "Tree") -> "Tree":
+    """Add tree to ODB and update fs/path to use ODB fs/path."""
+    if not tree.oid:
+        tree.digest()
+    odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
+    raw = odb.get(tree.oid)
+    tree.fs = raw.fs
+    tree.path = raw.path
+    return tree
