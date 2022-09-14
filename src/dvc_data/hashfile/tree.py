@@ -8,13 +8,13 @@ from dvc_objects.obj import Object
 from funcy import cached_property
 
 from ..hashfile.hash import hash_file
+from ..hashfile.meta import Meta
 from ..hashfile.obj import HashFile
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
 
     from ..hashfile.hash_info import HashInfo
-    from ..hashfile.meta import Meta
 
 logger = logging.getLogger(__name__)
 
@@ -121,19 +121,18 @@ class Tree(HashFile):
     def as_dict(self):
         return self._dict.copy()
 
-    def as_list(self):
+    def as_list(self, with_meta: bool = False):
         from operator import itemgetter
 
         # Sorting the list by path to ensure reproducibility
         return sorted(
             (
                 {
-                    # NOTE: not using hash_info.to_dict() because we don't want
-                    # size/nfiles fields at this point.
-                    hi.name: hi.value,
+                    **(meta.to_dict() if with_meta else {}),
+                    **hi.to_dict(),
                     self.PARAM_RELPATH: posixpath.sep.join(parts),
                 }
-                for parts, _, hi in self  # noqa: B301
+                for parts, meta, hi in self  # noqa: B301
             ),
             key=itemgetter(self.PARAM_RELPATH),
         )
@@ -142,7 +141,7 @@ class Tree(HashFile):
         return json.dumps(self.as_list(), sort_keys=True).encode("utf-8")
 
     @classmethod
-    def from_list(cls, lst):
+    def from_list(cls, lst, hash_name: Optional[str] = None):
         from ..hashfile.hash_info import HashInfo
 
         tree = cls()
@@ -150,8 +149,12 @@ class Tree(HashFile):
             entry = _entry.copy()
             relpath = entry.pop(cls.PARAM_RELPATH)
             parts = tuple(relpath.split(posixpath.sep))
-            hash_info = HashInfo.from_dict(entry)
-            tree.add(parts, None, hash_info)
+            meta = Meta.from_dict(entry)
+            if hash_name:
+                hash_info = HashInfo(hash_name, getattr(meta, hash_name))
+            else:
+                hash_info = HashInfo.from_dict(entry)
+            tree.add(parts, meta, hash_info)
         return tree
 
     @classmethod
