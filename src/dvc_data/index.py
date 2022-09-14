@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 from pygtrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
@@ -98,6 +98,8 @@ class DataIndex(MutableMapping):
             return
 
         for ikey, (meta, hash_info) in entry.obj.iteritems():
+            if not meta and entry.hash_info and entry.hash_info == hash_info:
+                meta = entry.meta
             self._trie[key + ikey] = DataIndexEntry(
                 odb=entry.odb,
                 cache=entry.odb,
@@ -241,8 +243,11 @@ def collect(index, path, fs):
 def save(index):
     from .hashfile.build import _build_file
 
-    for _, entry in index.iteritems():
+    dir_entries: List[DataIndexKey] = []
+
+    for key, entry in index.iteritems():
         if entry.meta.isdir:
+            dir_entries.append(key)
             continue
 
         if entry.meta.version_id and entry.fs.version_aware:
@@ -270,6 +275,23 @@ def save(index):
                 upload_odb=entry.cache,
             )
             entry.hash_info = obj.hash_info
+
+    for key in dir_entries:
+        _save_dir_entry(index, key)
+
+
+def _save_dir_entry(index: DataIndex, key: DataIndexKey):
+    from .hashfile.db import add_update_tree
+    from .hashfile.tree import tree_from_index
+
+    entry = index[key]
+    assert entry.cache
+    meta, tree = tree_from_index(index, key)
+    tree = add_update_tree(entry.cache, tree)
+    entry.meta = meta
+    entry.hash_info = tree.hash_info
+    assert tree.hash_info.name and tree.hash_info.value
+    setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
 
 
 def build(index, path, fs, **kwargs):
