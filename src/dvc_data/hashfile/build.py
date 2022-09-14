@@ -86,6 +86,7 @@ def _build_tree(
     no_progress_bar=False,
     **kwargs,
 ):
+    from .db import add_update_tree
     from .hash_info import HashInfo
     from .tree import Tree
 
@@ -102,7 +103,7 @@ def _build_tree(
     else:
         walk_iter = fs.walk(path)
 
-    tree_meta = Meta(size=0, nfiles=0)
+    tree_meta = Meta(size=0, nfiles=0, isdir=True)
     # assuring mypy that they are not None but integer
     assert tree_meta.size is not None
     assert tree_meta.nfiles is not None
@@ -148,11 +149,7 @@ def _build_tree(
                 tree_meta.nfiles += 1
 
     tree.digest()
-    odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
-    raw = odb.get(tree.oid)
-    tree.fs = raw.fs
-    tree.path = raw.path
-
+    tree = add_update_tree(odb, tree)
     return tree_meta, tree
 
 

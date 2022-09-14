@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 from pygtrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     from .hashfile.db import HashFileDB
     from .hashfile.hash_info import HashInfo
     from .hashfile.obj import HashFile
+
+
+DataIndexKey = Tuple[str]
 
 
 @dataclass
