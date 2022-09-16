@@ -352,8 +352,7 @@ def du(oid: str = typer.Argument(..., allow_dash=True)):
 def rm(oid: str = typer.Argument(..., allow_dash=True)):
     odb = get_odb()
     oid = from_shortoid(odb, oid)
-    path = odb.oid_to_path(oid)
-    odb.fs.remove(path)
+    odb.delete(oid)
 
 
 @app.command(
