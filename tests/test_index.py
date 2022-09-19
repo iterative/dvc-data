@@ -11,6 +11,7 @@ from dvc_data.index import (
     checkout,
     collect,
     commit,
+    md5,
     save,
 )
 
@@ -109,6 +110,35 @@ def test_collect(tmp_upath, odb, as_filesystem):
     assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
 
 
+def test_md5(tmp_upath, odb, as_filesystem):
+    (tmp_upath / "foo").write_bytes(b"foo\n")
+    (tmp_upath / "data").mkdir()
+    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(odb=odb, cache=odb),
+            ("data",): DataIndexEntry(odb=odb, cache=odb),
+        },
+    )
+    fs = as_filesystem(tmp_upath.fs)
+    collect(index, tmp_upath, fs)
+    md5(index)
+    assert index[("foo",)].hash_info == HashInfo(
+        "md5",
+        "d3b07384d113edec49eaa6238ad5ff00",
+    )
+    assert index[("data", "bar")].hash_info == HashInfo(
+        "md5",
+        "c157a79031e1c40f85931829bc5fc552",
+    )
+    assert index[("data", "baz")].hash_info == HashInfo(
+        "md5",
+        "258622b1688250cb619f3c9ccaefb7eb",
+    )
+
+
 def test_save(tmp_upath, odb, as_filesystem):
     (tmp_upath / "foo").write_bytes(b"foo\n")
     (tmp_upath / "data").mkdir()
@@ -123,6 +153,7 @@ def test_save(tmp_upath, odb, as_filesystem):
     )
     fs = as_filesystem(tmp_upath.fs)
     collect(index, tmp_upath, fs)
+    md5(index)
     save(index)
     assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
     assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
