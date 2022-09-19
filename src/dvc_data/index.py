@@ -242,9 +242,33 @@ def collect(index, path, fs):
         _collect_dir(index, key, entry, entry_path, fs)
 
 
-def save(index):
+def md5(index):
     from .hashfile.build import _build_file
 
+    for _key, entry in index.iteritems():
+        if entry.meta.isdir:
+            continue
+
+        if entry.meta.version_id and entry.fs.version_aware:
+            # NOTE: if we have versioning available - there is no need to check
+            # metadata as we can directly get correct file content using
+            # version_id.
+            path = entry.fs.path.version_path(
+                entry.path, entry.meta.version_id
+            )
+        else:
+            path = entry.path
+
+        _, obj = _build_file(
+            path,
+            entry.fs,
+            "md5",
+            odb=entry.cache,
+        )
+        entry.hash_info = obj.hash_info
+
+
+def save(index):
     dir_entries: List[DataIndexKey] = []
 
     for key, entry in index.iteritems():
@@ -268,15 +292,6 @@ def save(index):
                 entry.fs,
                 entry.hash_info.value,
             )
-        else:
-            _, obj = _build_file(
-                path,
-                entry.fs,
-                entry.cache.hash_name,
-                odb=entry.cache,
-                upload_odb=entry.cache,
-            )
-            entry.hash_info = obj.hash_info
 
     for key in dir_entries:
         _save_dir_entry(index, key)
