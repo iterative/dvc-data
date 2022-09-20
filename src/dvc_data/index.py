@@ -208,7 +208,9 @@ def _collect_dir(index, prefix, entry, path, fs):
 
             # TODO: localfs.walk doesn't currently support detail=True,
             # so we have to call fs.info() manually
-            meta = Meta.from_info(fs.info(entry_path), fs.protocol)
+            meta = Meta.from_info(
+                fs.info(entry_path, refresh=True), fs.protocol
+            )
             index[key] = DataIndexEntry(
                 meta=meta,
                 fs=fs,
@@ -225,7 +227,7 @@ def collect(index, path, fs):
     for key, entry in items:
         entry_path = fs.path.join(path, *key)
 
-        info = fs.info(entry_path)
+        info = fs.info(entry_path, refresh=True)
 
         fs_meta = Meta.from_info(info, fs.protocol)
         if entry.meta != fs_meta:
