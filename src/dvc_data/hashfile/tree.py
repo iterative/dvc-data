@@ -284,8 +284,14 @@ def _merge(ancestor, our, their, allowed=None):
         return copy.deepcopy(our)
 
     # make sure there are no conflicting files
-    patch_ours_first = patch(our_diff + their_diff, ancestor)
-    patch_theirs_first = patch(their_diff + our_diff, ancestor)
+    try:
+        patch_ours_first = patch(our_diff + their_diff, ancestor)
+        patch_theirs_first = patch(their_diff + our_diff, ancestor)
+    except KeyError as e:
+        # todo: fails if both diffs delete the same object
+        raise MergeError(
+            "unable to auto-merge the following paths:" f"\nboth deleted: {e}"
+        )
     unmergeable = list(diff(patch_ours_first, patch_theirs_first))
     if unmergeable:
         unmergeable_paths = []

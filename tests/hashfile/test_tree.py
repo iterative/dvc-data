@@ -240,6 +240,50 @@ def test_items(trie_dict):
             },
             {},
         ),
+        (
+            {
+                ("foo"): HashInfo("md5", "123"),
+                ("bar"): HashInfo("md5", "456"),
+            },
+            {
+                ("foo"): HashInfo("md5", "789"),
+                ("bar"): HashInfo("md5", "456"),
+            },
+            {
+                ("foo"): HashInfo("md5", "123"),
+                ("bar"): HashInfo("md5", "101112"),
+            },
+            {
+                ("foo"): HashInfo("md5", "789"),
+                ("bar"): HashInfo("md5", "101112"),
+            },
+        ),
+        (
+            {},
+            {
+                ("foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("foo"): HashInfo("md5", "123"),
+            },
+        ),
+        (
+            {
+                ("foo"): HashInfo("md5", "123"),
+            },
+            {
+                ("foo"): HashInfo("md5", "456"),
+            },
+            {
+                ("foo"): HashInfo("md5", "456"),
+            },
+            {
+                ("foo"): HashInfo("md5", "456"),
+            },
+        ),
     ],
 )
 def test_merge(ancestor_dict, our_dict, their_dict, merged_dict):
@@ -300,6 +344,15 @@ def test_merge(ancestor_dict, our_dict, their_dict, merged_dict):
                 ("foo"): HashInfo("md5", "123"),
             },
             "subdir/foo",
+        ),
+        (
+            {
+                ("foo"): HashInfo("md5", "123"),
+                ("bar"): HashInfo("md5", "456"),
+            },
+            {},
+            {},
+            "both deleted: 'foo'",
         ),
     ],
 )
