@@ -243,9 +243,10 @@ def collect(index, path, fs):
 
 
 def md5(index):
-    from .hashfile.build import _build_file
+    from .hashfile.hash import file_md5
+    from .hashfile.hash_info import HashInfo
 
-    for _key, entry in index.iteritems():
+    for _, entry in index.iteritems():
         if entry.meta.isdir:
             continue
 
@@ -259,13 +260,7 @@ def md5(index):
         else:
             path = entry.path
 
-        _, obj = _build_file(
-            path,
-            entry.fs,
-            "md5",
-            odb=entry.cache,
-        )
-        entry.hash_info = obj.hash_info
+        entry.hash_info = HashInfo("md5", file_md5(path, entry.fs))
 
 
 def save(index):
