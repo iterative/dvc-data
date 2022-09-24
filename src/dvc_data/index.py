@@ -242,8 +242,10 @@ def collect(index, path, fs):
         _collect_dir(index, key, entry, entry_path, fs)
 
 
-def md5(index):
+def compute_hash(index, name=None):
     from .hashfile.build import _build_file
+
+    name = name or "md5"
 
     for _key, entry in index.iteritems():
         if entry.meta.isdir:
@@ -262,7 +264,7 @@ def md5(index):
         _, obj = _build_file(
             path,
             entry.fs,
-            "md5",
+            name,
             odb=entry.cache,
         )
         entry.hash_info = obj.hash_info

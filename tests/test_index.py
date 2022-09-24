@@ -11,7 +11,7 @@ from dvc_data.index import (
     checkout,
     collect,
     commit,
-    md5,
+    compute_hash,
     save,
 )
 
@@ -110,7 +110,7 @@ def test_collect(tmp_upath, odb, as_filesystem):
     assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
 
 
-def test_md5(tmp_upath, odb, as_filesystem):
+def test_compute_hash(tmp_upath, odb, as_filesystem):
     (tmp_upath / "foo").write_bytes(b"foo\n")
     (tmp_upath / "data").mkdir()
     (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
@@ -124,7 +124,7 @@ def test_md5(tmp_upath, odb, as_filesystem):
     )
     fs = as_filesystem(tmp_upath.fs)
     collect(index, tmp_upath, fs)
-    md5(index)
+    compute_hash(index)
     assert index[("foo",)].hash_info == HashInfo(
         "md5",
         "d3b07384d113edec49eaa6238ad5ff00",
@@ -153,7 +153,7 @@ def test_save(tmp_upath, odb, as_filesystem):
     )
     fs = as_filesystem(tmp_upath.fs)
     collect(index, tmp_upath, fs)
-    md5(index)
+    compute_hash(index)
     save(index)
     assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
     assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
