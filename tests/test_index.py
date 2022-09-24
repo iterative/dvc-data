@@ -261,7 +261,7 @@ def test_commit(tmp_upath, odb, as_filesystem):
         (write_json, read_json),
     ],
 )
-def test_write_read(tmp_upath, odb, tmp_path, write, read):
+def test_write_read(odb, tmp_path, write, read):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(odb=odb, cache=odb),
