@@ -1,13 +1,16 @@
+import json
 from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 from pygtrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
 from pygtrie import Trie
 
+from .hashfile.cache import Cache
+from .hashfile.hash_info import HashInfo
 from .hashfile.meta import Meta
 from .hashfile.tree import Tree, TreeError
 
@@ -15,7 +18,6 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
     from .hashfile.db import HashFileDB
-    from .hashfile.hash_info import HashInfo
     from .hashfile.obj import HashFile
 
 
@@ -35,6 +37,31 @@ class DataIndexEntry:
     path: Optional["str"] = None
 
     loaded: Optional[bool] = None
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Dict]) -> "DataIndexEntry":
+        ret = cls()
+
+        meta = d.get("meta")
+        if meta:
+            ret.meta = Meta.from_dict(meta)
+
+        hash_info = d.get("hash_info")
+        if hash_info:
+            ret.hash_info = HashInfo.from_dict(hash_info)
+
+        return ret
+
+    def to_dict(self) -> Dict[str, Dict]:
+        ret = {}
+
+        if self.meta:
+            ret["meta"] = self.meta.to_dict()
+
+        if self.hash_info:
+            ret["hash_info"] = self.hash_info.to_dict()
+
+        return ret
 
 
 def _try_load(
@@ -244,7 +271,6 @@ def collect(index, path, fs):
 
 def md5(index):
     from .hashfile.hash import file_md5
-    from .hashfile.hash_info import HashInfo
 
     for _, entry in index.iteritems():
         if entry.meta.isdir:
@@ -374,3 +400,43 @@ def push(index):
 
 def fetch(index):
     transfer(index, "remote", "cache")
+
+
+def write_db(index, path):
+    cache = Cache(path)
+    with cache.transact():
+        for key, entry in index.iteritems():
+            cache["/".join(key)] = entry.to_dict()
+
+
+def read_db(path):
+    index = DataIndex()
+    cache = Cache(path)
+
+    with cache.transact():
+        for key in cache:
+            value = cache.get(key)
+            index[key.split("/")] = DataIndexEntry.from_dict(value)
+
+    return index
+
+
+def write_json(index, path):
+    with open(path, "w", encoding="utf-8") as fobj:
+        json.dump(
+            {
+                "/".join(key): entry.to_dict()
+                for key, entry in index.iteritems()
+            },
+            fobj,
+        )
+
+
+def read_json(path):
+    index = DataIndex()
+
+    with open(path, "r", encoding="utf-8") as fobj:
+        for key, value in json.load(fobj).items():
+            index[key.split("/")] = DataIndexEntry.from_dict(value)
+
+    return index

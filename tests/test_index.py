@@ -12,7 +12,11 @@ from dvc_data.index import (
     collect,
     commit,
     md5,
+    read_db,
+    read_json,
     save,
+    write_db,
+    write_json,
 )
 
 
@@ -248,3 +252,29 @@ def test_commit(tmp_upath, odb, as_filesystem):
     assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
     assert odb.exists("c157a79031e1c40f85931829bc5fc552")
     assert odb.exists("258622b1688250cb619f3c9ccaefb7eb")
+
+
+@pytest.mark.parametrize(
+    "write, read",
+    [
+        (write_db, read_db),
+        (write_json, read_json),
+    ],
+)
+def test_write_read(tmp_upath, odb, tmp_path, write, read):
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(odb=odb, cache=odb),
+            ("data",): DataIndexEntry(odb=odb, cache=odb),
+        },
+    )
+    index.load()
+
+    path = str(tmp_path / "index")
+
+    write(index, path)
+    new_index = read(path)
+    assert len(index) == len(new_index)
+    for key, entry in new_index.iteritems():
+        assert index[key].meta == entry.meta
+        assert index[key].hash_info == entry.hash_info
