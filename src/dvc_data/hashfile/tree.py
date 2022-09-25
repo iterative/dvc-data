@@ -343,6 +343,6 @@ def tree_from_index(
         assert entry.meta and entry.hash_info
         tree_key = key[len(prefix) :]
         tree.add(tree_key, entry.meta, entry.hash_info)
-        tree_meta.size += tree_meta.size or 0
+        tree_meta.size += entry.meta.size or 0
         tree_meta.nfiles += 1
     return tree_meta, tree
