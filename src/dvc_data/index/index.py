@@ -1,24 +1,22 @@
-import json
 from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 from pygtrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
 from pygtrie import Trie
 
-from .hashfile.cache import Cache
-from .hashfile.hash_info import HashInfo
-from .hashfile.meta import Meta
-from .hashfile.tree import Tree, TreeError
+from ..hashfile.hash_info import HashInfo
+from ..hashfile.meta import Meta
+from ..hashfile.tree import Tree, TreeError
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
-    from .hashfile.db import HashFileDB
-    from .hashfile.obj import HashFile
+    from ..hashfile.db import HashFileDB
+    from ..hashfile.obj import HashFile
 
 
 DataIndexKey = Tuple[str]
@@ -281,71 +279,8 @@ def collect(index, path, fs, update=False):
         entry.meta = _collect_dir(index, key, entry, entry_path, fs)
 
 
-def md5(index):
-    from .hashfile.hash import file_md5
-
-    for _, entry in index.iteritems():
-        if entry.meta.isdir:
-            continue
-
-        if entry.meta.version_id and entry.fs.version_aware:
-            # NOTE: if we have versioning available - there is no need to check
-            # metadata as we can directly get correct file content using
-            # version_id.
-            path = entry.fs.path.version_path(
-                entry.path, entry.meta.version_id
-            )
-        else:
-            path = entry.path
-
-        entry.hash_info = HashInfo("md5", file_md5(path, entry.fs))
-
-
-def save(index):
-    dir_entries: List[DataIndexKey] = []
-
-    for key, entry in index.iteritems():
-        if entry.meta.isdir:
-            dir_entries.append(key)
-            continue
-
-        if entry.meta.version_id and entry.fs.version_aware:
-            # NOTE: if we have versioning available - there is no need to check
-            # metadata as we can directly get correct file content using
-            # version_id.
-            path = entry.fs.path.version_path(
-                entry.path, entry.meta.version_id
-            )
-        else:
-            path = entry.path
-
-        if entry.hash_info:
-            entry.cache.add(
-                path,
-                entry.fs,
-                entry.hash_info.value,
-            )
-
-    for key in dir_entries:
-        _save_dir_entry(index, key)
-
-
-def _save_dir_entry(index: DataIndex, key: DataIndexKey):
-    from .hashfile.db import add_update_tree
-    from .hashfile.tree import tree_from_index
-
-    entry = index[key]
-    assert entry.cache
-    meta, tree = tree_from_index(index, key)
-    tree = add_update_tree(entry.cache, tree)
-    entry.meta = meta
-    entry.hash_info = tree.hash_info
-    assert tree.hash_info.name and tree.hash_info.value
-    setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
-
-
 def build(index, path, fs, **kwargs):
-    from .hashfile.build import build as obuild
+    from ..hashfile.build import build as obuild
 
     # NOTE: converting to list to avoid iterating and modifying the dict the
     # same time.
@@ -377,18 +312,8 @@ def build(index, path, fs, **kwargs):
     index.load()
 
 
-def checkout(index, path, fs, **kwargs):
-    from .hashfile import load
-    from .hashfile.checkout import checkout as ocheckout
-
-    for key, entry in index.iteritems():
-        if not entry.obj:
-            entry.obj = load(entry.odb, entry.hash_info)
-        ocheckout(fs.path.join(path, *key), fs, entry.obj, entry.odb, **kwargs)
-
-
 def transfer(index, src, dst):
-    from .hashfile.transfer import transfer as otransfer
+    from ..hashfile.transfer import transfer as otransfer
 
     by_direction = defaultdict(set)
     for _, entry in index.iteritems():
@@ -412,43 +337,3 @@ def push(index):
 
 def fetch(index):
     transfer(index, "remote", "cache")
-
-
-def write_db(index, path):
-    cache = Cache(path)
-    with cache.transact():
-        for key, entry in index.iteritems():
-            cache["/".join(key)] = entry.to_dict()
-
-
-def read_db(path):
-    index = DataIndex()
-    cache = Cache(path)
-
-    with cache.transact():
-        for key in cache:
-            value = cache.get(key)
-            index[key.split("/")] = DataIndexEntry.from_dict(value)
-
-    return index
-
-
-def write_json(index, path):
-    with open(path, "w", encoding="utf-8") as fobj:
-        json.dump(
-            {
-                "/".join(key): entry.to_dict()
-                for key, entry in index.iteritems()
-            },
-            fobj,
-        )
-
-
-def read_json(path):
-    index = DataIndex()
-
-    with open(path, "r", encoding="utf-8") as fobj:
-        for key, value in json.load(fobj).items():
-            index[key.split("/")] = DataIndexEntry.from_dict(value)
-
-    return index
