@@ -1,12 +1,13 @@
 from typing import TYPE_CHECKING, List
 
 from ..hashfile.hash_info import HashInfo
+from ..hashfile.meta import Meta
 
 if TYPE_CHECKING:
     from .index import DataIndex, DataIndexKey
 
 
-def md5(index: "DataIndex") -> None:
+def md5(index: "DataIndex", force=False) -> None:
     from ..hashfile.hash import file_md5
 
     for _, entry in index.iteritems():
@@ -23,6 +24,16 @@ def md5(index: "DataIndex") -> None:
         else:
             path = entry.path
 
+        try:
+            meta = Meta.from_info(entry.fs.info(path))
+        except FileNotFoundError:
+            entry.meta = None
+            entry.hash_info = None
+
+        if not force and entry.hash_info and entry.meta == meta:
+            continue
+
+        entry.meta = meta
         entry.hash_info = HashInfo("md5", file_md5(path, entry.fs))
 
 
