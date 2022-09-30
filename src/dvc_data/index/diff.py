@@ -45,11 +45,11 @@ class Change:
         return self.typ != UNCHANGED
 
 
-def diff(old: "DataIndex", new: "DataIndex"):
-    old_keys = {key for key, _ in old.iteritems()}
-    new_keys = {key for key, _ in new.iteritems()}
+def diff(old: Optional["DataIndex"], new: Optional["DataIndex"]):
+    old_keys = {key for key, _ in old.iteritems()} if old else set()
+    new_keys = {key for key, _ in new.iteritems()} if new else set()
 
     for key in old_keys | new_keys:
-        old_entry = old.get(key)
-        new_entry = new.get(key)
+        old_entry = old.get(key) if old else None
+        new_entry = new.get(key) if new else None
         yield Change(key, old_entry, new_entry)
