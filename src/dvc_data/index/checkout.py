@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from ..hashfile import load
-from ..hashfile.checkout import checkout as ocheckout
+from dvc_objects.fs.generic import transfer
+
+from .diff import ADD, DELETE, MODIFY, diff
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
@@ -10,9 +11,38 @@ if TYPE_CHECKING:
 
 
 def checkout(
-    index: "DataIndex", path: str, fs: "FileSystem", **kwargs
+    index: "DataIndex",
+    path: str,
+    fs: "FileSystem",
+    old: Optional["DataIndex"] = None,
+    delete=False,
 ) -> None:
-    for key, entry in index.iteritems():
-        if not entry.obj:
-            entry.obj = load(entry.odb, entry.hash_info)
-        ocheckout(fs.path.join(path, *key), fs, entry.obj, entry.odb, **kwargs)
+    delete = []
+    create = []
+    for change in diff(old, index):
+        if change.typ == ADD:
+            create.append((change.key, change.new))
+        elif change.typ == MODIFY:
+            create.append((change.key, change.new))
+            delete.append((change.key, change.old))
+        elif change.typ == DELETE and delete:
+            delete.append((change.key, change.new))
+
+    for key, _ in delete:
+        fs.remove(fs.path.join(path, *key))
+
+    for key, entry in create:
+        if entry.meta and entry.meta.isdir:
+            continue
+
+        odb = entry.odb or entry.cache or entry.remote
+        cache_fs = odb.fs
+        cache_file = odb.oid_to_path(entry.hash_info.value)
+        entry_path = fs.path.join(path, *key)
+        fs.makedirs(fs.path.parent(entry_path), exist_ok=True)
+        transfer(
+            cache_fs,
+            cache_file,
+            fs,
+            entry_path,
+        )

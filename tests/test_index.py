@@ -211,6 +211,7 @@ def test_checkout(tmp_upath, odb, as_filesystem):
                 ),
             ),
             ("data",): DataIndexEntry(
+                meta=Meta(isdir=True),
                 odb=odb,
                 hash_info=HashInfo(
                     name="md5",
