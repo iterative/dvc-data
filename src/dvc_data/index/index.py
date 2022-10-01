@@ -279,39 +279,6 @@ def collect(index, path, fs, update=False):
         entry.meta = _collect_dir(index, key, entry, entry_path, fs)
 
 
-def build(index, path, fs, **kwargs):
-    from ..hashfile.build import build as obuild
-
-    # NOTE: converting to list to avoid iterating and modifying the dict the
-    # same time.
-    items = list(index.iteritems(shallow=True))
-    for key, entry in items:
-        if entry and entry.hash_info and entry.hash_info.isdir:
-            del index[key:]
-
-        try:
-            odb, meta, obj = obuild(
-                entry.odb,
-                fs.path.join(path, *key),
-                fs,
-                entry.odb.hash_name,
-                **kwargs,
-            )
-            hash_info = obj.hash_info
-        except FileNotFoundError:
-            meta = None
-            obj = None
-            hash_info = None
-
-        entry.odb = odb
-        entry.meta = meta
-        entry.obj = obj
-        entry.hash_info = hash_info
-
-        index[key] = entry
-    index.load()
-
-
 def transfer(index, src, dst):
     from ..hashfile.transfer import transfer as otransfer
 

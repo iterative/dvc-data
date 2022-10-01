@@ -26,21 +26,22 @@ def md5(index: "DataIndex") -> None:
         entry.hash_info = HashInfo("md5", file_md5(path, entry.fs))
 
 
-def _save_dir_entry(index: "DataIndex", key: "DataIndexKey") -> None:
+def _save_dir_entry(index: "DataIndex", key: "DataIndexKey", odb=None) -> None:
     from ..hashfile.db import add_update_tree
     from ..hashfile.tree import tree_from_index
 
     entry = index[key]
-    assert entry.cache
+    cache = odb or entry.cache
+    assert cache
     meta, tree = tree_from_index(index, key)
-    tree = add_update_tree(entry.cache, tree)
+    tree = add_update_tree(cache, tree)
     entry.meta = meta
     entry.hash_info = tree.hash_info
     assert tree.hash_info.name and tree.hash_info.value
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
 
 
-def save(index: "DataIndex") -> None:
+def save(index: "DataIndex", odb=None) -> None:
     dir_entries: List["DataIndexKey"] = []
 
     for key, entry in index.iteritems():
@@ -59,11 +60,12 @@ def save(index: "DataIndex") -> None:
             path = entry.path
 
         if entry.hash_info:
-            entry.cache.add(
+            cache = odb or entry.cache
+            cache.add(
                 path,
                 entry.fs,
                 entry.hash_info.value,
             )
 
     for key in dir_entries:
-        _save_dir_entry(index, key)
+        _save_dir_entry(index, key, odb=odb)
