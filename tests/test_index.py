@@ -10,7 +10,6 @@ from dvc_data.index import (
     build,
     checkout,
     collect,
-    commit,
     md5,
     read_db,
     read_json,
@@ -149,55 +148,39 @@ def test_save(tmp_upath, odb, as_filesystem):
     (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
     (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
 
-    index = DataIndex(
-        {
-            ("foo",): DataIndexEntry(odb=odb, cache=odb),
-            ("data",): DataIndexEntry(odb=odb, cache=odb),
-        },
-    )
     fs = as_filesystem(tmp_upath.fs)
-    collect(index, tmp_upath, fs)
+    index = build(str(tmp_upath), fs)
     md5(index)
-    save(index)
+    save(index, odb=odb)
     assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
     assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
     assert odb.exists("c157a79031e1c40f85931829bc5fc552")
     assert odb.exists("258622b1688250cb619f3c9ccaefb7eb")
 
 
-def test_build(tmp_upath, odb, as_filesystem):
-    (tmp_upath / "foo").write_text("foo\n")
+def test_build(tmp_upath, as_filesystem):
+    (tmp_upath / "foo").write_bytes(b"foo\n")
     (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_text("bar\n")
-    (tmp_upath / "data" / "baz").write_text("baz\n")
+    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
 
-    index = DataIndex(
-        {
-            ("foo",): DataIndexEntry(odb=odb, cache=odb),
-            ("data",): DataIndexEntry(odb=odb, cache=odb),
-        },
+    fs = as_filesystem(tmp_upath.fs)
+    index = build(str(tmp_upath), fs)
+    assert index[("foo",)] == DataIndexEntry(
+        meta=Meta(size=4),
+        fs=fs,
+        path=str(tmp_upath / "foo"),
     )
-    build(index, tmp_upath, as_filesystem(tmp_upath.fs))
-    assert index[("foo",)].hash_info.name == "md5"
-    assert (
-        index[("foo",)].hash_info.value == "d3b07384d113edec49eaa6238ad5ff00"
+    assert index[("data",)].meta.isdir
+    assert index[("data", "bar")] == DataIndexEntry(
+        meta=Meta(size=4),
+        fs=fs,
+        path=str(tmp_upath / "data" / "bar"),
     )
-    assert index[("foo",)].odb != odb
-    assert index[("foo",)].cache == odb
-    assert index[("data",)].hash_info.name == "md5"
-    assert (
-        index[("data",)].hash_info.value
-        == "1f69c66028c35037e8bf67e5bc4ceb6a.dir"
-    )
-    assert index[("data", "bar")].hash_info.name == "md5"
-    assert (
-        index[("data", "bar")].hash_info.value
-        == "c157a79031e1c40f85931829bc5fc552"
-    )
-    assert index[("data", "baz")].hash_info.name == "md5"
-    assert (
-        index[("data", "baz")].hash_info.value
-        == "258622b1688250cb619f3c9ccaefb7eb"
+    assert index[("data", "baz")] == DataIndexEntry(
+        meta=Meta(size=4),
+        fs=fs,
+        path=str(tmp_upath / "data" / "baz"),
     )
 
 
@@ -233,26 +216,6 @@ def test_checkout(tmp_upath, odb, as_filesystem):
         (tmp_upath / "data" / "bar"),
         (tmp_upath / "data" / "baz"),
     }
-
-
-def test_commit(tmp_upath, odb, as_filesystem):
-    (tmp_upath / "foo").write_text("foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_text("bar\n")
-    (tmp_upath / "data" / "baz").write_text("baz\n")
-
-    index = DataIndex(
-        {
-            ("foo",): DataIndexEntry(odb=odb, cache=odb),
-            ("data",): DataIndexEntry(odb=odb, cache=odb),
-        },
-    )
-    build(index, tmp_upath, as_filesystem(tmp_upath.fs))
-    commit(index)
-    assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
-    assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
-    assert odb.exists("c157a79031e1c40f85931829bc5fc552")
-    assert odb.exists("258622b1688250cb619f3c9ccaefb7eb")
 
 
 @pytest.mark.parametrize(
