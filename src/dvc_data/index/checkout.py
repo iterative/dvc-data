@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Optional
 
 from dvc_objects.fs.generic import transfer
 
+from ..hashfile.meta import Meta
 from .diff import ADD, DELETE, MODIFY, diff
 
 if TYPE_CHECKING:
@@ -46,3 +47,4 @@ def checkout(
             fs,
             entry_path,
         )
+        entry.meta = Meta.from_info(fs.info(entry_path))
