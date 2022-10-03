@@ -9,7 +9,6 @@ from dvc_data.index import (
     DataIndexEntry,
     build,
     checkout,
-    collect,
     md5,
     read_db,
     read_json,
@@ -85,48 +84,14 @@ def test_fs(tmp_upath, odb, as_filesystem):
     ]
 
 
-def test_collect(tmp_upath, odb, as_filesystem):
-    (tmp_upath / "foo").write_bytes(b"foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
-    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
-
-    index = DataIndex(
-        {
-            ("foo",): DataIndexEntry(odb=odb, cache=odb),
-            ("data",): DataIndexEntry(odb=odb, cache=odb),
-        },
-    )
-    fs = as_filesystem(tmp_upath.fs)
-    collect(index, tmp_upath, fs)
-    assert index[("foo",)].meta == Meta(size=4)
-    assert index[("foo",)].fs == fs
-    assert index[("foo",)].path == str(tmp_upath / "foo")
-    assert index[("data",)].meta.isdir
-    assert index[("data",)].fs == fs
-    assert index[("data",)].path == str(tmp_upath / "data")
-    assert index[("data", "bar")].meta == Meta(size=4)
-    assert index[("data", "bar")].fs == fs
-    assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
-    assert index[("data", "baz")].meta == Meta(size=4)
-    assert index[("data", "baz")].fs == fs
-    assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
-
-
 def test_md5(tmp_upath, odb, as_filesystem):
     (tmp_upath / "foo").write_bytes(b"foo\n")
     (tmp_upath / "data").mkdir()
     (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
     (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
 
-    index = DataIndex(
-        {
-            ("foo",): DataIndexEntry(odb=odb, cache=odb),
-            ("data",): DataIndexEntry(odb=odb, cache=odb),
-        },
-    )
     fs = as_filesystem(tmp_upath.fs)
-    collect(index, tmp_upath, fs)
+    index = build(str(tmp_upath), fs)
     md5(index)
     assert index[("foo",)].hash_info == HashInfo(
         "md5",
