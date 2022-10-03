@@ -18,6 +18,8 @@ class Meta:
     PARAM_ETAG: ClassVar[str] = "etag"
     PARAM_CHECKSUM: ClassVar[str] = "checksum"
     PARAM_MD5: ClassVar[str] = "md5"
+    PARAM_INODE: ClassVar[str] = "inode"
+    PARAM_MTIME: ClassVar[str] = "mtime"
 
     fields: ClassVar[List[str]]
 
@@ -29,6 +31,8 @@ class Meta:
     etag: Optional[str] = None
     checksum: Optional[str] = None
     md5: Optional[str] = None
+    inode: Optional[int] = None
+    mtime: Optional[float] = None
 
     @classmethod
     def from_info(
@@ -62,6 +66,8 @@ class Meta:
             etag=etag,
             checksum=checksum,
             md5=info.get("md5"),
+            inode=info.get("ino"),
+            mtime=info.get("mtime"),
         )
 
     @classmethod
