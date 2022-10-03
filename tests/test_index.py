@@ -131,22 +131,16 @@ def test_build(tmp_upath, as_filesystem):
 
     fs = as_filesystem(tmp_upath.fs)
     index = build(str(tmp_upath), fs)
-    assert index[("foo",)] == DataIndexEntry(
-        meta=Meta(size=4),
-        fs=fs,
-        path=str(tmp_upath / "foo"),
-    )
+    assert index[("foo",)].meta.size == 4
+    assert index[("foo",)].fs == fs
+    assert index[("foo",)].path == str(tmp_upath / "foo")
     assert index[("data",)].meta.isdir
-    assert index[("data", "bar")] == DataIndexEntry(
-        meta=Meta(size=4),
-        fs=fs,
-        path=str(tmp_upath / "data" / "bar"),
-    )
-    assert index[("data", "baz")] == DataIndexEntry(
-        meta=Meta(size=4),
-        fs=fs,
-        path=str(tmp_upath / "data" / "baz"),
-    )
+    assert index[("data", "bar")].meta.size == 4
+    assert index[("data", "bar")].fs == fs
+    assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
+    assert index[("data", "baz")].meta.size == 4
+    assert index[("data", "baz")].fs == fs
+    assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
 
 
 def test_checkout(tmp_upath, odb, as_filesystem):
