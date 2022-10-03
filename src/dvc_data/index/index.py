@@ -1,7 +1,6 @@
 from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass
-from itertools import chain
 from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
@@ -222,61 +221,6 @@ class DataIndex(MutableMapping):
                     return key, self.info(key)
 
         return self.traverse(node_factory, prefix=root_key)
-
-
-def _collect_dir(index, prefix, prefix_entry, path, fs, update=False):
-    dir_meta = Meta(nfiles=0, size=0, isdir=True)
-
-    for root, dnames, fnames in fs.walk(path):
-        sub_prefix = fs.path.relparts(root, path) if root != path else ()
-        for name in chain(dnames, fnames):
-            key = (*prefix, *sub_prefix, name)
-            entry_path = fs.path.join(root, name)
-            entry = index.get(key)
-            if entry is None:
-                entry = DataIndexEntry()
-                index[key] = entry
-
-            entry.fs = fs
-            entry.path = entry_path
-            entry.cache = prefix_entry.cache
-            entry.remote = prefix_entry.remote
-
-            # TODO: localfs.walk doesn't currently support detail=True,
-            # so we have to call fs.info() manually
-            meta = Meta.from_info(
-                fs.info(entry_path, refresh=True), fs.protocol
-            )
-            if entry.meta != meta and not update:
-                entry.hash_info = None
-
-            entry.meta = meta
-            dir_meta.nfiles += 1
-            dir_meta.size += meta.size
-
-    return dir_meta
-
-
-def collect(index, path, fs, update=False):
-    # NOTE: converting to list to avoid iterating and modifying the dict the
-    # same time.
-    items = list(index.iteritems(shallow=True))
-    for key, entry in items:
-        entry_path = fs.path.join(path, *key)
-
-        info = fs.info(entry_path, refresh=True)
-
-        fs_meta = Meta.from_info(info, fs.protocol)
-        if entry.meta != fs_meta and not update:
-            entry.hash_info = None
-        entry.meta = fs_meta
-        entry.fs = fs
-        entry.path = entry_path
-
-        if info["type"] == "file":
-            continue
-
-        entry.meta = _collect_dir(index, key, entry, entry_path, fs)
 
 
 def transfer(index, src, dst):
