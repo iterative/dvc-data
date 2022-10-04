@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 def md5(index: "DataIndex") -> None:
-    from ..hashfile.hash import file_md5
+    from ..hashfile.hash import fobj_md5
 
     for _, entry in index.iteritems():
         if entry.meta.isdir:
@@ -35,7 +35,11 @@ def md5(index: "DataIndex") -> None:
         if entry.meta != meta:
             continue
 
-        entry.hash_info = HashInfo("md5", file_md5(path, entry.fs))
+        with entry.fs.open(path, "rb") as fobj:
+            entry.hash_info = HashInfo(
+                "md5",
+                fobj_md5(fobj),
+            )
 
 
 def _save_dir_entry(index: "DataIndex", key: "DataIndexKey", odb=None) -> None:
