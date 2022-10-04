@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from ..hashfile.meta import Meta
 from .index import DataIndex, DataIndexEntry
@@ -7,11 +7,21 @@ from .index import DataIndex, DataIndexEntry
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
+    from ..hashfile._ignore import Ignore
 
-def build(path: str, fs: "FileSystem") -> DataIndex:
+
+def build(
+    path: str, fs: "FileSystem", ignore: Optional["Ignore"] = None
+) -> DataIndex:
     index = DataIndex()
 
-    for root, dirs, files in fs.walk(path, detail=True):
+    walk_kwargs = {"detail": True}
+    if ignore:
+        walk_iter = ignore.walk(fs, path, **walk_kwargs)
+    else:
+        walk_iter = fs.walk(path, **walk_kwargs)
+
+    for root, dirs, files in walk_iter:
         if root == path:
             root_key = ()
         else:
