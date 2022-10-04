@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, List
 
 from ..hashfile.hash_info import HashInfo
+from ..hashfile.meta import Meta
 
 if TYPE_CHECKING:
     from .index import DataIndex, DataIndexKey
@@ -13,6 +14,9 @@ def md5(index: "DataIndex") -> None:
         if entry.meta.isdir:
             continue
 
+        if entry.hash_info:
+            continue
+
         if entry.meta.version_id and entry.fs.version_aware:
             # NOTE: if we have versioning available - there is no need to check
             # metadata as we can directly get correct file content using
@@ -22,6 +26,14 @@ def md5(index: "DataIndex") -> None:
             )
         else:
             path = entry.path
+
+        try:
+            meta = Meta.from_info(entry.fs.info(path))
+        except FileNotFoundError:
+            continue
+
+        if entry.meta != meta:
+            continue
 
         entry.hash_info = HashInfo("md5", file_md5(path, entry.fs))
 
