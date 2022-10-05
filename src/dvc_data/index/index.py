@@ -1,7 +1,15 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterable,
+    Iterator,
+    Optional,
+    Tuple,
+)
 
 from dvc_objects.errors import ObjectFormatError
 from pygtrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
@@ -77,7 +85,52 @@ def _try_load(
     return None
 
 
-class DataIndex(MutableMapping):
+class BaseDataIndex(ABC, Mapping):
+    @abstractmethod
+    def iteritems(
+        self, prefix: Optional[DataIndexKey] = None, shallow: bool = False
+    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
+        pass
+
+    @abstractmethod
+    def has_node(self, key: DataIndexKey) -> bool:
+        pass
+
+    @abstractmethod
+    def longest_prefix(
+        self, key: DataIndexKey
+    ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
+        pass
+
+    def info(self, key: DataIndexKey):
+        try:
+            entry = self[key]
+            isdir = entry.hash_info and entry.hash_info.isdir
+            return {
+                "type": "directory" if isdir else "file",
+                "size": entry.meta.size if entry.meta else 0,
+                "isexec": entry.meta.isexec if entry.meta else False,
+                "isdvc": True,
+                "isout": True,
+                "obj": entry.obj,
+                "entry": entry,
+                entry.hash_info.name: entry.hash_info.value,
+            }
+        except ShortKeyError:
+            return {
+                "type": "directory",
+                "size": 0,
+                "isexec": False,
+                "isdvc": bool(self.longest_prefix(key)),
+                "isout": False,
+                "obj": None,
+                "entry": None,
+            }
+        except KeyError as exc:
+            raise FileNotFoundError from exc
+
+
+class DataIndex(BaseDataIndex, MutableMapping):
     def __init__(self, *args, **kwargs):
         self._trie = Trie(*args, **kwargs)
 
@@ -138,19 +191,23 @@ class DataIndex(MutableMapping):
         for key, entry in self.iteritems(shallow=True, **kwargs):
             self._load(key, entry)
 
-    def has_node(self, key):
+    def has_node(self, key: DataIndexKey) -> bool:
         return self._trie.has_node(key)
 
     def shortest_prefix(self, *args, **kwargs):
         return self._trie.shortest_prefix(*args, **kwargs)
 
-    def longest_prefix(self, *args, **kwargs):
-        return self._trie.longest_prefix(*args, **kwargs)
+    def longest_prefix(
+        self, key: DataIndexKey
+    ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
+        return self._trie.longest_prefix(key)
 
     def traverse(self, *args, **kwargs):
         return self._trie.traverse(*args, **kwargs)
 
-    def iteritems(self, prefix=None, shallow=False):
+    def iteritems(
+        self, prefix: Optional[DataIndexKey] = None, shallow: bool = False
+    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         kwargs = {"shallow": shallow}
         if prefix:
             kwargs = {"prefix": prefix}
@@ -162,33 +219,6 @@ class DataIndex(MutableMapping):
         for key, entry in self._trie.iteritems(**kwargs):
             self._load(key, entry)
             yield key, entry
-
-    def info(self, key):
-        try:
-            entry = self[key]
-            isdir = entry.hash_info and entry.hash_info.isdir
-            return {
-                "type": "directory" if isdir else "file",
-                "size": entry.meta.size if entry.meta else 0,
-                "isexec": entry.meta.isexec if entry.meta else False,
-                "isdvc": True,
-                "isout": True,
-                "obj": entry.obj,
-                "entry": entry,
-                entry.hash_info.name: entry.hash_info.value,
-            }
-        except ShortKeyError:
-            return {
-                "type": "directory",
-                "size": 0,
-                "isexec": False,
-                "isdvc": bool(self.longest_prefix(key)),
-                "isout": False,
-                "obj": None,
-                "entry": None,
-            }
-        except KeyError as exc:
-            raise FileNotFoundError from exc
 
     def _ensure_loaded(self, prefix):
         entry = self._trie.get(prefix)

@@ -8,14 +8,14 @@ from .diff import ADD, DELETE, MODIFY, diff
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
-    from .index import DataIndex
+    from .index import BaseDataIndex
 
 
 def checkout(
-    index: "DataIndex",
+    index: "BaseDataIndex",
     path: str,
     fs: "FileSystem",
-    old: Optional["DataIndex"] = None,
+    old: Optional["BaseDataIndex"] = None,
     delete=False,
 ) -> None:
     delete = []
