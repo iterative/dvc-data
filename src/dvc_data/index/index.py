@@ -4,6 +4,7 @@ from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
+    Callable,
     Dict,
     Iterable,
     Iterator,
@@ -93,6 +94,10 @@ class BaseDataIndex(ABC, Mapping):
         pass
 
     @abstractmethod
+    def traverse(self, node_factory: Callable, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
     def has_node(self, key: DataIndexKey) -> bool:
         pass
 
@@ -101,6 +106,25 @@ class BaseDataIndex(ABC, Mapping):
         self, key: DataIndexKey
     ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
         pass
+
+    def ls(self, root_key: DataIndexKey, detail=True):
+        if not detail:
+
+            def node_factory(_, key, children, *args):
+                if key == root_key:
+                    return children
+                else:
+                    return key
+
+        else:
+
+            def node_factory(_, key, children, *args):
+                if key == root_key:
+                    return children
+                else:
+                    return key, self.info(key)
+
+        return self.traverse(node_factory, prefix=root_key)
 
     def info(self, key: DataIndexKey):
         try:
@@ -202,7 +226,7 @@ class DataIndex(BaseDataIndex, MutableMapping):
     ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
         return self._trie.longest_prefix(key)
 
-    def traverse(self, *args, **kwargs):
+    def traverse(self, *args, **kwargs) -> Any:
         return self._trie.traverse(*args, **kwargs)
 
     def iteritems(
@@ -220,6 +244,9 @@ class DataIndex(BaseDataIndex, MutableMapping):
             self._load(key, entry)
             yield key, entry
 
+    def iterkeys(self, *args, **kwargs):
+        return self._trie.iterkeys(*args, **kwargs)
+
     def _ensure_loaded(self, prefix):
         entry = self._trie.get(prefix)
         if (
@@ -232,25 +259,9 @@ class DataIndex(BaseDataIndex, MutableMapping):
             if not entry.obj:
                 raise TreeError
 
-    def ls(self, root_key, detail=True):
+    def ls(self, root_key: DataIndexKey, detail=True):
         self._ensure_loaded(root_key)
-        if not detail:
-
-            def node_factory(_, key, children, *args):
-                if key == root_key:
-                    return children
-                else:
-                    return key
-
-        else:
-
-            def node_factory(_, key, children, *args):
-                if key == root_key:
-                    return children
-                else:
-                    return key, self.info(key)
-
-        return self.traverse(node_factory, prefix=root_key)
+        return super().ls(root_key, detail=detail)
 
 
 def transfer(index, src, dst):

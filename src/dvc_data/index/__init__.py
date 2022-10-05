@@ -8,3 +8,7 @@ from .serialize import (  # noqa: F401, pylint: disable=unused-import
     write_db,
     write_json,
 )
+from .view import (  # noqa: F401, pylint: disable=unused-import
+    DataIndexView,
+    view,
+)
