@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
     Dict,
     Iterable,
     Iterator,
+    Mapping,
+    MutableMapping,
     Optional,
     Tuple,
 )
@@ -86,7 +88,7 @@ def _try_load(
     return None
 
 
-class BaseDataIndex(ABC, Mapping):
+class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
     @abstractmethod
     def iteritems(
         self, prefix: Optional[DataIndexKey] = None, shallow: bool = False
@@ -129,6 +131,7 @@ class BaseDataIndex(ABC, Mapping):
     def info(self, key: DataIndexKey):
         try:
             entry = self[key]
+            assert entry.hash_info
             isdir = entry.hash_info and entry.hash_info.isdir
             return {
                 "type": "directory" if isdir else "file",
@@ -154,7 +157,7 @@ class BaseDataIndex(ABC, Mapping):
             raise FileNotFoundError from exc
 
 
-class DataIndex(BaseDataIndex, MutableMapping):
+class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
     def __init__(self, *args, **kwargs):
         self._trie = Trie(*args, **kwargs)
 
@@ -232,7 +235,7 @@ class DataIndex(BaseDataIndex, MutableMapping):
     def iteritems(
         self, prefix: Optional[DataIndexKey] = None, shallow: bool = False
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
-        kwargs = {"shallow": shallow}
+        kwargs: Dict[str, Any] = {"shallow": shallow}
         if prefix:
             kwargs = {"prefix": prefix}
             item = self._trie.longest_prefix(prefix)

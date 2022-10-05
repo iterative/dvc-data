@@ -11,13 +11,14 @@ def md5(index: "BaseDataIndex") -> None:
     from ..hashfile.hash import fobj_md5
 
     for _, entry in index.iteritems():
-        if entry.meta.isdir:
+        assert entry.fs
+        if entry.meta and entry.meta.isdir:
             continue
 
         if entry.hash_info:
             continue
 
-        if entry.meta.version_id and entry.fs.version_aware:
+        if entry.meta and entry.meta.version_id and entry.fs.version_aware:
             # NOTE: if we have versioning available - there is no need to check
             # metadata as we can directly get correct file content using
             # version_id.
@@ -63,6 +64,7 @@ def save(index: "BaseDataIndex", odb=None) -> None:
     dir_entries: List["DataIndexKey"] = []
 
     for key, entry in index.iteritems():
+        assert entry.meta and entry.fs
         if entry.meta.isdir:
             dir_entries.append(key)
             continue
@@ -79,6 +81,8 @@ def save(index: "BaseDataIndex", odb=None) -> None:
 
         if entry.hash_info:
             cache = odb or entry.cache
+            assert entry.hash_info.value
+            assert cache
             cache.add(
                 path,
                 entry.fs,
