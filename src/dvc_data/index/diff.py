@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 from attrs import define, field
 
 if TYPE_CHECKING:
-    from .index import DataIndex
+    from .index import BaseDataIndex
 
 from .index import DataIndexEntry
 
@@ -45,7 +45,7 @@ class Change:
         return self.typ != UNCHANGED
 
 
-def diff(old: Optional["DataIndex"], new: Optional["DataIndex"]):
+def diff(old: Optional["BaseDataIndex"], new: Optional["BaseDataIndex"]):
     old_keys = {key for key, _ in old.iteritems()} if old else set()
     new_keys = {key for key, _ in new.iteritems()} if new else set()
 

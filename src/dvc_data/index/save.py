@@ -4,10 +4,10 @@ from ..hashfile.hash_info import HashInfo
 from ..hashfile.meta import Meta
 
 if TYPE_CHECKING:
-    from .index import DataIndex, DataIndexKey
+    from .index import BaseDataIndex, DataIndexKey
 
 
-def md5(index: "DataIndex") -> None:
+def md5(index: "BaseDataIndex") -> None:
     from ..hashfile.hash import fobj_md5
 
     for _, entry in index.iteritems():
@@ -42,7 +42,9 @@ def md5(index: "DataIndex") -> None:
             )
 
 
-def _save_dir_entry(index: "DataIndex", key: "DataIndexKey", odb=None) -> None:
+def _save_dir_entry(
+    index: "BaseDataIndex", key: "DataIndexKey", odb=None
+) -> None:
     from ..hashfile.db import add_update_tree
     from ..hashfile.tree import tree_from_index
 
@@ -57,7 +59,7 @@ def _save_dir_entry(index: "DataIndex", key: "DataIndexKey", odb=None) -> None:
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
 
 
-def save(index: "DataIndex", odb=None) -> None:
+def save(index: "BaseDataIndex", odb=None) -> None:
     dir_entries: List["DataIndexKey"] = []
 
     for key, entry in index.iteritems():
