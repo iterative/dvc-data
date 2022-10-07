@@ -79,7 +79,12 @@ class Meta:
         return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self, recurse=False, filter=_filter_default_or_none)
+        def _filter(field: Attribute, value: Any) -> bool:
+            if field.name in (self.PARAM_INODE, self.PARAM_MTIME):
+                return False
+            return _filter_default_or_none(field, value)
+
+        return asdict(self, recurse=False, filter=_filter)
 
 
 Meta.fields = list(fields_dict(Meta))
