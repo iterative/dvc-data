@@ -131,8 +131,8 @@ class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
     def info(self, key: DataIndexKey):
         try:
             entry = self[key]
-            assert entry.hash_info
             isdir = entry.hash_info and entry.hash_info.isdir
+            assert entry.hash_info is not None
             return {
                 "type": "directory" if isdir else "file",
                 "size": entry.meta.size if entry.meta else 0,
