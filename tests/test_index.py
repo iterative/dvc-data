@@ -7,6 +7,7 @@ from dvc_data.hashfile.meta import Meta
 from dvc_data.index import (
     DataIndex,
     DataIndexEntry,
+    add,
     build,
     checkout,
     md5,
@@ -136,6 +137,35 @@ def test_build(tmp_upath, as_filesystem):
     assert index[("foo",)].fs == fs
     assert index[("foo",)].path == str(tmp_upath / "foo")
     assert index[("data",)].meta.isdir
+    assert index[("data", "bar")].meta.size == 4
+    assert index[("data", "bar")].fs == fs
+    assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
+    assert index[("data", "baz")].meta.size == 4
+    assert index[("data", "baz")].fs == fs
+    assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
+
+
+def test_add(tmp_upath, as_filesystem):
+    (tmp_upath / "foo").write_bytes(b"foo\n")
+    (tmp_upath / "data").mkdir()
+    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+
+    fs = as_filesystem(tmp_upath.fs)
+    index = build(str(tmp_upath), fs)
+    index = DataIndex()
+
+    add(index, str(tmp_upath / "foo"), fs, ("foo",))
+    assert len(index) == 1
+    assert index[("foo",)].meta.size == 4
+    assert index[("foo",)].fs == fs
+    assert index[("foo",)].path == str(tmp_upath / "foo")
+
+    add(index, str(tmp_upath / "data"), fs, ("data",))
+    assert len(index) == 3
+    assert index[("foo",)].meta.size == 4
+    assert index[("foo",)].fs == fs
+    assert index[("foo",)].path == str(tmp_upath / "foo")
     assert index[("data", "bar")].meta.size == 4
     assert index[("data", "bar")].fs == fs
     assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
