@@ -60,7 +60,7 @@ def _save_dir_entry(
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
 
 
-def save(index: "BaseDataIndex", odb=None) -> None:
+def save(index: "BaseDataIndex", odb=None, **kwargs) -> None:
     dir_entries: List["DataIndexKey"] = []
 
     for key, entry in index.iteritems():
@@ -87,6 +87,7 @@ def save(index: "BaseDataIndex", odb=None) -> None:
                 path,
                 entry.fs,
                 entry.hash_info.value,
+                **kwargs,
             )
 
     for key in dir_entries:
