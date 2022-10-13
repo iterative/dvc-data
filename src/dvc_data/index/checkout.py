@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.generic import transfer
 
 from ..hashfile.meta import Meta
@@ -7,6 +8,7 @@ from .diff import ADD, DELETE, MODIFY, diff
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
+    from dvc_objects.fs.callbacks import Callback
 
     from .index import BaseDataIndex
 
@@ -17,6 +19,7 @@ def checkout(
     fs: "FileSystem",
     old: Optional["BaseDataIndex"] = None,
     delete=False,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> None:
     delete = []
     create = []
@@ -32,19 +35,40 @@ def checkout(
     for key, _ in delete:
         fs.remove(fs.path.join(path, *key))
 
+    if callback != DEFAULT_CALLBACK:
+        callback.set_size(
+            sum(
+                entry.meta is not None and not entry.meta.isdir
+                for _, entry in index.iteritems()
+            )
+        )
     for key, entry in create:
         if entry.meta and entry.meta.isdir:
             continue
 
-        odb = entry.odb or entry.cache or entry.remote
-        cache_fs = odb.fs
-        cache_file = odb.oid_to_path(entry.hash_info.value)
+        try_sources = []
+        if entry.hash_info:
+            odb = entry.odb or entry.cache or entry.remote
+            try_sources.append(
+                (odb.fs, odb.oid_to_path(entry.hash_info.value))
+            )
+        if entry.fs and entry.path:
+            try_sources.append((entry.fs, entry.path))
+
         entry_path = fs.path.join(path, *key)
         fs.makedirs(fs.path.parent(entry_path), exist_ok=True)
-        transfer(
-            cache_fs,
-            cache_file,
-            fs,
-            entry_path,
-        )
-        entry.meta = Meta.from_info(fs.info(entry_path))
+        while try_sources:
+            src_fs, src_path = try_sources.pop(0)
+            try:
+                transfer(
+                    src_fs,
+                    src_path,
+                    fs,
+                    entry_path,
+                    callback=callback,
+                )
+                entry.meta = Meta.from_info(fs.info(entry_path))
+                break
+            except Exception:  # pylint: disable=broad-except
+                if not try_sources:
+                    raise
