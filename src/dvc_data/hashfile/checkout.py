@@ -2,7 +2,7 @@ import logging
 from itertools import chain
 from typing import TYPE_CHECKING, List, Optional
 
-from dvc_objects.fs.callbacks import Callback
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.generic import test_links, transfer
 
 from .build import build
@@ -10,6 +10,8 @@ from .diff import ROOT
 from .diff import diff as odiff
 
 if TYPE_CHECKING:
+    from dvc_objects.fs.callbacks import Callback
+
     from .hashfile._ignore import Ignore
 
 logger = logging.getLogger(__name__)
@@ -151,29 +153,25 @@ def _diff(
 
 
 class Link:
-    def __init__(self, links):
+    def __init__(self, links, callback: "Callback" = DEFAULT_CALLBACK):
         self._links = links
+        self._callback = callback
 
-    def __call__(self, cache, from_path, to_fs, to_path, callback=None):
+    def __call__(self, cache, from_path, to_fs, to_path):
         if to_fs.exists(to_path):
             to_fs.remove(to_path)  # broken symlink
 
         parent = to_fs.path.parent(to_path)
         to_fs.makedirs(parent)
         try:
-            with Callback.as_tqdm_callback(
-                callback,
-                desc=cache.fs.path.name(from_path),
-                bytes=True,
-            ) as cb:
-                transfer(
-                    cache.fs,
-                    from_path,
-                    to_fs,
-                    to_path,
-                    links=self._links,
-                    callback=cb,
-                )
+            transfer(
+                cache.fs,
+                from_path,
+                to_fs,
+                to_path,
+                links=self._links,
+                callback=self._callback,
+            )
         except FileNotFoundError as exc:
             raise CheckoutError([to_path]) from exc
         except OSError as exc:
@@ -186,7 +184,7 @@ def _checkout(
     fs,
     cache,
     force=False,
-    progress_callback=None,
+    progress_callback: "Callback" = DEFAULT_CALLBACK,
     relink=False,
     state=None,
     prompt=None,
@@ -197,7 +195,7 @@ def _checkout(
     links = test_links(cache.cache_types, cache.fs, cache.path, fs, path)
     if not links:
         raise LinkError(path)
-    link = Link(links)
+    link = Link(links, callback=progress_callback)
     for change in diff.deleted:
         entry_path = (
             fs.path.join(path, *change.old.key)
@@ -231,8 +229,6 @@ def _checkout(
                 state=state,
                 prompt=prompt,
             )
-            if progress_callback:
-                progress_callback(entry_path)
         except CheckoutError as exc:
             failed.extend(exc.paths)
 
@@ -246,7 +242,7 @@ def checkout(
     obj,
     cache,
     force=False,
-    progress_callback=None,
+    progress_callback: "Callback" = DEFAULT_CALLBACK,
     relink=False,
     quiet=False,
     ignore: Optional["Ignore"] = None,
@@ -294,7 +290,7 @@ def checkout(
 
     if failed or not diff:
         if progress_callback and obj:
-            progress_callback(path, len(obj))
+            progress_callback.relative_update(len(obj))
         if failed:
             raise CheckoutError(failed)
         return
