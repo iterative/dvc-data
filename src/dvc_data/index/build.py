@@ -1,8 +1,8 @@
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional
 
 from ..hashfile.meta import Meta
-from .index import DataIndex, DataIndexEntry, DataIndexKey
+from .index import DataIndex, DataIndexEntry
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
@@ -27,7 +27,7 @@ def build_entries(
     path: str,
     fs: "FileSystem",
     ignore: Optional["Ignore"] = None,
-) -> Iterable[Tuple[DataIndexKey, DataIndexEntry]]:
+) -> Iterable[DataIndexEntry]:
     walk_kwargs = {"detail": True}
     if ignore:
         walk_iter = ignore.walk(fs, path, **walk_kwargs)
@@ -41,11 +41,13 @@ def build_entries(
             root_key = fs.path.relparts(root, path)
 
         for name, info in chain(dirs.items(), files.items()):
-            yield (*root_key, name), build_entry(
+            entry = build_entry(
                 fs.path.join(root, name),
                 fs,
                 info=info,
             )
+            entry.key = (*root_key, name)
+            yield entry
 
 
 def build(
@@ -53,7 +55,7 @@ def build(
 ) -> DataIndex:
     index = DataIndex()
 
-    for key, entry in build_entries(path, fs, ignore=ignore):
-        index[key] = entry
+    for entry in build_entries(path, fs, ignore=ignore):
+        index.add(entry)
 
     return index

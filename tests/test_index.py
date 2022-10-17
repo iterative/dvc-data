@@ -178,12 +178,14 @@ def test_checkout(tmp_upath, odb, as_filesystem):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
+                key=("foo",),
                 odb=odb,
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
             ),
             ("data",): DataIndexEntry(
+                key=("data",),
                 meta=Meta(isdir=True),
                 odb=odb,
                 hash_info=HashInfo(

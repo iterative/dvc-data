@@ -17,8 +17,12 @@ def add(
     ignore: Optional["Ignore"] = None,
 ):
     if not fs.isdir(path):
-        index[key] = build_entry(path, fs)
+        entry = build_entry(path, fs)
+        entry.key = key
+        index.add(entry)
         return
 
-    for entry_key, entry in build_entries(path, fs, ignore=ignore):
-        index[(*key, *entry_key)] = entry
+    for entry in build_entries(path, fs, ignore=ignore):
+        assert entry.key is not None
+        entry.key = (*key, *entry.key)
+        index.add(entry)
