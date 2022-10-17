@@ -34,6 +34,7 @@ DataIndexKey = Tuple[str]
 
 @dataclass
 class DataIndexEntry:
+    key: Optional[DataIndexKey] = None
     meta: Optional["Meta"] = None
     obj: Optional["HashFile"] = None
     hash_info: Optional["HashInfo"] = None
@@ -182,6 +183,9 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
     def __len__(self):
         return len(self._trie)
 
+    def add(self, entry: DataIndexEntry):
+        self[entry.key] = entry
+
     def _load(self, key, entry):
         if not entry:
             return
@@ -204,7 +208,9 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         for ikey, (meta, hash_info) in entry.obj.iteritems():
             if not meta and entry.hash_info and entry.hash_info == hash_info:
                 meta = entry.meta
-            self._trie[key + ikey] = DataIndexEntry(
+            entry_key = key + ikey
+            self._trie[entry_key] = DataIndexEntry(
+                key=entry_key,
                 odb=entry.odb,
                 cache=entry.odb,
                 remote=entry.remote,

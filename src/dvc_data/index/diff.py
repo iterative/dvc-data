@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from attrs import define, field
 
@@ -15,7 +15,6 @@ UNCHANGED = "unchanged"
 
 @define(hash=True, order=True)
 class Change:
-    key: Tuple[str, ...]
     old: Optional[DataIndexEntry]
     new: Optional[DataIndexEntry]
     typ: str = field(init=False)
@@ -52,4 +51,4 @@ def diff(old: Optional["BaseDataIndex"], new: Optional["BaseDataIndex"]):
     for key in old_keys | new_keys:
         old_entry = old.get(key) if old else None
         new_entry = new.get(key) if new else None
-        yield Change(key, old_entry, new_entry)
+        yield Change(old_entry, new_entry)

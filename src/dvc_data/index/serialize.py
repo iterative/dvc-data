@@ -18,7 +18,9 @@ def read_db(path: str) -> DataIndex:
     with cache.transact():
         for key in cache:
             value = cache.get(key)
-            index[key.split("/")] = DataIndexEntry.from_dict(value)
+            entry = DataIndexEntry.from_dict(value)
+            entry.key = key.split("/")
+            index.add(entry)
 
     return index
 
@@ -39,6 +41,8 @@ def read_json(path: str) -> DataIndex:
 
     with open(path, "r", encoding="utf-8") as fobj:
         for key, value in json.load(fobj).items():
-            index[key.split("/")] = DataIndexEntry.from_dict(value)
+            entry = DataIndexEntry.from_dict(value)
+            entry.key = key.split("/")
+            index.add(entry)
 
     return index

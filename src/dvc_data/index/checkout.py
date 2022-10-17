@@ -25,15 +25,15 @@ def checkout(
     create = []
     for change in diff(old, index):
         if change.typ == ADD:
-            create.append((change.key, change.new))
+            create.append(change.new)
         elif change.typ == MODIFY:
-            create.append((change.key, change.new))
-            delete.append((change.key, change.old))
+            create.append(change.new)
+            delete.append(change.old)
         elif change.typ == DELETE and delete:
-            delete.append((change.key, change.new))
+            delete.append(change.new)
 
-    for key, _ in delete:
-        fs.remove(fs.path.join(path, *key))
+    for entry in delete:
+        fs.remove(fs.path.join(path, *entry.key))
 
     if callback != DEFAULT_CALLBACK:
         callback.set_size(
@@ -42,7 +42,7 @@ def checkout(
                 for _, entry in index.iteritems()
             )
         )
-    for key, entry in create:
+    for entry in create:
         if entry.meta and entry.meta.isdir:
             continue
 
@@ -55,7 +55,7 @@ def checkout(
         if entry.fs and entry.path:
             try_sources.append((entry.fs, entry.path))
 
-        entry_path = fs.path.join(path, *key)
+        entry_path = fs.path.join(path, *entry.key)
         fs.makedirs(fs.path.parent(entry_path), exist_ok=True)
         while try_sources:
             src_fs, src_path = try_sources.pop(0)
