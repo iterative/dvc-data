@@ -24,7 +24,11 @@ class Change:
         return self.typ != UNCHANGED
 
 
-def _diff(old: Optional["BaseDataIndex"], new: Optional["BaseDataIndex"]):
+def _diff(
+    old: Optional["BaseDataIndex"],
+    new: Optional["BaseDataIndex"],
+    meta_only: Optional[bool] = False,
+):
     old_keys = {key for key, _ in old.iteritems()} if old else set()
     new_keys = {key for key, _ in new.iteritems()} if new else set()
 
@@ -41,7 +45,7 @@ def _diff(old: Optional["BaseDataIndex"], new: Optional["BaseDataIndex"]):
             typ = DELETE
         elif not old_entry and new_entry:
             typ = ADD
-        elif (old_hi and new_hi) and (old_hi != new_hi):
+        elif not meta_only and (old_hi and new_hi) and (old_hi != new_hi):
             typ = MODIFY
         elif old_meta != new_meta:
             typ = MODIFY
@@ -88,10 +92,12 @@ def diff(
     old: Optional["BaseDataIndex"],
     new: Optional["BaseDataIndex"],
     with_renames: Optional[bool] = False,
+    meta_only: Optional[bool] = False,
 ):
-    changes = _diff(old, new)
+    changes = _diff(old, new, meta_only=meta_only)
 
     if with_renames and old is not None and new is not None:
+        assert not meta_only
         yield from _detect_renames(changes)
     else:
         yield from changes
