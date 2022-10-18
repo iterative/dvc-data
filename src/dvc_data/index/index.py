@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 DataIndexKey = Tuple[str]
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class DataIndexEntry:
     key: Optional[DataIndexKey] = None
     meta: Optional["Meta"] = None
