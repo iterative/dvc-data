@@ -16,10 +16,11 @@ def add(
     key: "DataIndexKey",
     ignore: Optional["Ignore"] = None,
 ):
+    entry = build_entry(path, fs)
+    entry.key = key
+    index.add(entry)
+
     if not fs.isdir(path):
-        entry = build_entry(path, fs)
-        entry.key = key
-        index.add(entry)
         return
 
     for entry in build_entries(path, fs, ignore=ignore):

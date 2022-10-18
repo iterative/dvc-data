@@ -164,10 +164,11 @@ def test_add(tmp_upath, as_filesystem):
     assert index[("foo",)].path == str(tmp_upath / "foo")
 
     add(index, str(tmp_upath / "data"), fs, ("data",))
-    assert len(index) == 3
+    assert len(index) == 4
     assert index[("foo",)].meta.size == 4
     assert index[("foo",)].fs == fs
     assert index[("foo",)].path == str(tmp_upath / "foo")
+    assert index[("data",)].meta.isdir
     assert index[("data", "bar")].meta.size == 4
     assert index[("data", "bar")].fs == fs
     assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
