@@ -67,6 +67,8 @@ def checkout(
                     entry_path,
                     callback=callback,
                 )
+                entry.fs = fs
+                entry.path = entry_path
                 entry.meta = Meta.from_info(fs.info(entry_path))
                 break
             except Exception:  # pylint: disable=broad-except
