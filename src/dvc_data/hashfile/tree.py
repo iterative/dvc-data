@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
 
     from ..hashfile.hash_info import HashInfo
-    from ..index import BaseDataIndex, DataIndexKey
 
 logger = logging.getLogger(__name__)
 
@@ -328,21 +327,3 @@ def merge(odb, ancestor_info, our_info, their_info, allowed=None):
     merged.digest()
 
     return merged
-
-
-def tree_from_index(
-    index: "BaseDataIndex",
-    prefix: "DataIndexKey",
-) -> Tuple["Meta", "Tree"]:
-    tree_meta = Meta(size=0, nfiles=0, isdir=True)
-    assert tree_meta.size is not None and tree_meta.nfiles is not None
-    tree = Tree()
-    for key, entry in index.iteritems(prefix=prefix):
-        if key == prefix or entry.meta and entry.meta.isdir:
-            continue
-        assert entry.meta and entry.hash_info
-        tree_key = key[len(prefix) :]
-        tree.add(tree_key, entry.meta, entry.hash_info)
-        tree_meta.size += entry.meta.size or 0
-        tree_meta.nfiles += 1
-    return tree_meta, tree

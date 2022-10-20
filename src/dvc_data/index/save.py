@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple
 
 from ..hashfile.hash_info import HashInfo
 from ..hashfile.meta import Meta
+from ..hashfile.tree import Tree
 
 if TYPE_CHECKING:
     from .index import BaseDataIndex, DataIndexKey
@@ -43,18 +44,37 @@ def md5(index: "BaseDataIndex") -> None:
             )
 
 
+def build_tree(
+    index: "BaseDataIndex",
+    prefix: "DataIndexKey",
+) -> Tuple["Meta", Tree]:
+    tree_meta = Meta(size=0, nfiles=0, isdir=True)
+    assert tree_meta.size is not None and tree_meta.nfiles is not None
+    tree = Tree()
+    for key, entry in index.iteritems(prefix=prefix):
+        if key == prefix or entry.meta and entry.meta.isdir:
+            continue
+        assert entry.meta and entry.hash_info
+        tree_key = key[len(prefix) :]
+        tree.add(tree_key, entry.meta, entry.hash_info)
+        tree_meta.size += entry.meta.size or 0
+        tree_meta.nfiles += 1
+    tree.digest()
+    return tree_meta, tree
+
+
 def _save_dir_entry(
     index: "BaseDataIndex", key: "DataIndexKey", odb=None
 ) -> None:
     from ..hashfile.db import add_update_tree
-    from ..hashfile.tree import tree_from_index
 
     entry = index[key]
     cache = odb or entry.cache
     assert cache
-    meta, tree = tree_from_index(index, key)
+    meta, tree = build_tree(index, key)
     tree = add_update_tree(cache, tree)
     entry.meta = meta
+    entry.obj = tree
     entry.hash_info = tree.hash_info
     assert tree.hash_info.name and tree.hash_info.value
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)

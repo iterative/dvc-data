@@ -183,8 +183,7 @@ class HashFileDB(ObjectDB):
 
 def add_update_tree(odb: HashFileDB, tree: "Tree") -> "Tree":
     """Add tree to ODB and update fs/path to use ODB fs/path."""
-    if not tree.oid:
-        tree.digest()
+    assert tree.oid
     odb.add(tree.path, tree.fs, tree.oid, hardlink=False)
     raw = odb.get(tree.oid)
     tree.fs = raw.fs
