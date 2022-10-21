@@ -368,11 +368,11 @@ def test_diff():
     )
     old = DataIndex({old_foo_key: old_foo_entry, old_bar_key: old_bar_entry})
 
-    assert set(diff(old, old)) == {
+    assert set(diff(old, old, with_unchanged=True)) == {
         Change(UNCHANGED, old_foo_entry, old_foo_entry),
         Change(UNCHANGED, old_bar_entry, old_bar_entry),
     }
-    assert set(diff(old, old, with_renames=True)) == {
+    assert set(diff(old, old, with_renames=True, with_unchanged=True)) == {
         Change(UNCHANGED, old_foo_entry, old_foo_entry),
         Change(UNCHANGED, old_bar_entry, old_bar_entry),
     }
@@ -394,12 +394,12 @@ def test_diff():
         }
     )
 
-    assert set(diff(old, new)) == {
+    assert set(diff(old, new, with_unchanged=True)) == {
         Change(ADD, None, new_foo_entry),
         Change(DELETE, old_foo_entry, None),
         Change(UNCHANGED, old_bar_entry, old_bar_entry),
     }
-    assert set(diff(old, new, with_renames=True)) == {
+    assert set(diff(old, new, with_renames=True, with_unchanged=True)) == {
         Change(RENAME, old_foo_entry, new_foo_entry),
         Change(UNCHANGED, old_bar_entry, old_bar_entry),
     }
