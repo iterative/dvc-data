@@ -27,6 +27,8 @@ class Change:
 def _diff(
     old: Optional["BaseDataIndex"],
     new: Optional["BaseDataIndex"],
+    *,
+    with_unchanged: Optional[bool] = False,
     meta_only: Optional[bool] = False,
 ):
     old_keys = {key for key, _ in old.iteritems()} if old else set()
@@ -49,6 +51,8 @@ def _diff(
             typ = MODIFY
         elif old_meta != new_meta:
             typ = MODIFY
+        elif not with_unchanged:
+            continue
 
         yield Change(typ, old_entry, new_entry)
 
@@ -91,10 +95,17 @@ def _detect_renames(changes: Iterable[Change]):
 def diff(
     old: Optional["BaseDataIndex"],
     new: Optional["BaseDataIndex"],
+    *,
     with_renames: Optional[bool] = False,
+    with_unchanged: Optional[bool] = False,
     meta_only: Optional[bool] = False,
 ):
-    changes = _diff(old, new, meta_only=meta_only)
+    changes = _diff(
+        old,
+        new,
+        with_unchanged=with_unchanged,
+        meta_only=meta_only,
+    )
 
     if with_renames and old is not None and new is not None:
         assert not meta_only
