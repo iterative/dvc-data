@@ -47,11 +47,13 @@ def _diff(
             typ = DELETE
         elif not old_entry and new_entry:
             typ = ADD
-        elif not meta_only and (old_hi and new_hi) and (old_hi != new_hi):
-            typ = MODIFY
+        elif not meta_only and (old_hi and new_hi):
+            if old_hi != new_hi:
+                typ = MODIFY
         elif old_meta != new_meta:
             typ = MODIFY
-        elif not with_unchanged:
+
+        if typ == UNCHANGED and not with_unchanged:
             continue
 
         yield Change(typ, old_entry, new_entry)
