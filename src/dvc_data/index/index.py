@@ -205,9 +205,17 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         if not entry.obj:
             return
 
+        dirs = set()
         for ikey, (meta, hash_info) in entry.obj.iteritems():
             if not meta and entry.hash_info and entry.hash_info == hash_info:
                 meta = entry.meta
+
+            if len(ikey) >= 2:
+                # NOTE: current .dir obj format doesn't include subdirs, so
+                # we need to create entries for them manually.
+                for idx in range(1, len(ikey)):
+                    dirs.add(ikey[:-idx])
+
             entry_key = key + ikey
             self._trie[entry_key] = DataIndexEntry(
                 key=entry_key,
@@ -216,6 +224,16 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
                 remote=entry.remote,
                 hash_info=hash_info,
                 meta=meta,
+            )
+
+        for dkey in dirs:
+            entry_key = key + dkey
+            self._trie[entry_key] = DataIndexEntry(
+                key=entry_key,
+                odb=entry.odb,
+                cache=entry.odb,
+                remote=entry.remote,
+                meta=Meta(isdir=True),
             )
 
         entry.loaded = True
