@@ -29,6 +29,7 @@ def _diff(
     new: Optional["BaseDataIndex"],
     *,
     with_unchanged: Optional[bool] = False,
+    hash_only: Optional[bool] = False,
     meta_only: Optional[bool] = False,
 ):
     old_keys = {key for key, _ in old.iteritems()} if old else set()
@@ -50,7 +51,7 @@ def _diff(
         elif not meta_only and (old_hi and new_hi):
             if old_hi != new_hi:
                 typ = MODIFY
-        elif old_meta != new_meta:
+        elif not hash_only and old_meta != new_meta:
             typ = MODIFY
 
         if typ == UNCHANGED and not with_unchanged:
@@ -100,12 +101,14 @@ def diff(
     *,
     with_renames: Optional[bool] = False,
     with_unchanged: Optional[bool] = False,
+    hash_only: Optional[bool] = False,
     meta_only: Optional[bool] = False,
 ):
     changes = _diff(
         old,
         new,
         with_unchanged=with_unchanged,
+        hash_only=hash_only,
         meta_only=meta_only,
     )
 
