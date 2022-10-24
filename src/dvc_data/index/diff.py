@@ -75,6 +75,11 @@ def _detect_renames(changes: Iterable[Change]):
     for change in added:
         new_entry = change.new
         assert new_entry
+
+        if not new_entry.hash_info:
+            yield change
+            continue
+
         index, old_entry = None, None
         for idx, ch in enumerate(deleted):
             assert ch.old
