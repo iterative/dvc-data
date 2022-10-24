@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from attrs import define
 
 if TYPE_CHECKING:
-    from .index import BaseDataIndex
+    from .index import BaseDataIndex, DataIndexKey
 
 from .index import DataIndexEntry
 
@@ -19,6 +19,20 @@ class Change:
     typ: str
     old: Optional[DataIndexEntry]
     new: Optional[DataIndexEntry]
+
+    @property
+    def key(self) -> "DataIndexKey":
+        if self.typ == RENAME:
+            raise ValueError
+
+        if self.typ == ADD:
+            entry = self.new
+        else:
+            entry = self.old
+
+        assert entry
+        assert entry.key
+        return entry.key
 
     def __bool__(self):
         return self.typ != UNCHANGED
@@ -71,6 +85,12 @@ def _detect_renames(changes: Iterable[Change]):
             deleted.append(change)
         else:
             yield change
+
+    def _get_key(change):
+        return change.key
+
+    added[:] = sorted(added, key=_get_key)
+    deleted[:] = sorted(deleted, key=_get_key)
 
     for change in added:
         new_entry = change.new
