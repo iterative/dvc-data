@@ -132,9 +132,8 @@ class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
     def info(self, key: DataIndexKey):
         try:
             entry = self[key]
-            isdir = entry.hash_info and entry.hash_info.isdir
-            assert entry.hash_info is not None
-            return {
+            isdir = entry.meta and entry.meta.isdir
+            ret = {
                 "type": "directory" if isdir else "file",
                 "size": entry.meta.size if entry.meta else 0,
                 "isexec": entry.meta.isexec if entry.meta else False,
@@ -142,8 +141,13 @@ class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
                 "isout": True,
                 "obj": entry.obj,
                 "entry": entry,
-                entry.hash_info.name: entry.hash_info.value,
             }
+
+            if entry.hash_info:
+                assert entry.hash_info.name
+                ret[entry.hash_info.name] = entry.hash_info.value
+
+            return ret
         except ShortKeyError:
             return {
                 "type": "directory",

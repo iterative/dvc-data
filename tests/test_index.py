@@ -67,6 +67,7 @@ def test_fs(tmp_upath, odb, as_filesystem):
             ),
             ("data",): DataIndexEntry(
                 odb=odb,
+                meta=Meta(isdir=True),
                 hash_info=HashInfo(
                     name="md5",
                     value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
