@@ -13,9 +13,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
+    env:
+      PYTEST_BENCHMARK_STORAGE: file://${{ github.workspace }}/.benchmarks
     steps:
     - name: Set up Python 3.10
       uses: actions/setup-python@v4
@@ -24,9 +28,9 @@ jobs:
 
     - uses: actions/checkout@v3
       with:
-        ref: main
+        ref: ${{ github.event.pull_request.base.sha }}
         fetch-depth: 0
-        path: main
+        path: base
 
     - uses: actions/checkout@v3
       with:
@@ -34,28 +38,21 @@ jobs:
         path: pr
 
     - name: Upgrade pip and nox
-      run: |
-        python -m pip install --upgrade pip nox
-        pip --version
-        nox --version
+      run: python -m pip install --upgrade pip nox
 
-    - name: Benchmark on main
-      run: cd main && nox -s bench -- --benchmark-save=main
-      env:
-        PYTEST_BENCHMARK_STORAGE: file://${{ github.workspace }}/.benchmarks
+    - name: Benchmark on base branch
+      working-directory: base
+      run: nox -s bench -- --benchmark-save=base
 
     - name: Benchmark on pull request
-      run: |
-        cd pr
-        nox -s bench -- \
-            --benchmark-save=${GITHUB_SHA::7} \
-            --benchmark-compare=0001 \
-            --benchmark-compare-fail=mean:10%
-      env:
-        PYTEST_BENCHMARK_STORAGE: file://${{ github.workspace }}/.benchmarks
+      working-directory: pr
+      run: >
+        nox -s bench --
+        --benchmark-save=${GITHUB_SHA::7}
+        --benchmark-compare=0001
+        --benchmark-compare-fail=mean:10%
 
+    - run: pip install pytest-benchmark
     - name: Compare benchmark
       if: always()
-      run: |
-        pip install pytest-benchmark
-        pytest-benchmark compare --group-by name
+      run: pytest-benchmark compare --group-by name
