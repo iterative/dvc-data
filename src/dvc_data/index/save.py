@@ -16,7 +16,7 @@ def md5(index: "BaseDataIndex") -> None:
         if entry.meta and entry.meta.isdir:
             continue
 
-        if entry.hash_info:
+        if entry.hash_info and entry.hash_info.name == "md5":
             continue
 
         if entry.meta and entry.meta.version_id and entry.fs.version_aware:
