@@ -61,18 +61,19 @@ def _view_keys(
     """Return (prefixes, keys) matching the specified filter."""
 
     class _FilterNode:
-        def __init__(self, key, children):
+        def __init__(self, key, children, has_value):
             self.key = key
             self.children = children
+            self.has_value = has_value
 
         def build(self, stack):
             for child in self.children:
                 stack.append(child)
-            return self.key, bool(self.children)
+            return self.key, bool(self.children), self.has_value
 
     def node_factory(_, key, children, *args) -> Optional[_FilterNode]:
         if not key or filter_fn(key):
-            return _FilterNode(key, children)
+            return _FilterNode(key, children, bool(args))
         return None
 
     prefixes: Set[DataIndexKey] = set()
@@ -81,11 +82,11 @@ def _view_keys(
     while stack:
         node = stack.popleft()
         if node is not None:
-            key, is_prefix = node.build(stack)
+            key, is_prefix, has_value = node.build(stack)
             if key:
                 if is_prefix:
                     prefixes.add(key)
-                else:
+                if has_value:
                     keys.add(key)
     return prefixes, keys
 
