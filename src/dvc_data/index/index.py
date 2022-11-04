@@ -197,10 +197,13 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         if entry.loaded:
             return
 
-        if not entry.hash_info:
+        if not entry.hash_info and not entry.obj:
             return
 
-        if not entry.hash_info.isdir:
+        if not (
+            entry.hash_info.isdir
+            or (entry.meta is not None and entry.meta.isdir)
+        ):
             return
 
         if not entry.obj:
@@ -221,7 +224,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
                     dirs.add(ikey[:-idx])
 
             entry_key = key + ikey
-            self._trie[entry_key] = DataIndexEntry(
+            child_entry = DataIndexEntry(
                 key=entry_key,
                 odb=entry.odb,
                 cache=entry.odb,
@@ -229,6 +232,10 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
                 hash_info=hash_info,
                 meta=meta,
             )
+            if entry.fs and entry.path:
+                child_entry.fs = entry.fs
+                child_entry.path = entry.fs.path.join(entry.path, *ikey)
+            self._trie[entry_key] = child_entry
 
         for dkey in dirs:
             entry_key = key + dkey
