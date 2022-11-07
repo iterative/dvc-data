@@ -39,7 +39,7 @@ def get_mtime_and_size(
 
     # We track file changes and moves, which cannot be detected with simply
     # max(mtime(f) for f in non_ignored_files)
-    hasher = hashlib.md5()
+    hasher = hashlib.md5()  # nosec B324
     hasher.update(json.dumps(files_mtimes, sort_keys=True).encode("utf-8"))
     mtime = hasher.hexdigest()
     return mtime, size

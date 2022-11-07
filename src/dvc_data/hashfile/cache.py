@@ -1,5 +1,5 @@
 import os
-import pickle
+import pickle  # nosec B403
 from functools import wraps
 from typing import Any
 
