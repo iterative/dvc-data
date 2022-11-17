@@ -131,10 +131,7 @@ def _build_tree(
             # faster string manipulation instead of a more robust relparts()
             rel_key: Tuple[Optional[Any], ...] = ()
             if root != path:
-                path_lenght = len(path)
-                if not path.endswith(fs.sep):
-                    path_lenght += 1
-                rel_key = tuple(root[path_lenght:].split(fs.sep))
+                rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
 
             for fname in fnames:
                 if fname == "":
