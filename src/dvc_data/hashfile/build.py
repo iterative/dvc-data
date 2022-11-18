@@ -98,6 +98,8 @@ def _build_tree(
         except FileNotFoundError:
             pass
 
+    path = path.rstrip(fs.sep)
+
     if ignore:
         walk_iter = ignore.walk(fs, path)
     else:
