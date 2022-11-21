@@ -327,3 +327,26 @@ def merge(odb, ancestor_info, our_info, their_info, allowed=None):
     merged.digest()
 
     return merged
+
+
+def update_meta(ours: "Tree", theirs: "Tree") -> "Tree":
+    """Return a new copy of `ours` using meta updated from `theirs`.
+
+    Entries that exist in both trees (with matching key + hashinfo) will be
+    updated to use the meta from `theirs`.
+    """
+    updated = Tree()
+    for key, meta, hash_info in ours:
+        theirs_meta, theirs_hash_info = theirs.get(  # type: ignore[misc]
+            key, (None, None)
+        )
+        if hash_info is not None and hash_info == theirs_hash_info:
+            meta = theirs_meta
+        updated.add(key, meta, hash_info)
+    # We do not need to do a full digest() here since we are not modifying any
+    # keys or hashinfos from the original `ours`.
+    updated.fs = ours.fs
+    updated.path = ours.path
+    updated.hash_info = ours.hash_info
+    updated.oid = ours.oid
+    return updated
