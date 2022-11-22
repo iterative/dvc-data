@@ -17,7 +17,7 @@ def build_entry(
         info = fs.info(path)
 
     return DataIndexEntry(
-        meta=Meta.from_info(info),
+        meta=Meta.from_info(info, fs.protocol),
         path=path,
         fs=fs,
     )
