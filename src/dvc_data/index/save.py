@@ -1,10 +1,16 @@
-from typing import TYPE_CHECKING, List, Tuple
+from functools import wraps
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
 from ..hashfile.hash_info import HashInfo
 from ..hashfile.meta import Meta
 from ..hashfile.tree import Tree
 
 if TYPE_CHECKING:
+    from dvc_objects.fs.callbacks import Callback
+
+    from ..hashfile.db import HashFileDB
     from .index import BaseDataIndex, DataIndexKey
 
 
@@ -64,7 +70,9 @@ def build_tree(
 
 
 def _save_dir_entry(
-    index: "BaseDataIndex", key: "DataIndexKey", odb=None
+    index: "BaseDataIndex",
+    key: "DataIndexKey",
+    odb: Optional["HashFileDB"] = None,
 ) -> None:
     from ..hashfile.db import add_update_tree
 
@@ -80,7 +88,24 @@ def _save_dir_entry(
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
 
 
-def save(index: "BaseDataIndex", odb=None, **kwargs) -> int:
+def _wrap_add(callback: "Callback", fn: Callable):
+    wrapped = callback.wrap_fn(fn)
+
+    @wraps(fn)
+    def func(path: str, *args, **kwargs):
+        kw: Dict[str, Any] = dict(kwargs)
+        with callback.branch(path, path, kw):
+            return wrapped(path, *args, **kw)
+
+    return func
+
+
+def save(
+    index: "BaseDataIndex",
+    odb: Optional["HashFileDB"] = None,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    **kwargs
+) -> int:
     dir_entries: List["DataIndexKey"] = []
     transferred = 0
 
@@ -104,10 +129,12 @@ def save(index: "BaseDataIndex", odb=None, **kwargs) -> int:
             cache = odb or entry.cache
             assert entry.hash_info.value
             assert cache
-            transferred += cache.add(
+            add = _wrap_add(callback, cache.add)
+            transferred += add(
                 path,
                 entry.fs,
                 entry.hash_info.value,
+                callback=callback,
                 **kwargs,
             )
 
