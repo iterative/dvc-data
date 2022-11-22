@@ -80,8 +80,9 @@ def _save_dir_entry(
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
 
 
-def save(index: "BaseDataIndex", odb=None, **kwargs) -> None:
+def save(index: "BaseDataIndex", odb=None, **kwargs) -> int:
     dir_entries: List["DataIndexKey"] = []
+    transferred = 0
 
     for key, entry in index.iteritems():
         assert entry.meta and entry.fs
@@ -103,7 +104,7 @@ def save(index: "BaseDataIndex", odb=None, **kwargs) -> None:
             cache = odb or entry.cache
             assert entry.hash_info.value
             assert cache
-            cache.add(
+            transferred += cache.add(
                 path,
                 entry.fs,
                 entry.hash_info.value,
@@ -112,3 +113,5 @@ def save(index: "BaseDataIndex", odb=None, **kwargs) -> None:
 
     for key in dir_entries:
         _save_dir_entry(index, key, odb=odb)
+
+    return transferred

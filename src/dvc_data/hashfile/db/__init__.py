@@ -91,7 +91,7 @@ class HashFileDB(ObjectDB):
         hardlink: bool = False,
         callback: "Callback" = None,
         **kwargs,
-    ):
+    ) -> int:
         verify = kwargs.get("verify")
         if verify is None:
             verify = self.verify
@@ -102,7 +102,9 @@ class HashFileDB(ObjectDB):
             except (ObjectFormatError, FileNotFoundError):
                 pass
 
-        super().add(path, fs, oid, hardlink=hardlink, callback=callback)
+        transferred = super().add(
+            path, fs, oid, hardlink=hardlink, callback=callback
+        )
 
         cache_path = self.oid_to_path(oid)
         try:
@@ -116,6 +118,7 @@ class HashFileDB(ObjectDB):
             )
         except (ObjectFormatError, FileNotFoundError):
             pass
+        return transferred
 
     def protect(self, path):  # pylint: disable=unused-argument
         pass
