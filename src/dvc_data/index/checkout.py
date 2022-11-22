@@ -60,7 +60,7 @@ def checkout(
         _try_sources(fs, entry_path, sources, callback=callback)
         entry.fs = fs
         entry.path = entry_path
-        entry.meta = Meta.from_info(fs.info(entry_path))
+        entry.meta = Meta.from_info(fs.info(entry_path), fs.protocol)
         transferred += 1
     return transferred
 

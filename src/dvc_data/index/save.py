@@ -36,7 +36,7 @@ def md5(index: "BaseDataIndex") -> None:
             path = entry.path
 
         try:
-            meta = Meta.from_info(entry.fs.info(path))
+            meta = Meta.from_info(entry.fs.info(path), entry.fs.protocol)
         except FileNotFoundError:
             continue
 
