@@ -22,7 +22,8 @@ def checkout(
     delete=False,
     callback: "Callback" = DEFAULT_CALLBACK,
     latest_only: bool = True,
-) -> None:
+) -> int:
+    transferred = 0
     create, delete = _get_changes(index, old)
     for entry in delete:
         fs.remove(fs.path.join(path, *entry.key))
@@ -60,6 +61,8 @@ def checkout(
         entry.fs = fs
         entry.path = entry_path
         entry.meta = Meta.from_info(fs.info(entry_path))
+        transferred += 1
+    return transferred
 
 
 def _get_changes(
