@@ -47,7 +47,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if info["type"] == "directory":
             raise IsADirectoryError
 
-        value = info.get("md5")
+        value = info.get("md5") or info.get("etag")
         if not value:
             raise FileNotFoundError
 
