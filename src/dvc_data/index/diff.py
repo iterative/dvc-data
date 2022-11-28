@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
 
 from attrs import define
 
 if TYPE_CHECKING:
+    from .hashfile.meta import Meta
     from .index import BaseDataIndex, DataIndexKey
 
 from .index import DataIndexEntry
@@ -45,6 +46,7 @@ def _diff(
     with_unchanged: Optional[bool] = False,
     hash_only: Optional[bool] = False,
     meta_only: Optional[bool] = False,
+    meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
 ):
     old_keys = {key for key, _ in old.iteritems()} if old else set()
     new_keys = {key for key, _ in new.iteritems()} if new else set()
@@ -65,8 +67,15 @@ def _diff(
         elif not meta_only and (old_hi and new_hi):
             if old_hi != new_hi:
                 typ = MODIFY
-        elif not hash_only and old_meta != new_meta:
-            typ = MODIFY
+        elif not hash_only:
+            if (
+                meta_cmp_key is None or old_meta is None or new_meta is None
+            ) and old_meta != new_meta:
+                typ = MODIFY
+            elif meta_cmp_key is not None and meta_cmp_key(
+                old_meta
+            ) != meta_cmp_key(new_meta):
+                typ = MODIFY
 
         if typ == UNCHANGED and not with_unchanged:
             continue
@@ -128,6 +137,7 @@ def diff(
     with_unchanged: Optional[bool] = False,
     hash_only: Optional[bool] = False,
     meta_only: Optional[bool] = False,
+    meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
 ):
     changes = _diff(
         old,
@@ -135,6 +145,7 @@ def diff(
         with_unchanged=with_unchanged,
         hash_only=hash_only,
         meta_only=meta_only,
+        meta_cmp_key=meta_cmp_key,
     )
 
     if with_renames and old is not None and new is not None:
