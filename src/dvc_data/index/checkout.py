@@ -22,10 +22,13 @@ def checkout(
     delete=False,
     callback: "Callback" = DEFAULT_CALLBACK,
     latest_only: bool = True,
+    **kwargs,
 ) -> int:
     transferred = 0
-    create, delete = _get_changes(index, old)
+    create, delete = _get_changes(index, old, **kwargs)
     for entry in delete:
+        if entry.meta and entry.meta.isdir:
+            continue
         fs.remove(fs.path.join(path, *entry.key))
 
     if callback != DEFAULT_CALLBACK:
@@ -61,16 +64,17 @@ def checkout(
         entry.fs = fs
         entry.path = entry_path
         entry.meta = Meta.from_info(fs.info(entry_path), fs.protocol)
+        print("dvc-data checkout", entry_path)
         transferred += 1
     return transferred
 
 
 def _get_changes(
-    index: "BaseDataIndex", old: Optional["BaseDataIndex"]
+    index: "BaseDataIndex", old: Optional["BaseDataIndex"], **kwargs
 ) -> Tuple[List["Change"], List["Change"]]:
     create = []
     delete = []
-    for change in diff(old, index):
+    for change in diff(old, index, **kwargs):
         if change.typ == ADD:
             create.append(change.new)
         elif change.typ == MODIFY:
