@@ -64,7 +64,6 @@ def checkout(
         entry.fs = fs
         entry.path = entry_path
         entry.meta = Meta.from_info(fs.info(entry_path), fs.protocol)
-        print("dvc-data checkout", entry_path)
         transferred += 1
     return transferred
 
@@ -81,7 +80,7 @@ def _get_changes(
             create.append(change.new)
             delete.append(change.old)
         elif change.typ == DELETE and delete:
-            delete.append(change.new)
+            delete.append(change.old)
     return create, delete
 
 
