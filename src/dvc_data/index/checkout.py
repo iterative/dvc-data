@@ -22,6 +22,7 @@ def checkout(
     delete=False,
     callback: "Callback" = DEFAULT_CALLBACK,
     latest_only: bool = True,
+    update_meta: bool = True,
     **kwargs,
 ) -> int:
     transferred = 0
@@ -61,9 +62,10 @@ def checkout(
             sources.append((entry.fs, entry.path))
         fs.makedirs(fs.path.parent(entry_path), exist_ok=True)
         _try_sources(fs, entry_path, sources, callback=callback)
-        entry.fs = fs
-        entry.path = entry_path
-        entry.meta = Meta.from_info(fs.info(entry_path), fs.protocol)
+        if update_meta:
+            entry.fs = fs
+            entry.path = entry_path
+            entry.meta = Meta.from_info(fs.info(entry_path), fs.protocol)
         transferred += 1
     return transferred
 
