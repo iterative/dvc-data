@@ -240,9 +240,40 @@ def test_write_read(odb, tmp_path, write, read):
         assert index[key].hash_info == entry.hash_info
 
 
-def test_view_keys(odb):
-    from dvc_data.index.view import _view_keys
-
+@pytest.mark.parametrize(
+    "keys, filter_fn, ensure_loaded",
+    [
+        (
+            {
+                ("foo",),
+                ("dir", "subdir", "bar"),
+                ("dir", "subdir", "bar", "bar"),
+                ("dir", "subdir", "bar", "baz"),
+            },
+            lambda k: True,
+            True,
+        ),
+        (
+            {
+                ("foo",),
+                ("dir", "subdir", "bar"),
+            },
+            lambda k: True,
+            False,
+        ),
+        (
+            set(),
+            lambda k: False,
+            True,
+        ),
+        (
+            set(),
+            lambda k: False,
+            False,
+        ),
+    ],
+)
+def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
@@ -261,35 +292,18 @@ def test_view_keys(odb):
         }
     )
 
-    prefixes, keys = _view_keys(index, lambda k: True)
-    assert prefixes == {("dir",), ("dir", "subdir")}
-    assert keys == {("foo",), ("dir", "subdir", "bar")}
-
-    prefixes, keys = _view_keys(index, lambda k: False)
-    assert prefixes == keys == set()
-
-    prefixes, keys = _view_keys(index, lambda k: "dir" in k)
-    assert prefixes == {("dir",), ("dir", "subdir")}
-    assert keys == {("dir", "subdir", "bar")}
-
-    def filter_fn(key):
-        # filter should not recurse into ("dir",) prefix
-        assert key != ("dir", "subdir")
-        return "foo" in key
-
-    prefixes, keys = _view_keys(index, filter_fn)
-    assert prefixes == set()
-    assert keys == {("foo",)}
+    index_view = view(index, filter_fn)
+    assert keys == {
+        key for key, _ in index_view._iteritems(ensure_loaded=ensure_loaded)
+    }
 
 
 def test_view(odb):
-    expected_entry = (
-        DataIndexEntry(
-            odb=odb,
-            hash_info=HashInfo(
-                name="md5",
-                value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
-            ),
+    expected_entry = DataIndexEntry(
+        odb=odb,
+        hash_info=HashInfo(
+            name="md5",
+            value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
         ),
     )
     expected_key = ("dir", "subdir", "bar")
@@ -305,11 +319,13 @@ def test_view(odb):
         }
     )
     index_view = view(index, lambda k: "dir" in k)
-    assert {expected_key} == index_view.keys()
+    assert {expected_key} == set(index_view.keys())
     assert expected_key in index_view
     assert ("foo",) not in index_view
     assert len(index_view) == 1
-    assert [(expected_key, expected_entry)] == list(index_view.iteritems())
+
+    # iteritems() should ensure dirs are loaded
+    assert len(list(index_view.iteritems())) == 3
     assert index_view[expected_key] == expected_entry
     assert index_view[expected_key] is index[expected_key]
 
