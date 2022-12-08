@@ -23,8 +23,6 @@ class DataIndexView(BaseDataIndex):
         return (key for key, _ in self._iteritems())
 
     def __len__(self):
-        # NOTE: this is not the same as list(iter(self)) since the iterator
-        # includes prefixes which are not keys (and have no set value)
         return len(list(iter(self)))
 
     def _iteritems(
