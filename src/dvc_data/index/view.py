@@ -102,6 +102,18 @@ class DataIndexView(BaseDataIndex):
 
         return self._index.traverse(_node_factory, **kwargs)
 
+    def ls(self, root_key: DataIndexKey, detail=True):
+        def node_factory(_, key, children, entry=None):
+            if key == root_key:
+                return children
+
+            if detail:
+                return key, self._info_from_entry(key, entry)
+
+            return key
+
+        return self.traverse(node_factory, prefix=root_key)
+
     def has_node(self, key: DataIndexKey) -> bool:
         return self.filter_fn(key) and self._index.has_node(key)
 
