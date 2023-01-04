@@ -183,6 +183,7 @@ def test_checkout(tmp_upath, odb, as_filesystem):
         {
             ("foo",): DataIndexEntry(
                 key=("foo",),
+                meta=Meta(),
                 odb=odb,
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
