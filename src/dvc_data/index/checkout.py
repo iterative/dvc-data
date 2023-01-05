@@ -73,6 +73,7 @@ def _do_create(
         and entry.meta.version_id is not None
         and fs.exists(fs.path.version_path(entry_path, entry.meta.version_id))
     ):
+        callback.relative_update()
         return 0
 
     sources = []
