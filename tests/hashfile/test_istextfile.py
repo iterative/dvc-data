@@ -25,19 +25,7 @@ def test_istextblock(block, expected):
     assert istextblock(block) is expected
 
 
-@pytest.mark.parametrize(
-    "tmp_upath",
-    [
-        "local",
-        pytest.param(
-            "s3",
-            marks=pytest.mark.skipif(
-                sys.version_info >= (3, 11), reason="no aiohttp"
-            ),
-        ),
-    ],
-    indirect=True,
-)
+@pytest.mark.parametrize("tmp_upath", ["local", "s3"], indirect=True)
 def test_istextfile(tmp_upath, block, expected):
     path = tmp_upath / "file"
     path.write_bytes(block)
