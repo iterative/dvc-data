@@ -1,6 +1,6 @@
 from typing import Any, ClassVar, Dict, List, Optional
 
-from attrs import Attribute, asdict, define, fields_dict
+from attrs import Attribute, define, fields_dict
 from dvc_objects.fs.utils import is_exec
 
 
@@ -79,12 +79,33 @@ class Meta:
         return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
-        def _filter(field: Attribute, value: Any) -> bool:
-            if field.name in (self.PARAM_INODE, self.PARAM_MTIME):
-                return False
-            return _filter_default_or_none(field, value)
+        ret: Dict[str, Any] = {}
 
-        return asdict(self, recurse=False, filter=_filter)
+        if self.isdir:
+            ret[self.PARAM_ISDIR] = self.isdir
+
+        if self.size is not None:
+            ret[self.PARAM_SIZE] = self.size
+
+        if self.nfiles is not None:
+            ret[self.PARAM_NFILES] = self.nfiles
+
+        if self.isexec:
+            ret[self.PARAM_ISEXEC] = self.isexec
+
+        if self.version_id:
+            ret[self.PARAM_VERSION_ID] = self.version_id
+
+        if self.etag:
+            ret[self.PARAM_ETAG] = self.etag
+
+        if self.checksum:
+            ret[self.PARAM_CHECKSUM] = self.checksum
+
+        if self.md5:
+            ret[self.PARAM_MD5] = self.md5
+
+        return ret
 
 
 Meta.fields = list(fields_dict(Meta))
