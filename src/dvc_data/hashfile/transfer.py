@@ -205,6 +205,7 @@ def transfer(
             obj.oid,
             verify=verify,
             hardlink=hardlink,
+            check_exists=False,
         )
 
     total = len(status.new)
