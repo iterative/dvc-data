@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 
 from ..obj import HashFile
 from . import HashFileDB, HashInfo
@@ -30,16 +30,22 @@ class ReferenceHashFileDB(HashFileDB):
 
     def add(
         self,
-        path: "AnyFSPath",
+        path: Union["AnyFSPath", List["AnyFSPath"]],
         fs: "FileSystem",
-        oid: str,
+        oid: Union[str, List[str]],
         hardlink: bool = False,
         callback: "Callback" = None,
         check_exists: bool = True,
+        on_error: Optional[Callable[[str, BaseException], None]] = None,
         **kwargs,
     ):
-        hash_info = HashInfo(self.hash_name, oid)
-        self._obj_cache[oid] = HashFile(path, fs, hash_info)
+        paths = [path] if isinstance(path, str) else path
+        oids = [oid] if isinstance(oid, str) else oid
+        assert len(paths) == len(oids)
+
+        for i in range(len(paths)):
+            hash_info = HashInfo(self.hash_name, oids[i])
+            self._obj_cache[oids[i]] = HashFile(paths[i], fs, hash_info)
 
     def check(
         self,
