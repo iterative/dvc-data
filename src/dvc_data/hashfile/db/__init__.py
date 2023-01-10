@@ -90,6 +90,7 @@ class HashFileDB(ObjectDB):
         oid: str,
         hardlink: bool = False,
         callback: "Callback" = None,
+        check_exists: bool = True,
         **kwargs,
     ) -> int:
         verify = kwargs.get("verify")
@@ -103,7 +104,13 @@ class HashFileDB(ObjectDB):
                 pass
 
         transferred = super().add(
-            path, fs, oid, hardlink=hardlink, callback=callback
+            path,
+            fs,
+            oid,
+            hardlink=hardlink,
+            callback=callback,
+            check_exists=check_exists,
+            **kwargs,
         )
 
         cache_path = self.oid_to_path(oid)

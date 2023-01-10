@@ -35,8 +35,9 @@ class ReferenceHashFileDB(HashFileDB):
         oid: str,
         hardlink: bool = False,
         callback: "Callback" = None,
+        check_exists: bool = True,
         **kwargs,
-    ):  # pylint: disable=arguments-differ
+    ):
         hash_info = HashInfo(self.hash_name, oid)
         self._obj_cache[oid] = HashFile(path, fs, hash_info)
 
