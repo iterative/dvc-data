@@ -3,10 +3,11 @@ import logging
 import os
 from contextlib import suppress
 from copy import copy
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional, Union
 
 from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
 from ..hash_info import HashInfo
 from ..obj import HashFile
@@ -85,46 +86,54 @@ class HashFileDB(ObjectDB):
 
     def add(
         self,
-        path: "AnyFSPath",
+        path: Union["AnyFSPath", List["AnyFSPath"]],
         fs: "FileSystem",
-        oid: str,
+        oid: Union[str, List[str]],
         hardlink: bool = False,
-        callback: "Callback" = None,
+        callback: "Callback" = DEFAULT_CALLBACK,
         check_exists: bool = True,
+        on_error: Optional[Callable[[str, BaseException], None]] = None,
         **kwargs,
     ) -> int:
         verify = kwargs.get("verify")
         if verify is None:
             verify = self.verify
 
+        paths = [path] if isinstance(path, str) else path
+        oids = [oid] if isinstance(oid, str) else oid
+        assert len(paths) == len(oids)
+
         if verify:
-            try:
-                self.check(oid, check_hash=True)
-            except (ObjectFormatError, FileNotFoundError):
-                pass
+            for oid in oids:
+                try:
+                    self.check(oid, check_hash=True)
+                except (ObjectFormatError, FileNotFoundError):
+                    pass
 
         transferred = super().add(
-            path,
+            paths,
             fs,
-            oid,
+            oids,
             hardlink=hardlink,
             callback=callback,
             check_exists=check_exists,
+            on_error=on_error,
             **kwargs,
         )
 
-        cache_path = self.oid_to_path(oid)
-        try:
-            if verify:
-                self.check(oid, check_hash=True)
-            self.protect(cache_path)
-            self.state.save(
-                cache_path,
-                self.fs,
-                HashInfo(name=self.hash_name, value=oid),
-            )
-        except (ObjectFormatError, FileNotFoundError):
-            pass
+        for oid in oids:
+            cache_path = self.oid_to_path(oid)
+            try:
+                if verify:
+                    self.check(oid, check_hash=True)
+                self.protect(cache_path)
+                self.state.save(
+                    cache_path,
+                    self.fs,
+                    HashInfo(name=self.hash_name, value=oid),
+                )
+            except (ObjectFormatError, FileNotFoundError):
+                pass
         return transferred
 
     def protect(self, path):  # pylint: disable=unused-argument
