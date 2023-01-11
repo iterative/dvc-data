@@ -1,6 +1,6 @@
 from typing import Any, ClassVar, Dict, List, Optional
 
-from attrs import Attribute, define, fields_dict
+from attrs import define, fields_dict
 from dvc_objects.fs.utils import is_exec
 
 
