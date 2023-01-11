@@ -1,11 +1,7 @@
 from typing import Any, ClassVar, Dict, List, Optional
 
-from attrs import Attribute, define, fields_dict
+from attrs import define, fields_dict
 from dvc_objects.fs.utils import is_exec
-
-
-def _filter_default_or_none(field: Attribute, value: Any) -> bool:
-    return value is not None and value != field.default
 
 
 @define
