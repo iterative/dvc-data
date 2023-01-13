@@ -181,7 +181,10 @@ def transfer(
     verify: bool = False,
     hardlink: bool = False,
     validate_status: Callable[["CompareStatusResult"], None] = None,
-    **kwargs,
+    src_index: Optional["ObjectDBIndexBase"] = None,
+    dest_index: Optional["ObjectDBIndexBase"] = None,
+    cache_odb: Optional["HashFileDB"] = None,
+    shallow: bool = True,
 ) -> "TransferResult":
     """Transfer (copy) the specified objects from one ODB to another.
 
@@ -198,7 +201,15 @@ def transfer(
         return TransferResult(set(), set())
 
     status = compare_status(
-        src, dest, obj_ids, check_deleted=False, jobs=jobs, **kwargs
+        src,
+        dest,
+        obj_ids,
+        check_deleted=False,
+        jobs=jobs,
+        src_index=src_index,
+        dest_index=dest_index,
+        cache_odb=cache_odb,
+        shallow=shallow,
     )
 
     if validate_status:
@@ -224,5 +235,8 @@ def transfer(
             callback=cb,
             batch_size=jobs,
             check_exists=False,
+            src_index=src_index,
+            dest_index=dest_index,
+            cache_odb=cache_odb,
         )
     return TransferResult(status.new - failed, failed)
