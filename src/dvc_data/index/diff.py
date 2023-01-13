@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional
 
 from attrs import define
 
@@ -111,7 +111,7 @@ def _diff(
     meta_only: Optional[bool] = False,
     meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
     shallow: Optional[bool] = False,
-):
+) -> Iterator[Change]:
     old_keys = (
         {key for key, _ in old.iteritems(shallow=shallow)} if old else set()
     )
@@ -143,7 +143,7 @@ def _diff(
         yield Change(typ, old_entry, new_entry)
 
 
-def _detect_renames(changes: Iterable[Change]):
+def _detect_renames(changes: Iterable[Change]) -> Iterator[Change]:
     added = []
     deleted = []
 
@@ -199,7 +199,7 @@ def diff(
     meta_only: Optional[bool] = False,
     meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
     shallow: Optional[bool] = False,
-):
+) -> Iterator[Change]:
     changes = _diff(
         old,
         new,

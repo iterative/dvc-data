@@ -109,7 +109,7 @@ def checkout(
 
 def _get_changes(
     index: "BaseDataIndex", old: Optional["BaseDataIndex"], **kwargs
-) -> Tuple[List["DataIndexEntry"], List["DataIndexEntry"]]:
+) -> Tuple[List[Optional["DataIndexEntry"]], List[Optional["DataIndexEntry"]]]:
     create = []
     delete = []
     for change in diff(old, index, **kwargs):
