@@ -191,26 +191,6 @@ def _get_staging(odb: "HashFileDB") -> "ReferenceHashFileDB":
     return ReferenceHashFileDB(fs, path, state=state, hash_name=odb.hash_name)
 
 
-def _build_external_tree_info(odb, tree, name):
-    # NOTE: used only for external outputs. Initial reasoning was to be
-    # able to validate .dir files right in the workspace (e.g. check s3
-    # etag), but could be dropped for manual validation with regular md5,
-    # that would be universal for all clouds.
-    assert odb and name != "md5"
-
-    oid = tree.hash_info.value
-    odb.add(tree.path, tree.fs, oid)
-    raw = odb.get(oid)
-    _, hash_info = hash_file(raw.path, raw.fs, name, state=odb.state)
-    tree.path = raw.path
-    tree.fs = raw.fs
-    tree.hash_info.name = hash_info.name
-    tree.hash_info.value = hash_info.value
-    if not tree.hash_info.value.endswith(".dir"):
-        tree.hash_info.value += ".dir"
-    return tree
-
-
 def build(
     odb: "HashFileDB",
     path: "AnyFSPath",
@@ -252,8 +232,6 @@ def build(
             **kwargs,
         )
         logger.debug("built tree '%s'", obj)
-        if name != "md5":
-            obj = _build_external_tree_info(odb, obj, name)
     else:
         meta, obj = _build_file(
             path,
