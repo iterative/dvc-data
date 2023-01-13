@@ -14,13 +14,15 @@ if TYPE_CHECKING:
 
     from .index import BaseDataIndex, DataIndexEntry
 
+sentinel = object()
+
 
 def checkout(
     index: "BaseDataIndex",
     path: str,
     fs: "FileSystem",
     old: Optional["BaseDataIndex"] = None,
-    delete=False,
+    delete=sentinel,
     callback: "Callback" = DEFAULT_CALLBACK,
     latest_only: bool = True,
     update_meta: bool = True,
@@ -28,8 +30,15 @@ def checkout(
     **kwargs,
 ) -> int:
     transferred = 0
-    create, delete = _get_changes(index, old, **kwargs)
-    for entry in delete:
+    if delete is not sentinel:
+        import warnings
+
+        warnings.warn("delete has no effect", DeprecationWarning, stacklevel=2)
+
+    create, delete_ = _get_changes(index, old, **kwargs)
+    for entry in delete_:
+        assert entry is not None
+
         if entry.meta and entry.meta.isdir:
             continue
         fs.remove(fs.path.join(path, *entry.key))
@@ -94,7 +103,7 @@ def _do_create(
 
 def _get_changes(
     index: "BaseDataIndex", old: Optional["BaseDataIndex"], **kwargs
-) -> Tuple[List["DataIndexEntry"], List["DataIndexEntry"]]:
+) -> Tuple[List[Optional["DataIndexEntry"]], List[Optional["DataIndexEntry"]]]:
     create = []
     delete = []
     for change in diff(old, index, **kwargs):

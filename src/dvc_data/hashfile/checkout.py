@@ -1,6 +1,6 @@
 import logging
 from itertools import chain
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.generic import test_links, transfer
@@ -10,11 +10,19 @@ from .diff import ROOT
 from .diff import diff as odiff
 
 if TYPE_CHECKING:
+    from dvc_objects.fs import AnyFSPath, FileSystem
     from dvc_objects.fs.callbacks import Callback
+    from dvc_objects.obj import Object
 
+    from .db import HashFileDB
     from .hashfile._ignore import Ignore
+    from .hashfile.diff import Change, DiffResult
+    from .state import State
+
 
 logger = logging.getLogger(__name__)
+
+PromptFunction = Callable[..., bool]
 
 
 class PromptError(Exception):
@@ -35,7 +43,13 @@ class LinkError(Exception):
         super().__init__("No possible cache link types for '{path}'.")
 
 
-def _remove(path, fs, in_cache, force=False, prompt=None):
+def _remove(
+    path: str,
+    fs: "FileSystem",
+    in_cache: bool,
+    force: bool = False,
+    prompt: Optional[PromptFunction] = None,
+) -> None:
     if not fs.exists(path):
         return
 
@@ -55,7 +69,16 @@ def _remove(path, fs, in_cache, force=False, prompt=None):
     fs.remove(path)
 
 
-def _relink(link, cache, cache_info, fs, path, in_cache, force, prompt=None):
+def _relink(
+    link: "Link",
+    cache: "HashFileDB",
+    cache_info,
+    fs: "FileSystem",
+    path: str,
+    in_cache: bool,
+    force: bool,
+    prompt: Optional[PromptFunction] = None,
+) -> None:
     _remove(path, fs, in_cache, force=force, prompt=prompt)
     link(cache, cache_info, fs, path)
     # NOTE: Depending on a file system (e.g. on NTFS), `_remove` might reset
@@ -66,16 +89,16 @@ def _relink(link, cache, cache_info, fs, path, in_cache, force, prompt=None):
 
 
 def _checkout_file(
-    link,
-    path,
-    fs,
-    change,
-    cache,
-    force,
-    relink=False,
-    state=None,
+    link: "Link",
+    path: "str",
+    fs: "FileSystem",
+    change: "Change",
+    cache: "HashFileDB",
+    force: bool,
+    relink: bool = False,
+    state: Optional["State"] = None,
     prompt=None,
-):
+) -> bool:
     """The file is changed we need to checkout a new copy"""
     modified = False
 
@@ -118,13 +141,13 @@ def _checkout_file(
 
 
 def _diff(
-    path,
-    fs,
-    obj,
-    cache,
-    relink=False,
+    path: str,
+    fs: "FileSystem",
+    obj: "Object",
+    cache: "HashFileDB",
+    relink: bool = False,
     ignore: Optional["Ignore"] = None,
-):
+) -> "DiffResult":
     old = None
     try:
         _, _, old = build(
@@ -153,11 +176,19 @@ def _diff(
 
 
 class Link:
-    def __init__(self, links, callback: "Callback" = DEFAULT_CALLBACK):
+    def __init__(
+        self, links: List[str], callback: "Callback" = DEFAULT_CALLBACK
+    ):
         self._links = links
         self._callback = callback
 
-    def __call__(self, cache, from_path, to_fs, to_path):
+    def __call__(
+        self,
+        cache: "HashFileDB",
+        from_path: "AnyFSPath",
+        to_fs: "FileSystem",
+        to_path: "AnyFSPath",
+    ) -> None:
         if to_fs.exists(to_path):
             to_fs.remove(to_path)  # broken symlink
 
@@ -179,16 +210,16 @@ class Link:
 
 
 def _checkout(
-    diff,
-    path,
-    fs,
-    cache,
-    force=False,
+    diff: "DiffResult",
+    path: str,
+    fs: "FileSystem",
+    cache: "HashFileDB",
+    force: bool = False,
     progress_callback: "Callback" = DEFAULT_CALLBACK,
-    relink=False,
-    state=None,
-    prompt=None,
-):
+    relink: bool = False,
+    state: Optional["State"] = None,
+    prompt: Optional[PromptFunction] = None,
+) -> None:
     if not diff:
         return
 
@@ -237,18 +268,18 @@ def _checkout(
 
 
 def checkout(
-    path,
-    fs,
-    obj,
-    cache,
-    force=False,
+    path: str,
+    fs: "FileSystem",
+    obj: "Object",
+    cache: "HashFileDB",
+    force: bool = False,
     progress_callback: "Callback" = DEFAULT_CALLBACK,
-    relink=False,
-    quiet=False,
+    relink: bool = False,
+    quiet: bool = False,
     ignore: Optional["Ignore"] = None,
-    state=None,
-    prompt=None,
-):
+    state: Optional["State"] = None,
+    prompt: Optional[PromptFunction] = None,
+) -> Optional[bool]:
     # if protocol(path) not in ["local", cache.fs.protocol]:
     #    raise NotImplementedError
 
@@ -293,6 +324,6 @@ def checkout(
             progress_callback.relative_update(len(obj))
         if failed:
             raise CheckoutError(failed)
-        return
+        return None
 
     return bool(diff) and not relink
