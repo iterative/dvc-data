@@ -92,7 +92,9 @@ def _try_load(
 class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
     @abstractmethod
     def iteritems(
-        self, prefix: Optional[DataIndexKey] = None, shallow: bool = False
+        self,
+        prefix: Optional[DataIndexKey] = None,
+        shallow: Optional[bool] = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         pass
 
@@ -268,7 +270,9 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         return self._trie.traverse(*args, **kwargs)
 
     def iteritems(
-        self, prefix: Optional[DataIndexKey] = None, shallow: bool = False
+        self,
+        prefix: Optional[DataIndexKey] = None,
+        shallow: Optional[bool] = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         kwargs: Dict[str, Any] = {"shallow": shallow}
         if prefix:
