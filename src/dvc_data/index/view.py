@@ -28,7 +28,7 @@ class DataIndexView(BaseDataIndex):
     def _iteritems(
         self,
         prefix: Optional[DataIndexKey] = None,
-        shallow: bool = False,
+        shallow: Optional[bool] = False,
         ensure_loaded: bool = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         # NOTE: iteration is implemented using traverse and not iter/iteritems
@@ -70,7 +70,7 @@ class DataIndexView(BaseDataIndex):
         self,
         prefix: DataIndexKey,
         entry: Optional[DataIndexEntry],
-        shallow: bool = False,
+        shallow: Optional[bool] = False,
     ) -> Iterator[DataIndexKey]:
         # NOTE: traverse() will not enter subtries that have been added
         # in-place during traversal. So for dirs which we load in-place, we
@@ -89,7 +89,9 @@ class DataIndexView(BaseDataIndex):
                     yield prefix + key
 
     def iteritems(
-        self, prefix: Optional[DataIndexKey] = None, shallow: bool = False
+        self,
+        prefix: Optional[DataIndexKey] = None,
+        shallow: Optional[bool] = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         return self._iteritems(
             prefix=prefix, shallow=shallow, ensure_loaded=True
