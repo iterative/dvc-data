@@ -1,19 +1,18 @@
 """DVC data."""
 import logging
-from typing import TYPE_CHECKING, Iterator, Union
+from typing import TYPE_CHECKING, Iterator, Union, cast
 
 from .tree import Tree
 
 if TYPE_CHECKING:
-    from dvc_objects.db import ObjectDB
-
+    from .db import HashFileDB
     from .hash_info import HashInfo
     from .obj import HashFile
 
 logger = logging.getLogger(__name__)
 
 
-def check(odb: "ObjectDB", obj: "HashFile", **kwargs):
+def check(odb: "HashFileDB", obj: "HashFile", **kwargs):
     if isinstance(obj, Tree):
         for _, _, hash_info in obj:
             odb.check(hash_info.value, **kwargs)
@@ -21,10 +20,10 @@ def check(odb: "ObjectDB", obj: "HashFile", **kwargs):
     odb.check(obj.oid, **kwargs)
 
 
-def load(odb: "ObjectDB", hash_info: "HashInfo") -> "HashFile":
+def load(odb: "HashFileDB", hash_info: "HashInfo") -> "HashFile":
     if hash_info.isdir:
         return Tree.load(odb, hash_info)
-    return odb.get(hash_info.value)
+    return odb.get(cast(str, hash_info.value))
 
 
 def iterobjs(

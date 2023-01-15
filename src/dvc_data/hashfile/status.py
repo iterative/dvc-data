@@ -7,8 +7,7 @@ from .hash_info import HashInfo
 from .tree import Tree
 
 if TYPE_CHECKING:
-    from dvc_objects.db import ObjectDB
-
+    from .db import HashFileDB
     from .db.index import ObjectDBIndexBase
     from .obj import HashFile
 
@@ -82,11 +81,11 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
 
 
 def status(
-    odb: "ObjectDB",
+    odb: "HashFileDB",
     obj_ids: Iterable["HashInfo"],
     name: Optional[str] = None,
     index: Optional["ObjectDBIndexBase"] = None,
-    cache_odb: Optional["ObjectDB"] = None,
+    cache_odb: Optional["HashFileDB"] = None,
     shallow: bool = True,
     jobs: Optional[int] = None,
     **kwargs,
@@ -157,8 +156,8 @@ def status(
 
 
 def compare_status(
-    src: "ObjectDB",
-    dest: "ObjectDB",
+    src: "HashFileDB",
+    dest: "HashFileDB",
     obj_ids: Iterable["HashInfo"],
     check_deleted: bool = True,
     src_index: Optional["ObjectDBIndexBase"] = None,

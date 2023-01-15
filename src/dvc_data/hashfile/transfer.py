@@ -9,6 +9,7 @@ from typing import (
     NamedTuple,
     Optional,
     Set,
+    cast,
 )
 
 from dvc_objects._tqdm import Tqdm
@@ -16,8 +17,7 @@ from dvc_objects.executors import ThreadPoolExecutor
 from funcy import split
 
 if TYPE_CHECKING:
-    from dvc_objects.db import ObjectDB
-
+    from .db import HashFileDB
     from .db.index import ObjectDBIndexBase
     from .hash_info import HashInfo
     from .status import CompareStatusResult
@@ -52,7 +52,7 @@ def _log_exceptions(
 
 
 def find_tree_by_obj_id(
-    odbs: Iterable[Optional["ObjectDB"]], obj_id: "HashInfo"
+    odbs: Iterable[Optional["HashFileDB"]], obj_id: "HashInfo"
 ) -> Optional["Tree"]:
     from dvc_objects.errors import ObjectFormatError
 
@@ -67,17 +67,18 @@ def find_tree_by_obj_id(
     return None
 
 
+ProcType = Callable[[Iterable["HashInfo"]], Iterable[Optional["HashInfo"]]]
+
+
 def _do_transfer(
-    src: "ObjectDB",
-    dest: "ObjectDB",
+    src: "HashFileDB",
+    dest: "HashFileDB",
     obj_ids: Iterable["HashInfo"],
     missing_ids: Iterable["HashInfo"],
-    processor: Callable[
-        [Iterable["HashInfo"]], Iterable[Optional["HashInfo"]]
-    ],
+    processor: ProcType,
     src_index: Optional["ObjectDBIndexBase"] = None,
     dest_index: Optional["ObjectDBIndexBase"] = None,
-    cache_odb: Optional["ObjectDB"] = None,
+    cache_odb: Optional["HashFileDB"] = None,
     **kwargs: Any,
 ) -> Set["HashInfo"]:
     """Do object transfer.
@@ -164,8 +165,8 @@ def _do_transfer(
 
 
 def transfer(
-    src: "ObjectDB",
-    dest: "ObjectDB",
+    src: "HashFileDB",
+    dest: "HashFileDB",
     obj_ids: Iterable["HashInfo"],
     jobs: Optional[int] = None,
     verify: bool = False,
@@ -198,8 +199,8 @@ def transfer(
         return TransferResult(set(), set())
 
     def func(hash_info: "HashInfo") -> None:
-        obj = src.get(hash_info.value)
-        return dest.add(
+        obj = src.get(cast(str, hash_info.value))
+        dest.add(
             obj.path,
             obj.fs,
             obj.oid,
@@ -213,7 +214,13 @@ def transfer(
     with Tqdm(total=total, unit="file", desc="Transferring") as pbar:
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             wrapped_func = pbar.wrap_fn(_log_exceptions(func))
-            processor = partial(executor.imap_unordered, wrapped_func)
+
+            # NOTE: mypy doesn't properly support partial()
+            # https://github.com/python/mypy/issues/1484
+            processor = cast(
+                ProcType, partial(executor.imap_unordered, wrapped_func)
+            )
+
             failed = _do_transfer(
                 src, dest, status.new, status.missing, processor, **kwargs
             )
