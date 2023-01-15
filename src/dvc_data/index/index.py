@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from ..hashfile.obj import HashFile
 
 
-DataIndexKey = Tuple[str]
+DataIndexKey = Tuple[str, ...]
 
 
 @dataclass(unsafe_hash=True)
