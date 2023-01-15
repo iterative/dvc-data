@@ -65,6 +65,12 @@ class StateNoop(StateBase):
         pass
 
 
+def _checksum(info):
+    from fsspec.utils import tokenize
+
+    return str(int(tokenize([info["ino"], info["mtime"], info["size"]]), 16))
+
+
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
     def __init__(self, root_dir=None, tmp_dir=None, ignore: "Ignore" = None):
         from .cache import Cache
@@ -98,9 +104,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return
 
+        info = fs.info(path)
         entry = {
-            "checksum": fs.checksum(path),
-            "size": fs.size(path),
+            "checksum": _checksum(info),
+            "size": info["size"],
             "hash_info": hash_info.to_dict(),
         }
 
@@ -132,7 +139,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return None, None
 
         try:
-            actual = fs.checksum(path)
+            actual = _checksum(fs.info(path))
         except FileNotFoundError:
             return None, None
 
