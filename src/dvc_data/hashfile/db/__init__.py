@@ -76,7 +76,7 @@ class HashFileDB(ObjectDB):
             "read_only": self.read_only,
         }
 
-    def get(self, oid: str):
+    def get(self, oid: str) -> HashFile:
         return HashFile(
             self.oid_to_path(oid),
             self.fs,

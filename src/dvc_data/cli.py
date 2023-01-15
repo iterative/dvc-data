@@ -10,7 +10,7 @@ from collections import deque
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import click
 import typer  # pylint: disable=import-error
@@ -605,7 +605,7 @@ def checkout(
             force=force,
             prompt=typer.confirm,
             state=odb.state,
-            progress_callback=lambda *_: pbar.update(),
+            progress_callback=cast("Callback", lambda *_: pbar.update()),
         )
 
 
