@@ -4,7 +4,6 @@ import posixpath
 from typing import TYPE_CHECKING, Dict, Final, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.obj import Object
 from funcy import cached_property
 
 from ..hashfile.hash import hash_file
@@ -12,8 +11,7 @@ from ..hashfile.meta import Meta
 from ..hashfile.obj import HashFile
 
 if TYPE_CHECKING:
-    from dvc_objects.db import ObjectDB
-
+    from ..hashfile.db import HashFileDB
     from ..hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
@@ -28,9 +26,9 @@ class MergeError(Exception):
 
 
 def _try_load(
-    odbs: Iterable["ObjectDB"],
+    odbs: Iterable["HashFileDB"],
     hash_info: "HashInfo",
-) -> Optional["Object"]:
+) -> Optional["HashFile"]:
     for odb in odbs:
         if not odb:
             continue
@@ -203,7 +201,7 @@ class Tree(HashFile):
             pass
         return tree
 
-    def get_obj(self, odb, prefix: Tuple[str]) -> Optional[Object]:
+    def get_obj(self, odb, prefix: Tuple[str]) -> Optional[HashFile]:
         """Return object at the specified prefix in this tree.
 
         Returns None if no object exists at the specified prefix.
