@@ -26,7 +26,7 @@ def build_entry(
 
     hash_info = None
     if compute_hash and not meta.isdir:
-        _, hash_info = hash_file(path, fs, "md5", state=state)
+        _, hash_info = hash_file(path, fs, "md5", state=state, info=info)
 
     return DataIndexEntry(
         meta=meta,
