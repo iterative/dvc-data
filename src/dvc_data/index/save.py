@@ -56,6 +56,9 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
                 fobj_md5(fobj),
             )
 
+        if state:
+            state.save(path, entry.fs, entry.hash_info)
+
 
 def build_tree(
     index: "BaseDataIndex",
