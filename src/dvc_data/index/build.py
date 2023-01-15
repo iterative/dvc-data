@@ -1,6 +1,7 @@
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional
 
+from ..hashfile.hash import hash_file
 from ..hashfile.meta import Meta
 from .index import DataIndex, DataIndexEntry
 
@@ -8,16 +9,28 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
     from ..hashfile._ignore import Ignore
+    from ..state import StateBase
 
 
 def build_entry(
-    path: str, fs: "FileSystem", info: Optional[Dict[str, Any]] = None
+    path: str,
+    fs: "FileSystem",
+    info: Optional[Dict[str, Any]] = None,
+    compute_hash: Optional[bool] = False,
+    state: Optional["StateBase"] = None,
 ):
     if info is None:
         info = fs.info(path)
 
+    meta = Meta.from_info(info, fs.protocol)
+
+    hash_info = None
+    if compute_hash and not meta.isdir:
+        _, hash_info = hash_file(path, fs, "md5", state=state)
+
     return DataIndexEntry(
-        meta=Meta.from_info(info, fs.protocol),
+        meta=meta,
+        hash_info=hash_info,
         path=path,
         fs=fs,
     )
@@ -27,6 +40,8 @@ def build_entries(
     path: str,
     fs: "FileSystem",
     ignore: Optional["Ignore"] = None,
+    compute_hash: Optional[bool] = False,
+    state: Optional["StateBase"] = None,
 ) -> Iterable[DataIndexEntry]:
     walk_kwargs = {"detail": True}
     if ignore:
@@ -45,6 +60,8 @@ def build_entries(
                 fs.path.join(root, name),
                 fs,
                 info=info,
+                compute_hash=compute_hash,
+                state=state,
             )
             entry.key = (*root_key, name)
             yield entry
