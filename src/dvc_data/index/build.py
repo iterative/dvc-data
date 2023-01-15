@@ -22,11 +22,10 @@ def build_entry(
     if info is None:
         info = fs.info(path)
 
-    meta = Meta.from_info(info, fs.protocol)
-
-    hash_info = None
-    if compute_hash and not meta.isdir:
-        _, hash_info = hash_file(path, fs, "md5", state=state)
+    if compute_hash and info["type"] != "directory":
+        meta, hash_info = hash_file(path, fs, "md5", state=state, info=info)
+    else:
+        meta, hash_info = Meta.from_info(info, fs.protocol), None
 
     return DataIndexEntry(
         meta=meta,

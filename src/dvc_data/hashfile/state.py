@@ -25,11 +25,11 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
-    def save(self, path, fs, hash_info):
+    def save(self, path, fs, hash_info, info=None):
         pass
 
     @abstractmethod
-    def get(self, path, fs):
+    def get(self, path, fs, info=None):
         pass
 
     @abstractmethod
@@ -49,10 +49,10 @@ class StateNoop(StateBase):
     def close(self):
         pass
 
-    def save(self, path, fs, hash_info):
+    def save(self, path, fs, hash_info, info=None):
         pass
 
-    def get(self, path, fs):  # pylint: disable=unused-argument
+    def get(self, path, fs, info=None):  # pylint: disable=unused-argument
         return None, None
 
     def save_link(self, path, fs):
@@ -63,6 +63,12 @@ class StateNoop(StateBase):
 
     def remove_links(self, unused, fs):
         pass
+
+
+def _checksum(info):
+    from fsspec.utils import tokenize
+
+    return str(int(tokenize([info["ino"], info["mtime"], info["size"]]), 16))
 
 
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
@@ -87,7 +93,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.hashes.close()
         self.links.close()
 
-    def save(self, path, fs, hash_info):
+    def save(self, path, fs, hash_info, info=None):
         """Save hash for the specified path info.
 
         Args:
@@ -98,15 +104,16 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return
 
+        info = info or fs.info(path)
         entry = {
-            "checksum": fs.checksum(path),
-            "size": fs.size(path),
+            "checksum": _checksum(info),
+            "size": info["size"],
             "hash_info": hash_info.to_dict(),
         }
 
         self.hashes[path] = json.dumps(entry)
 
-    def get(self, path, fs):
+    def get(self, path, fs, info=None):
         """Gets the hash for the specified path info. Hash will be
         retrieved from the state database if available.
 
@@ -132,7 +139,8 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return None, None
 
         try:
-            actual = fs.checksum(path)
+            info = info or fs.info(path)
+            actual = _checksum(info)
         except FileNotFoundError:
             return None, None
 
