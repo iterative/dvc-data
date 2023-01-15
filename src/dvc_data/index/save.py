@@ -12,10 +12,11 @@ if TYPE_CHECKING:
     from dvc_objects.fs.callbacks import Callback
 
     from ..hashfile.db import HashFileDB
+    from ..hashfile.state import StateBase
     from .index import BaseDataIndex, DataIndexEntry, DataIndexKey
 
 
-def md5(index: "BaseDataIndex") -> None:
+def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
     from ..hashfile.hash import fobj_md5
 
     for _, entry in index.iteritems():
@@ -43,6 +44,11 @@ def md5(index: "BaseDataIndex") -> None:
 
         if entry.meta != meta:
             continue
+
+        if state:
+            _, entry.hash_info = state.get(path, entry.fs)
+            if entry.hash_info:
+                continue
 
         with entry.fs.open(path, "rb") as fobj:
             entry.hash_info = HashInfo(
