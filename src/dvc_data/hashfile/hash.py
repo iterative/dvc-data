@@ -101,8 +101,11 @@ def file_md5(
     callback: "Callback" = DEFAULT_CALLBACK,
     text: Optional[bool] = None,
     name: str = "md5",
+    size: Optional[int] = None,
 ) -> str:
-    size = fs.size(fname) or 0
+    if size is None:
+        size = fs.size(fname) or 0
+
     callback.set_size(size)
     with fs.open(fname, "rb") as fobj:
         return fobj_md5(callback.wrap_attr(fobj), text=text, name=name)
@@ -113,8 +116,10 @@ def _hash_file(
     fs: "FileSystem",
     name: str,
     callback: "Callback" = DEFAULT_CALLBACK,
+    info: Optional[dict] = None,
 ) -> Tuple["str", Meta]:
-    meta = Meta.from_info(fs.info(path), fs.protocol)
+    info = info or fs.info(path)
+    meta = Meta.from_info(info, fs.protocol)
 
     value = getattr(meta, name, None)
     if value:
@@ -126,7 +131,7 @@ def _hash_file(
         return str(func(path)), meta
 
     if name == "md5":
-        return file_md5(path, fs, callback=callback), meta
+        return file_md5(path, fs, callback=callback, size=meta.size), meta
     raise NotImplementedError
 
 
@@ -161,18 +166,19 @@ def hash_file(
     name: str,
     state: "StateBase" = None,
     callback: "Callback" = None,
+    info: Optional[dict] = None,
 ) -> Tuple["Meta", "HashInfo"]:
     if state:
-        meta, hash_info = state.get(path, fs)
+        meta, hash_info = state.get(path, fs, info=info)
         if hash_info:
             return meta, hash_info
 
     cb = callback or LargeFileHashingCallback(desc=path)
     with cb:
-        hash_value, meta = _hash_file(path, fs, name, callback=cb)
+        hash_value, meta = _hash_file(path, fs, name, callback=cb, info=info)
     hash_info = HashInfo(name, hash_value)
     if state:
         assert ".dir" not in hash_info.value
-        state.save(path, fs, hash_info)
+        state.save(path, fs, hash_info, info=info)
 
     return meta, hash_info
