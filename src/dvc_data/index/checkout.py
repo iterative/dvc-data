@@ -1,8 +1,17 @@
 from functools import partial
-from typing import TYPE_CHECKING, List, MutableSequence, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Collection,
+    Dict,
+    Iterator,
+    List,
+    MutableSequence,
+    Optional,
+    Tuple,
+)
 
 from dvc_objects.executors import ThreadPoolExecutor
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
 from dvc_objects.fs.generic import transfer
 
 from ..hashfile.meta import Meta
@@ -10,7 +19,6 @@ from .diff import ADD, DELETE, MODIFY, diff
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
-    from dvc_objects.fs.callbacks import Callback
 
     from .index import BaseDataIndex, DataIndexEntry
 
@@ -20,7 +28,7 @@ def checkout(
     path: str,
     fs: "FileSystem",
     old: Optional["BaseDataIndex"] = None,
-    delete=False,
+    delete: bool = False,
     callback: "Callback" = DEFAULT_CALLBACK,
     latest_only: bool = True,
     update_meta: bool = True,
@@ -28,11 +36,26 @@ def checkout(
     **kwargs,
 ) -> int:
     transferred = 0
-    create, delete = _get_changes(index, old, **kwargs)
-    for entry in delete:
-        if entry.meta and entry.meta.isdir:
-            continue
-        fs.remove(fs.path.join(path, *entry.key))
+    create, to_delete = _get_changes(index, old, **kwargs)
+    if delete:
+        to_delete = [
+            entry
+            for entry in to_delete
+            if not entry.meta or not entry.meta.isdir
+        ]
+        if to_delete:
+            fs.remove([fs.path.join(path, *entry.key) for entry in to_delete])
+
+    if fs.version_aware and not latest_only:
+        if callback == DEFAULT_CALLBACK:
+            cb = callback
+        else:
+            desc = f"Checking status of existing versions in '{path}'"
+            cb = Callback.as_tqdm_callback(desc=desc, unit="file")
+        with cb:
+            create = list(
+                _prune_existing_versions(create, fs, path, callback=cb)
+            )
 
     if callback != DEFAULT_CALLBACK:
         callback.set_size(
@@ -46,7 +69,6 @@ def checkout(
         path,
         fs,
         callback=callback,
-        latest_only=latest_only,
         update_meta=update_meta,
     )
     with ThreadPoolExecutor(max_workers=jobs or fs.jobs) as executor:
@@ -59,7 +81,6 @@ def _do_create(
     fs: "FileSystem",
     entry: "DataIndexEntry",
     callback: "Callback" = DEFAULT_CALLBACK,
-    latest_only: bool = True,
     update_meta: bool = True,
 ) -> int:
     assert entry.meta
@@ -67,15 +88,6 @@ def _do_create(
         return 0
 
     entry_path = fs.path.join(path, *entry.key)
-    if (
-        not latest_only
-        and fs.version_aware
-        and entry.meta.version_id is not None
-        and fs.exists(fs.path.version_path(entry_path, entry.meta.version_id))
-    ):
-        callback.relative_update()
-        return 0
-
     sources = []
     if entry.hash_info:
         odb = entry.odb or entry.cache or entry.remote
@@ -122,3 +134,32 @@ def _try_sources(
         except Exception:  # pylint: disable=broad-except
             if not sources:
                 raise
+
+
+def _prune_existing_versions(
+    entries: Collection["DataIndexEntry"],
+    fs: "FileSystem",
+    path: str,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    jobs: Optional[int] = None,
+) -> Iterator["DataIndexEntry"]:
+    from dvc_objects.fs.utils import exists as batch_exists
+
+    assert fs.version_aware
+    query_vers: Dict[str, "DataIndexEntry"] = {}
+    jobs = jobs or fs.jobs
+    for entry in entries:
+        assert entry.meta
+        if entry.meta.version_id is None:
+            yield entry
+        else:
+            entry_path = fs.path.join(path, *entry.key)
+            versioned_path = fs.path.version_path(
+                entry_path, entry.meta.version_id
+            )
+            query_vers[versioned_path] = entry
+    for path, exists in batch_exists(
+        fs, query_vers.keys(), batch_size=jobs, callback=callback
+    ).items():
+        if not exists:
+            yield query_vers[path]
