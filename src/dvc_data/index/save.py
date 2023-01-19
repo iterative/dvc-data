@@ -1,7 +1,7 @@
-from functools import partial, wraps
+from collections import defaultdict
+from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
-from dvc_objects.executors import ThreadPoolExecutor
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
 from ..hashfile.hash_info import HashInfo
@@ -9,11 +9,12 @@ from ..hashfile.meta import Meta
 from ..hashfile.tree import Tree
 
 if TYPE_CHECKING:
+    from dvc_objects.fs.base import FileSystem
     from dvc_objects.fs.callbacks import Callback
 
     from ..hashfile.db import HashFileDB
     from ..hashfile.state import StateBase
-    from .index import BaseDataIndex, DataIndexEntry, DataIndexKey
+    from .index import BaseDataIndex, DataIndexKey
 
 
 def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
@@ -110,6 +111,11 @@ def _wrap_add(callback: "Callback", fn: Callable):
     return func
 
 
+if TYPE_CHECKING:
+    _ODBMap = Dict["HashFileDB", "_FSMap"]
+    _FSMap = Dict["FileSystem", List[Tuple[str, str]]]
+
+
 def save(
     index: "BaseDataIndex",
     odb: Optional["HashFileDB"] = None,
@@ -120,59 +126,42 @@ def save(
     dir_entries: List["DataIndexKey"] = []
     transferred = 0
 
-    processor = partial(
-        _save_one,
-        dir_entries,
-        odb=odb,
-        callback=callback,
-        **kwargs,
-    )
-    if not jobs and odb is not None:
-        jobs = odb.fs.jobs
-    with ThreadPoolExecutor(max_workers=jobs) as executor:
-        transferred = sum(
-            executor.imap_unordered(processor, index.iteritems())
-        )
+    odb_map: "_ODBMap" = {}
+    for key, entry in index.iteritems():
+        if entry.meta and entry.meta.isdir:
+            dir_entries.append(key)
+            continue
+        assert entry.fs
+        if entry.meta and entry.meta.version_id and entry.fs.version_aware:
+            # NOTE: if we have versioning available - there is no need to check
+            # metadata as we can directly get correct file content using
+            # version_id.
+            path = entry.fs.path.version_path(
+                entry.path, entry.meta.version_id
+            )
+        else:
+            path = entry.path
+        if entry.hash_info:
+            cache = odb or entry.cache
+            assert cache
+            assert entry.hash_info.value
+            oid = entry.hash_info.value
+            if cache not in odb_map:
+                odb_map[cache] = defaultdict(list)
+            odb_map[cache][entry.fs].append((path, oid))
+    for cache, fs_map in odb_map.items():
+        for fs, args in fs_map.items():
+            paths, oids = zip(*args)
+            transferred += cache.add(
+                list(paths),
+                fs,
+                list(oids),
+                callback=callback,
+                batch_size=jobs,
+                **kwargs,
+            )
 
     for key in dir_entries:
         _save_dir_entry(index, key, odb=odb)
 
     return transferred
-
-
-def _save_one(
-    dir_entries: List["DataIndexKey"],
-    item: Tuple["DataIndexKey", "DataIndexEntry"],
-    odb: Optional["HashFileDB"] = None,
-    callback: "Callback" = DEFAULT_CALLBACK,
-    **kwargs,
-) -> int:
-    key, entry = item
-    assert entry.meta
-    if entry.meta.isdir:
-        dir_entries.append(key)
-        return 0
-
-    assert entry.fs
-    if entry.meta.version_id and entry.fs.version_aware:
-        # NOTE: if we have versioning available - there is no need to check
-        # metadata as we can directly get correct file content using
-        # version_id.
-        path = entry.fs.path.version_path(entry.path, entry.meta.version_id)
-    else:
-        path = entry.path
-
-    if entry.hash_info:
-        cache = odb or entry.cache
-        assert entry.hash_info.value
-        assert cache
-        add = _wrap_add(callback, cache.add)
-        return add(
-            path,
-            entry.fs,
-            entry.hash_info.value,
-            callback=callback,
-            **kwargs,
-        )
-
-    return 0
