@@ -53,6 +53,8 @@ class Meta:
         version_id = info.get("version_id")
         if protocol == "s3" and "VersionId" in info:
             version_id = info.get("VersionId")
+        elif protocol == "gs" and "generation" in info:
+            version_id = info.get("generation")
 
         return Meta(
             isdir=info["type"] == "directory",
