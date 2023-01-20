@@ -114,6 +114,9 @@ class DataIndexView(BaseDataIndex):
 
             return key
 
+        self._index._ensure_loaded(  # pylint: disable=protected-access
+            root_key
+        )
         return self.traverse(node_factory, prefix=root_key)
 
     def has_node(self, key: DataIndexKey) -> bool:
