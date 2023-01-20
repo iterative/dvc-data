@@ -96,14 +96,11 @@ def checkout(
                 desc = f"Updating meta for new files in '{path}'"
                 cb = Callback.as_tqdm_callback(desc=desc, unit="file")
             with cb:
-                cb.set_size(len(args))
-                for entry, _src_path, dest_path in args:
+                infos = fs.info(list(dest_paths), callback=cb, batch_size=jobs)
+                for entry, dest_path, info in zip(entries, dest_paths, infos):
                     entry.fs = fs
                     entry.path = dest_path
-                    entry.meta = Meta.from_info(
-                        fs.info(dest_path), fs.protocol
-                    )
-                    cb.relative_update()
+                    entry.meta = Meta.from_info(info, fs.protocol)
     return transferred
 
 
