@@ -117,12 +117,19 @@ def _diff_entry(
     return UNCHANGED
 
 
-def _get_items(index, key, entry, *, shallow=False, with_unknown=False):
+def _get_items(
+    index: Optional["BaseDataIndex"],
+    key,
+    entry,
+    *,
+    shallow=False,
+    with_unknown=False,
+):
     items = {}
     unknown = False
 
     try:
-        if index and not (shallow and entry):
+        if index is not None and not (shallow and entry):
             items = dict(index.ls(key, detail=True))
     except KeyError:
         pass
