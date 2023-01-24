@@ -101,6 +101,7 @@ class DataIndexView(BaseDataIndex):
         def _node_factory(path_conv, key, children, *args):
             if not key or self.filter_fn(key):
                 return node_factory(path_conv, key, children, *args)
+            return None
 
         return self._index.traverse(_node_factory, **kwargs)
 
@@ -117,7 +118,11 @@ class DataIndexView(BaseDataIndex):
         self._index._ensure_loaded(  # pylint: disable=protected-access
             root_key
         )
-        return self.traverse(node_factory, prefix=root_key)
+        yield from (
+            entry
+            for entry in self.traverse(node_factory, prefix=root_key)
+            if entry is not None
+        )
 
     def has_node(self, key: DataIndexKey) -> bool:
         return self.filter_fn(key) and self._index.has_node(key)
