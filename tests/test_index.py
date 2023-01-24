@@ -331,6 +331,37 @@ def test_view(odb):
     assert index_view[expected_key] is index[expected_key]
 
 
+def test_view_ls(odb):
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(
+                odb=odb,
+                hash_info=HashInfo(
+                    name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
+                ),
+            ),
+            ("dir", "subdir", "bar"): DataIndexEntry(
+                odb=odb,
+                hash_info=HashInfo(
+                    name="md5",
+                    value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
+                ),
+            ),
+        }
+    )
+    index_view = view(index, lambda k: "dir" in k)
+    assert list(index_view.ls((), detail=False)) == [("dir",)]
+    assert list(index_view.ls(("dir",), detail=False)) == [
+        (
+            "dir",
+            "subdir",
+        )
+    ]
+    assert list(index_view.ls(("dir", "subdir"), detail=False)) == [
+        ("dir", "subdir", "bar")
+    ]
+
+
 def test_view_traverse(odb):
     index = DataIndex(
         {
