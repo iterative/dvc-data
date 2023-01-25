@@ -30,12 +30,12 @@ class Change:
         if self.typ == RENAME:
             raise ValueError
 
-        if self.typ == UNKNOWN:
-            entry = self.old or self.new
-        elif self.typ == ADD:
+        if self.typ == ADD:
             entry = self.new
-        else:
+        elif self.typ == DELETE:
             entry = self.old
+        else:
+            entry = self.old or self.new
 
         assert entry
         assert entry.key
@@ -88,12 +88,6 @@ def _diff_entry(
     if unknown:
         return UNKNOWN
 
-    if old and not new:
-        return DELETE
-
-    if not old and new:
-        return ADD
-
     old_hi = old.hash_info if old else None
     new_hi = new.hash_info if new else None
     old_meta = old.meta if old else None
@@ -109,10 +103,10 @@ def _diff_entry(
         return hi_diff
 
     if meta_diff != UNCHANGED:
-        return MODIFY
+        return meta_diff
 
     if hi_diff != UNCHANGED:
-        return MODIFY
+        return hi_diff
 
     return UNCHANGED
 
