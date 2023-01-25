@@ -1,6 +1,6 @@
 from typing import Any, ClassVar, Dict, List, Optional
 
-from attrs import define, fields_dict
+from attrs import define, field, fields_dict
 from dvc_objects.fs.utils import is_exec
 
 
@@ -16,6 +16,7 @@ class Meta:
     PARAM_MD5: ClassVar[str] = "md5"
     PARAM_INODE: ClassVar[str] = "inode"
     PARAM_MTIME: ClassVar[str] = "mtime"
+    PARAM_REMOTE: ClassVar[str] = "remote"
 
     fields: ClassVar[List[str]]
 
@@ -29,6 +30,8 @@ class Meta:
     md5: Optional[str] = None
     inode: Optional[int] = None
     mtime: Optional[float] = None
+
+    remote: Optional[str] = field(default=None, eq=False)
 
     @classmethod
     def from_info(
@@ -66,14 +69,15 @@ class Meta:
             md5=info.get("md5"),
             inode=info.get("ino"),
             mtime=info.get("mtime"),
+            remote=info.get("remote"),
         )
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Meta":
         kwargs = {}
-        for field in cls.fields:
-            if field in d:
-                kwargs[field] = d[field]
+        for field_ in cls.fields:
+            if field_ in d:
+                kwargs[field_] = d[field_]
         return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -102,6 +106,9 @@ class Meta:
 
         if self.md5:
             ret[self.PARAM_MD5] = self.md5
+
+        if self.remote:
+            ret[self.PARAM_REMOTE] = self.remote
 
         return ret
 
