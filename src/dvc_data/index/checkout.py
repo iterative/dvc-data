@@ -113,8 +113,10 @@ def _get_changes(
         if change.typ == ADD:
             create.append(change.new)
         elif change.typ == MODIFY:
-            create.append(change.new)
-            delete.append(change.old)
+            if change.new:
+                create.append(change.new)
+            if change.old:
+                delete.append(change.old)
         elif change.typ == DELETE and delete:
             delete.append(change.old)
     return create, delete
