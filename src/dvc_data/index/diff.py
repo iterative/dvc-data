@@ -174,6 +174,17 @@ def _diff(
             )
 
             if (
+                hash_only
+                and not with_unchanged
+                and not unknown
+                and typ == UNCHANGED
+                and old_entry
+                and old_entry.hash_info
+                and old_entry.hash_info.isdir
+            ):
+                # NOTE: skipping the whole branch since we know it is unchanged
+                pass
+            elif (
                 old_info.get("type") == "directory"
                 or new_info.get("type") == "directory"
             ):
