@@ -70,7 +70,9 @@ def checkout(
             src_path = entry.path
         else:
             assert entry.hash_info
-            odb = entry.odb or entry.cache or entry.remote
+            odb = index.odb_map.get(entry.key) or index.remote_map.get(
+                entry.key
+            )
             assert odb
             src_fs = odb.fs
             src_path = odb.oid_to_path(entry.hash_info.value)

@@ -7,6 +7,7 @@ from dvc_data.hashfile.meta import Meta
 from dvc_data.index import (
     DataIndex,
     DataIndexEntry,
+    ODBMapping,
     add,
     build,
     checkout,
@@ -59,13 +60,13 @@ def test_fs(tmp_upath, odb, as_filesystem):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
-                odb=odb,
+                key=("foo",),
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
             ),
             ("data",): DataIndexEntry(
-                odb=odb,
+                key=("data",),
                 meta=Meta(isdir=True),
                 hash_info=HashInfo(
                     name="md5",
@@ -74,6 +75,7 @@ def test_fs(tmp_upath, odb, as_filesystem):
             ),
         }
     )
+    index.odb_map = ODBMapping({("foo",): odb, ("data",): odb})
     fs = DataFileSystem(index)
     assert fs.exists("foo")
     assert fs.cat("foo") == b"foo\n"
@@ -183,7 +185,6 @@ def test_checkout(tmp_upath, odb, as_filesystem):
             ("foo",): DataIndexEntry(
                 key=("foo",),
                 meta=Meta(),
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
@@ -191,7 +192,6 @@ def test_checkout(tmp_upath, odb, as_filesystem):
             ("data",): DataIndexEntry(
                 key=("data",),
                 meta=Meta(isdir=True),
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5",
                     value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
@@ -199,6 +199,7 @@ def test_checkout(tmp_upath, odb, as_filesystem):
             ),
         }
     )
+    index.odb_map = ODBMapping({("foo",): odb, ("data",): odb})
     checkout(index, str(tmp_upath), as_filesystem(tmp_upath.fs))
     assert (tmp_upath / "foo").read_text() == "foo\n"
     assert (tmp_upath / "data").is_dir()
@@ -224,8 +225,8 @@ def test_checkout(tmp_upath, odb, as_filesystem):
 def test_write_read(odb, tmp_path, write, read):
     index = DataIndex(
         {
-            ("foo",): DataIndexEntry(odb=odb, cache=odb),
-            ("data",): DataIndexEntry(odb=odb, cache=odb),
+            ("foo",): DataIndexEntry(),
+            ("data",): DataIndexEntry(),
         },
     )
     index.load()
@@ -277,13 +278,11 @@ def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
             ),
             ("dir", "subdir", "bar"): DataIndexEntry(
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5",
                     value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
@@ -291,7 +290,7 @@ def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
             ),
         }
     )
-
+    index.odb_map = ODBMapping({("dir",): odb})
     index_view = view(index, filter_fn)
     assert keys == {
         key for key, _ in index_view._iteritems(ensure_loaded=ensure_loaded)
@@ -300,7 +299,6 @@ def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
 
 def test_view(odb):
     expected_entry = DataIndexEntry(
-        odb=odb,
         hash_info=HashInfo(
             name="md5",
             value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
@@ -310,7 +308,6 @@ def test_view(odb):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
@@ -318,6 +315,7 @@ def test_view(odb):
             expected_key: expected_entry,
         }
     )
+    index.odb_map = ODBMapping({("dir",): odb})
     index_view = view(index, lambda k: "dir" in k)
     assert {expected_key} == set(index_view.keys())
     assert expected_key in index_view
@@ -334,13 +332,11 @@ def test_view_ls(odb):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
             ),
             ("dir", "subdir", "bar"): DataIndexEntry(
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5",
                     value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
@@ -348,6 +344,7 @@ def test_view_ls(odb):
             ),
         }
     )
+    index.odb_map = ODBMapping({("dir",): odb})
     index_view = view(index, lambda k: "dir" in k)
     assert list(index_view.ls((), detail=False)) == [("dir",)]
     assert list(index_view.ls(("dir",), detail=False)) == [
@@ -365,13 +362,11 @@ def test_view_traverse(odb):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
             ),
             ("dir", "subdir", "bar"): DataIndexEntry(
-                odb=odb,
                 hash_info=HashInfo(
                     name="md5",
                     value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
@@ -379,6 +374,7 @@ def test_view_traverse(odb):
             ),
         }
     )
+    index.odb_map = ODBMapping({("dir",): odb})
     index_view = view(index, lambda k: "dir" in k)
 
     keys = []
