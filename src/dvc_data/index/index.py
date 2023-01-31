@@ -40,9 +40,6 @@ class DataIndexEntry:
     meta: Optional["Meta"] = None
     obj: Optional["HashFile"] = None
     hash_info: Optional["HashInfo"] = None
-    odb: Optional["HashFileDB"] = None
-    cache: Optional["HashFileDB"] = None
-    remote: Optional["HashFileDB"] = None
 
     fs: Optional["FileSystem"] = None
     path: Optional["str"] = None
@@ -131,7 +128,37 @@ def _try_load(
     return None
 
 
+class ODBMapping(MutableMapping):
+    def __init__(self, *args, **kwargs):
+        self._map = dict(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        self._map[key] = value
+
+    def __delitem__(self, key):
+        del self._map[key]
+
+    def __getitem__(self, key):
+        for prefix, odb in self._map.items():
+            if len(prefix) > len(key):
+                continue
+
+            if key[: len(prefix)] == prefix:
+                return odb
+
+        return None
+
+    def __iter__(self):
+        yield from self._map.items()
+
+    def __len__(self):
+        return len(self._map)
+
+
 class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
+    odb_map: ODBMapping
+    remote_map: ODBMapping
+
     @abstractmethod
     def iteritems(
         self,
@@ -203,6 +230,10 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         # NOTE: by default, using an in-memory pygtrie trie that doesn't
         # serialize values, so we can save some time.
         self._trie = PyGTrie()
+
+        self.odb_map = ODBMapping()
+        self.remote_map = ODBMapping()
+
         self.update(*args, **kwargs)
 
     @classmethod
@@ -214,6 +245,8 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
     def view(self, key):
         ret = DataIndex()
         ret._trie = self._trie.view(key)  # pylint: disable=protected-access
+        ret.odb_map = self.odb_map
+        ret.remote_map = self.remote_map
         return ret
 
     def commit(self):
@@ -269,7 +302,9 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
             return
 
         if not entry.obj:
-            entry.obj = _try_load([entry.odb, entry.remote], entry.hash_info)
+            odb = self.odb_map.get(key)
+            remote = self.remote_map.get(key)
+            entry.obj = _try_load([odb, remote], entry.hash_info)
 
         if not entry.obj:
             return
@@ -288,9 +323,6 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
             entry_key = key + ikey
             child_entry = DataIndexEntry(
                 key=entry_key,
-                odb=entry.odb,
-                cache=entry.odb,
-                remote=entry.remote,
                 hash_info=hash_info,
                 meta=meta,
             )
@@ -303,9 +335,6 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
             entry_key = key + dkey
             self._trie[entry_key] = DataIndexEntry(
                 key=entry_key,
-                odb=entry.odb,
-                cache=entry.odb,
-                remote=entry.remote,
                 meta=Meta(isdir=True),
             )
 

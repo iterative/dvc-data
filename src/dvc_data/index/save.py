@@ -88,7 +88,7 @@ def _save_dir_entry(
     from ..hashfile.db import add_update_tree
 
     entry = index[key]
-    cache = odb or entry.cache
+    cache = odb or index.odb_map[key]
     assert cache
     meta, tree = build_tree(index, key)
     tree = add_update_tree(cache, tree)
@@ -142,7 +142,7 @@ def save(
         else:
             path = entry.path
         if entry.hash_info:
-            cache = odb or entry.cache
+            cache = odb or index.odb_map[key]
             assert cache
             assert entry.hash_info.value
             oid = entry.hash_info.value
