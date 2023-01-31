@@ -1,8 +1,19 @@
 from collections import deque
-from typing import Any, Callable, Iterator, Optional, Tuple, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    Optional,
+    Tuple,
+    cast,
+)
 
 from ..hashfile.tree import Tree
 from .index import BaseDataIndex, DataIndex, DataIndexEntry, DataIndexKey
+
+if TYPE_CHECKING:
+    from .index import ODBMapping
 
 
 class DataIndexView(BaseDataIndex):
@@ -13,6 +24,14 @@ class DataIndexView(BaseDataIndex):
     ):
         self._index = index
         self.filter_fn = filter_fn
+
+    @property
+    def odb_map(self) -> "ODBMapping":  # type: ignore[override]
+        return self._index.odb_map
+
+    @property
+    def remote_map(self) -> "ODBMapping":  # type: ignore[override]
+        return self._index.remote_map
 
     def __getitem__(self, key: DataIndexKey) -> DataIndexEntry:
         if self.filter_fn(key):
