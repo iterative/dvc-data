@@ -51,7 +51,13 @@ def _diff_meta(
     *,
     cmp_key: Optional[Callable[["Meta"], Any]] = None,
 ):
-    if (cmp_key is None or old is None or new is None) and old != new:
+    if old is None and new is not None:
+        return ADD
+
+    if old is not None and new is None:
+        return DELETE
+
+    if cmp_key is None and old != new:
         return MODIFY
 
     if cmp_key is not None and cmp_key(old) != cmp_key(new):
@@ -102,13 +108,20 @@ def _diff_entry(
     if hash_only:
         return hi_diff
 
-    if meta_diff != UNCHANGED:
-        return meta_diff
-
-    if hi_diff != UNCHANGED:
+    # If both meta's are None, return hi_diff
+    if meta_diff == UNCHANGED and old_meta is None:
         return hi_diff
 
-    return UNCHANGED
+    # If both hi's are falsey, return meta_diff
+    if hi_diff == UNCHANGED and not old_hi:
+        return meta_diff
+
+    # Only return UNCHANGED/ADD/DELETE when hi_diff and meta_diff match,
+    # otherwise return MODIFY
+    if meta_diff == hi_diff:
+        return meta_diff
+
+    return MODIFY
 
 
 def _get_items(
