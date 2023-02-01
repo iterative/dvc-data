@@ -1,6 +1,17 @@
+import pytest
+
 from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.meta import Meta
 from dvc_data.index import DataIndex, DataIndexEntry
-from dvc_data.index.diff import ADD, DELETE, RENAME, UNCHANGED, Change, diff
+from dvc_data.index.diff import (
+    ADD,
+    DELETE,
+    MODIFY,
+    RENAME,
+    UNCHANGED,
+    Change,
+    diff,
+)
 
 
 def test_diff():
@@ -65,3 +76,119 @@ def test_diff_no_hashes():
         }
     )
     assert not set(diff(index, None, hash_only=True))
+
+
+def test_diff_meta_only():
+    key = ("foo",)
+    old_entry = DataIndexEntry(
+        key=key,
+        meta=Meta(etag="abc"),
+        hash_info=HashInfo(name="md5", value="123"),
+    )
+    new_entry = DataIndexEntry(
+        key=key,
+        meta=Meta(etag="abc"),
+        hash_info=HashInfo(name="md5", value="456"),
+    )
+    old = DataIndex({key: old_entry})
+    new = DataIndex({key: new_entry})
+
+    assert list(diff(old, new, meta_only=True, with_unchanged=True)) == [
+        Change(UNCHANGED, old_entry, new_entry),
+    ]
+
+    new_entry.meta = Meta("def")
+    assert list(diff(old, new, meta_only=True, with_unchanged=True)) == [
+        Change(MODIFY, old_entry, new_entry),
+    ]
+
+    new_entry.meta = None
+    assert list(diff(old, new, meta_only=True, with_unchanged=True)) == [
+        Change(DELETE, old_entry, new_entry),
+    ]
+
+    old_entry.meta = None
+    new_entry.meta = Meta(etag="abc")
+    assert list(diff(old, new, meta_only=True, with_unchanged=True)) == [
+        Change(ADD, old_entry, new_entry),
+    ]
+
+
+@pytest.mark.parametrize(
+    "typ, left_meta, left_hi, right_meta, right_hi",
+    [
+        (
+            UNCHANGED,
+            Meta(etag="123"),
+            HashInfo(name="md5", value="123"),
+            Meta(etag="123"),
+            HashInfo(name="md5", value="123"),
+        ),
+        (
+            ADD,
+            None,
+            None,
+            Meta(etag="123"),
+            HashInfo(name="md5", value="123"),
+        ),
+        (
+            DELETE,
+            Meta(etag="123"),
+            HashInfo(name="md5", value="123"),
+            None,
+            None,
+        ),
+    ],
+)
+def test_diff_combined(typ, left_meta, left_hi, right_meta, right_hi):
+    key = ("foo",)
+    old_entry = DataIndexEntry(
+        key=key,
+        meta=left_meta,
+        hash_info=left_hi,
+    )
+    new_entry = DataIndexEntry(
+        key=key,
+        meta=right_meta,
+        hash_info=right_hi,
+    )
+    old = DataIndex({key: old_entry})
+    new = DataIndex({key: new_entry})
+
+    # diff should return UNCHANGED/ADD/DELETE only when both meta and hash info
+    # diff match
+    assert list(diff(old, new, with_unchanged=True)) == [
+        Change(typ, old_entry, new_entry),
+    ]
+
+    # diff should return hash info diff when both meta's are None
+    old_entry.meta = None
+    new_entry.meta = None
+    assert list(diff(old, new, with_unchanged=True)) == [
+        Change(typ, old_entry, new_entry),
+    ]
+
+    # diff should return meta diff when both hash infos are None
+    old_entry.meta = left_meta
+    new_entry.meta = right_meta
+    old_entry.hash_info = None
+    new_entry.hash_info = None
+    assert list(diff(old, new, with_unchanged=True)) == [
+        Change(typ, old_entry, new_entry),
+    ]
+
+    # diff should return modify when meta and hash info diff do not match
+    old_entry.meta = Meta(etag="abc")
+    new_entry.meta = Meta(etag="def")
+    old_entry.hash_info = left_hi
+    new_entry.hash_info = right_hi
+    assert list(diff(old, new, with_unchanged=True)) == [
+        Change(MODIFY, old_entry, new_entry),
+    ]
+    old_entry.meta = left_meta
+    new_entry.meta = right_meta
+    old_entry.hash_info = HashInfo(name="md5", value="abc")
+    new_entry.hash_info = HashInfo(name="md5", value="def")
+    assert list(diff(old, new, with_unchanged=True)) == [
+        Change(MODIFY, old_entry, new_entry),
+    ]
