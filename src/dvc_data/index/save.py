@@ -21,13 +21,13 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
     from ..hashfile.hash import fobj_md5
 
     for _, entry in index.iteritems():
-        assert entry.fs
         if entry.meta and entry.meta.isdir:
             continue
 
         if entry.hash_info and entry.hash_info.name == "md5":
             continue
 
+        assert entry.fs
         if entry.meta and entry.meta.version_id and entry.fs.version_aware:
             # NOTE: if we have versioning available - there is no need to check
             # metadata as we can directly get correct file content using
