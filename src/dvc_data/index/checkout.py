@@ -17,12 +17,34 @@ from ..hashfile.meta import Meta
 from .diff import ADD, DELETE, MODIFY, diff
 
 if TYPE_CHECKING:
-    from dvc_objects.fs.base import FileSystem
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
 
     from .index import BaseDataIndex, DataIndexEntry
 
 
-def checkout(
+class VersioningNotSupported(Exception):
+    pass
+
+
+def test_versioning(
+    src_fs: "FileSystem",
+    src_path: "AnyFSPath",
+    dest_fs: "FileSystem",
+    dest_path: "AnyFSPath",
+    callback: "Callback" = DEFAULT_CALLBACK,
+) -> Meta:
+    transfer(src_fs, src_path, dest_fs, dest_path, callback=callback)
+    info = dest_fs.info(dest_path)
+    meta = Meta.from_info(info, dest_fs.protocol)
+    if meta.version_id in (None, "null"):
+        raise VersioningNotSupported(
+            f"while uploading {dest_path!r}, "
+            "support for versioning could not be detected"
+        )
+    return meta
+
+
+def checkout(  # noqa: C901
     index: "BaseDataIndex",
     path: str,
     fs: "FileSystem",
@@ -34,7 +56,6 @@ def checkout(
     jobs: Optional[int] = None,
     **kwargs,
 ) -> int:
-    transferred = 0
     create, to_delete = _get_changes(index, old, **kwargs)
     if delete:
         to_delete = [
@@ -80,7 +101,22 @@ def checkout(
 
     for parent in parents:
         fs.makedirs(parent, exist_ok=True)
+
+    transferred = 0
+    if fs.version_aware and fs_map:
+        src_fs, items = next(iter(fs_map.items()))
+        if items:
+            entry, src_path, dest_path = items.pop()
+            entry.meta = test_versioning(
+                src_fs, src_path, fs, dest_path, callback=callback
+            )
+            index.add(entry)
+            transferred += 1
+
     for src_fs, args in fs_map.items():
+        if not args:
+            continue
+
         entries, src_paths, dest_paths = zip(*args)
         transfer(
             src_fs,
