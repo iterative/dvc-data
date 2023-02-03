@@ -98,7 +98,9 @@ class DataIndexTrie(JSONTrie):
             pass
         if value is None:
             return None
-        return DataIndexEntry.from_dict(super()._load(key, value))
+        entry = DataIndexEntry.from_dict(super()._load(key, value))
+        entry.key = key
+        return entry
 
     def _dump(self, key, value):
         if key not in self._cache:
