@@ -102,6 +102,11 @@ def checkout(
                 for entry, info in zip(entries, infos):
                     entry.meta = Meta.from_info(info, fs.protocol)
     # FIXME should return new index
+    for key in list(index.storage_map.keys()):
+        storage = index.storage_map[key]
+        storage.fs = fs
+        storage.path = fs.path.join(path, *key)
+        index.storage_map[key] = storage
     return transferred
 
 
