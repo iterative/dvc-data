@@ -13,7 +13,7 @@ from ..hashfile.tree import Tree
 from .index import BaseDataIndex, DataIndex, DataIndexEntry, DataIndexKey
 
 if TYPE_CHECKING:
-    from .index import ODBMapping
+    from .index import StorageMapping
 
 
 class DataIndexView(BaseDataIndex):
@@ -26,12 +26,8 @@ class DataIndexView(BaseDataIndex):
         self.filter_fn = filter_fn
 
     @property
-    def odb_map(self) -> "ODBMapping":  # type: ignore[override]
-        return self._index.odb_map
-
-    @property
-    def remote_map(self) -> "ODBMapping":  # type: ignore[override]
-        return self._index.remote_map
+    def storage_map(self) -> "StorageMapping":  # type: ignore[override]
+        return self._index.storage_map
 
     def __getitem__(self, key: DataIndexKey) -> DataIndexEntry:
         if self.filter_fn(key):

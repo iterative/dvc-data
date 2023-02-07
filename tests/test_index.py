@@ -7,7 +7,8 @@ from dvc_data.hashfile.meta import Meta
 from dvc_data.index import (
     DataIndex,
     DataIndexEntry,
-    ODBMapping,
+    Storage,
+    StorageMapping,
     add,
     build,
     checkout,
@@ -75,7 +76,9 @@ def test_fs(tmp_upath, odb, as_filesystem):
             ),
         }
     )
-    index.odb_map = ODBMapping({("foo",): odb, ("data",): odb})
+    index.storage_map = StorageMapping(
+        {("foo",): Storage(odb=odb), ("data",): Storage(odb=odb)}
+    )
     fs = DataFileSystem(index)
     assert fs.exists("foo")
     assert fs.cat("foo") == b"foo\n"
@@ -138,15 +141,19 @@ def test_build(tmp_upath, as_filesystem):
     fs = as_filesystem(tmp_upath.fs)
     index = build(str(tmp_upath), fs)
     assert index[("foo",)].meta.size == 4
-    assert index[("foo",)].fs == fs
-    assert index[("foo",)].path == str(tmp_upath / "foo")
+    assert index.storage_map[("foo",)].fs == fs
+    assert index.storage_map[("foo",)].path == str(tmp_upath / "foo")
     assert index[("data",)].meta.isdir
     assert index[("data", "bar")].meta.size == 4
-    assert index[("data", "bar")].fs == fs
-    assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
+    assert index.storage_map[("data", "bar")].fs == fs
+    assert index.storage_map[("data", "bar")].path == str(
+        tmp_upath / "data" / "bar"
+    )
     assert index[("data", "baz")].meta.size == 4
-    assert index[("data", "baz")].fs == fs
-    assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
+    assert index.storage_map[("data", "baz")].fs == fs
+    assert index.storage_map[("data", "baz")].path == str(
+        tmp_upath / "data" / "baz"
+    )
 
 
 def test_add(tmp_upath, as_filesystem):
@@ -162,21 +169,25 @@ def test_add(tmp_upath, as_filesystem):
     add(index, str(tmp_upath / "foo"), fs, ("foo",))
     assert len(index) == 1
     assert index[("foo",)].meta.size == 4
-    assert index[("foo",)].fs == fs
-    assert index[("foo",)].path == str(tmp_upath / "foo")
+    assert index.storage_map[("foo",)].fs == fs
+    assert index.storage_map[("foo",)].path == str(tmp_upath / "foo")
 
     add(index, str(tmp_upath / "data"), fs, ("data",))
     assert len(index) == 4
     assert index[("foo",)].meta.size == 4
-    assert index[("foo",)].fs == fs
-    assert index[("foo",)].path == str(tmp_upath / "foo")
+    assert index.storage_map[("foo",)].fs == fs
+    assert index.storage_map[("foo",)].path == str(tmp_upath / "foo")
     assert index[("data",)].meta.isdir
     assert index[("data", "bar")].meta.size == 4
-    assert index[("data", "bar")].fs == fs
-    assert index[("data", "bar")].path == str(tmp_upath / "data" / "bar")
+    assert index.storage_map[("data", "bar")].fs == fs
+    assert index.storage_map[("data", "bar")].path == str(
+        tmp_upath / "data" / "bar"
+    )
     assert index[("data", "baz")].meta.size == 4
-    assert index[("data", "baz")].fs == fs
-    assert index[("data", "baz")].path == str(tmp_upath / "data" / "baz")
+    assert index.storage_map[("data", "baz")].fs == fs
+    assert index.storage_map[("data", "baz")].path == str(
+        tmp_upath / "data" / "baz"
+    )
 
 
 def test_checkout(tmp_upath, odb, as_filesystem):
@@ -199,7 +210,9 @@ def test_checkout(tmp_upath, odb, as_filesystem):
             ),
         }
     )
-    index.odb_map = ODBMapping({("foo",): odb, ("data",): odb})
+    index.storage_map = StorageMapping(
+        {("foo",): Storage(odb=odb), ("data",): Storage(odb=odb)}
+    )
     checkout(index, str(tmp_upath), as_filesystem(tmp_upath.fs))
     assert (tmp_upath / "foo").read_text() == "foo\n"
     assert (tmp_upath / "data").is_dir()
@@ -290,7 +303,7 @@ def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
             ),
         }
     )
-    index.odb_map = ODBMapping({("dir",): odb})
+    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
     index_view = view(index, filter_fn)
     assert keys == {
         key for key, _ in index_view._iteritems(ensure_loaded=ensure_loaded)
@@ -315,7 +328,7 @@ def test_view(odb):
             expected_key: expected_entry,
         }
     )
-    index.odb_map = ODBMapping({("dir",): odb})
+    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
     index_view = view(index, lambda k: "dir" in k)
     assert {expected_key} == set(index_view.keys())
     assert expected_key in index_view
@@ -344,7 +357,7 @@ def test_view_ls(odb):
             ),
         }
     )
-    index.odb_map = ODBMapping({("dir",): odb})
+    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
     index_view = view(index, lambda k: "dir" in k)
     assert list(index_view.ls((), detail=False)) == [("dir",)]
     assert list(index_view.ls(("dir",), detail=False)) == [
@@ -374,7 +387,7 @@ def test_view_traverse(odb):
             ),
         }
     )
-    index.odb_map = ODBMapping({("dir",): odb})
+    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
     index_view = view(index, lambda k: "dir" in k)
 
     keys = []

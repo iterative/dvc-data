@@ -27,19 +27,18 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
         if entry.hash_info and entry.hash_info.name == "md5":
             continue
 
-        assert entry.fs
-        if entry.meta and entry.meta.version_id and entry.fs.version_aware:
+        storage = index.storage_map[entry.key]
+        fs = storage.fs
+        path = storage.path
+        assert fs
+        if entry.meta and entry.meta.version_id and fs.version_aware:
             # NOTE: if we have versioning available - there is no need to check
             # metadata as we can directly get correct file content using
             # version_id.
-            path = entry.fs.path.version_path(
-                entry.path, entry.meta.version_id
-            )
-        else:
-            path = entry.path
+            path = fs.path.version_path(path, entry.meta.version_id)
 
         try:
-            meta = Meta.from_info(entry.fs.info(path), entry.fs.protocol)
+            meta = Meta.from_info(fs.info(path), fs.protocol)
         except FileNotFoundError:
             continue
 
@@ -47,18 +46,18 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
             continue
 
         if state:
-            _, entry.hash_info = state.get(path, entry.fs)
+            _, entry.hash_info = state.get(path, fs)
             if entry.hash_info:
                 continue
 
-        with entry.fs.open(path, "rb") as fobj:
+        with fs.open(path, "rb") as fobj:
             entry.hash_info = HashInfo(
                 "md5",
                 fobj_md5(fobj),
             )
 
         if state:
-            state.save(path, entry.fs, entry.hash_info)
+            state.save(path, fs, entry.hash_info)
 
 
 def build_tree(
@@ -88,7 +87,7 @@ def _save_dir_entry(
     from ..hashfile.db import add_update_tree
 
     entry = index[key]
-    cache = odb or index.odb_map[key]
+    cache = odb or index.storage_map[key].odb
     assert cache
     meta, tree = build_tree(index, key)
     tree = add_update_tree(cache, tree)
@@ -131,24 +130,23 @@ def save(
         if entry.meta and entry.meta.isdir:
             dir_entries.append(key)
             continue
-        assert entry.fs
-        if entry.meta and entry.meta.version_id and entry.fs.version_aware:
+        storage = index.storage_map[entry.key]
+        fs = storage.fs
+        path = storage.path
+        assert fs
+        if entry.meta and entry.meta.version_id and fs.version_aware:
             # NOTE: if we have versioning available - there is no need to check
             # metadata as we can directly get correct file content using
             # version_id.
-            path = entry.fs.path.version_path(
-                entry.path, entry.meta.version_id
-            )
-        else:
-            path = entry.path
+            path = fs.path.version_path(path, entry.meta.version_id)
         if entry.hash_info:
-            cache = odb or index.odb_map[key]
+            cache = odb or index.storage_map[key].odb
             assert cache
             assert entry.hash_info.value
             oid = entry.hash_info.value
             if cache not in odb_map:
                 odb_map[cache] = defaultdict(list)
-            odb_map[cache][entry.fs].append((path, oid))
+            odb_map[cache][fs].append((path, oid))
     for cache, fs_map in odb_map.items():
         for fs, args in fs_map.items():
             paths, oids = zip(*args)
