@@ -311,16 +311,18 @@ def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
 
 
 def test_view(odb):
+    expected_key = ("dir", "subdir", "bar")
     expected_entry = DataIndexEntry(
+        key=expected_key,
         hash_info=HashInfo(
             name="md5",
             value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
         ),
     )
-    expected_key = ("dir", "subdir", "bar")
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
+                key=("foo",),
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
