@@ -65,14 +65,14 @@ def checkout(
             continue
         dest_path = fs.path.join(path, *entry.key)
         parents.add(fs.path.parent(dest_path))
-        if entry.fs and entry.path:
-            src_fs: "FileSystem" = entry.fs
-            src_path = entry.path
+        storage = index.storage_map[entry.key]
+        assert storage
+        if storage.fs and storage.path:
+            src_fs: "FileSystem" = storage.fs
+            src_path = storage.path
         else:
             assert entry.hash_info
-            odb = index.odb_map.get(entry.key) or index.remote_map.get(
-                entry.key
-            )
+            odb = storage.odb or storage.remote
             assert odb
             src_fs = odb.fs
             src_path = odb.oid_to_path(entry.hash_info.value)
@@ -99,10 +99,9 @@ def checkout(
                 cb = Callback.as_tqdm_callback(desc=desc, unit="file")
             with cb:
                 infos = fs.info(list(dest_paths), callback=cb, batch_size=jobs)
-                for entry, dest_path, info in zip(entries, dest_paths, infos):
-                    entry.fs = fs
-                    entry.path = dest_path
+                for entry, info in zip(entries, infos):
                     entry.meta = Meta.from_info(info, fs.protocol)
+    # FIXME should return new index
     return transferred
 
 

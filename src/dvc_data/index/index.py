@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass
 from functools import cached_property
 from typing import (
@@ -40,9 +41,6 @@ class DataIndexEntry:
     meta: Optional["Meta"] = None
     obj: Optional["HashFile"] = None
     hash_info: Optional["HashInfo"] = None
-
-    fs: Optional["FileSystem"] = None
-    path: Optional["str"] = None
 
     loaded: Optional[bool] = None
 
@@ -130,7 +128,17 @@ def _try_load(
     return None
 
 
-class ODBMapping(MutableMapping):
+@dataclass
+class Storage:
+    """Describes where the data contents could be found"""
+
+    fs: Optional["FileSystem"] = None
+    path: Optional[str] = None
+    odb: Optional["HashFileDB"] = None
+    remote: Optional["HashFileDB"] = None
+
+
+class StorageMapping(MutableMapping):
     def __init__(self, *args, **kwargs):
         self._map = dict(*args, **kwargs)
 
@@ -141,12 +149,18 @@ class ODBMapping(MutableMapping):
         del self._map[key]
 
     def __getitem__(self, key):
-        for prefix, odb in self._map.items():
+        for prefix, storage in self._map.items():
             if len(prefix) > len(key):
                 continue
 
             if key[: len(prefix)] == prefix:
-                return odb
+                if storage.path:
+                    storage = copy(storage)
+                    storage.path = storage.fs.path.join(
+                        storage.path,
+                        *key[len(prefix) :],
+                    )
+                return storage
 
         return None
 
@@ -158,8 +172,7 @@ class ODBMapping(MutableMapping):
 
 
 class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
-    odb_map: ODBMapping
-    remote_map: ODBMapping
+    storage_map: StorageMapping
 
     @abstractmethod
     def iteritems(
@@ -233,8 +246,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         # serialize values, so we can save some time.
         self._trie = PyGTrie()
 
-        self.odb_map = ODBMapping()
-        self.remote_map = ODBMapping()
+        self.storage_map = StorageMapping()
 
         self.update(*args, **kwargs)
 
@@ -247,8 +259,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
     def view(self, key):
         ret = DataIndex()
         ret._trie = self._trie.view(key)  # pylint: disable=protected-access
-        ret.odb_map = self.odb_map
-        ret.remote_map = self.remote_map
+        ret.storage_map = self.storage_map
         return ret
 
     def commit(self):
@@ -304,9 +315,10 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
             return
 
         if not entry.obj:
-            odb = self.odb_map.get(key)
-            remote = self.remote_map.get(key)
-            entry.obj = _try_load([odb, remote], entry.hash_info)
+            storage = self.storage_map.get(key)
+            entry.obj = _try_load(
+                [storage.odb, storage.remote], entry.hash_info
+            )
 
         if not entry.obj:
             return
@@ -328,9 +340,6 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
                 hash_info=hash_info,
                 meta=meta,
             )
-            if entry.fs and entry.path:
-                child_entry.fs = entry.fs
-                child_entry.path = entry.fs.path.join(entry.path, *ikey)
             self._trie[entry_key] = child_entry
 
         for dkey in dirs:
