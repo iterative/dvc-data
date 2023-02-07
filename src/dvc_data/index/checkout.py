@@ -101,6 +101,7 @@ def checkout(
                 infos = fs.info(list(dest_paths), callback=cb, batch_size=jobs)
                 for entry, info in zip(entries, infos):
                     entry.meta = Meta.from_info(info, fs.protocol)
+                    index.add(entry)
     # FIXME should return new index
     for key in list(index.storage_map.keys()):
         storage = index.storage_map[key]

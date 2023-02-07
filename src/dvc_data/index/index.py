@@ -10,7 +10,6 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
-    Mapping,
     MutableMapping,
     Optional,
     Tuple,
@@ -171,7 +170,7 @@ class StorageMapping(MutableMapping):
         return len(self._map)
 
 
-class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
+class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
     storage_map: StorageMapping
 
     @abstractmethod
@@ -224,6 +223,9 @@ class BaseDataIndex(ABC, Mapping[DataIndexKey, DataIndexEntry]):
             ret[entry.hash_info.name] = entry.hash_info.value
 
         return ret
+
+    def add(self, entry: DataIndexEntry):
+        self[cast(DataIndexKey, entry.key)] = entry
 
     @abstractmethod
     def ls(self, root_key: DataIndexKey, detail=True):
@@ -294,9 +296,6 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
 
     def __len__(self):
         return len(self._trie)
-
-    def add(self, entry: DataIndexEntry):
-        self[entry.key] = entry
 
     def _load(self, key, entry):
         if not entry:
