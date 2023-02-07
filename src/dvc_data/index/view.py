@@ -1,15 +1,6 @@
 from collections import deque
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterator,
-    Optional,
-    Tuple,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Tuple
 
-from ..hashfile.tree import Tree
 from .index import BaseDataIndex, DataIndex, DataIndexEntry, DataIndexKey
 
 if TYPE_CHECKING:
@@ -112,8 +103,11 @@ class DataIndexView(BaseDataIndex):
                 prefix, entry
             )
             if not shallow:
-                for key, _ in cast(Tree, entry.obj).iteritems():
-                    yield prefix + key
+                yield from (
+                    key
+                    for key, _ in self._index.iteritems(entry.key)
+                    if key != prefix
+                )
 
     def iteritems(
         self,
