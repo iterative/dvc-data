@@ -165,7 +165,7 @@ class StorageMapping(MutableMapping):
         return None
 
     def __iter__(self):
-        yield from self._map.items()
+        yield from self._map.keys()
 
     def __len__(self):
         return len(self._map)
