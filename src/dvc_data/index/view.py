@@ -29,10 +29,22 @@ class DataIndexView(BaseDataIndex):
     def storage_map(self) -> "StorageMapping":  # type: ignore[override]
         return self._index.storage_map
 
+    def __setitem__(self, key, value):
+        if self.filter_fn(key):
+            self._index[key] = value
+        else:
+            raise KeyError
+
     def __getitem__(self, key: DataIndexKey) -> DataIndexEntry:
         if self.filter_fn(key):
             return self._index[key]
         raise KeyError
+
+    def __delitem__(self, key: DataIndexKey):
+        if self.filter_fn(key):
+            del self._index[key]
+        else:
+            raise KeyError
 
     def __iter__(self) -> Iterator[DataIndexKey]:
         return (key for key, _ in self._iteritems())
