@@ -131,9 +131,15 @@ def _try_load(
 class Storage:
     """Describes where the data contents could be found"""
 
+    # fs/path pair if we have the file stashed somewhere
     fs: Optional["FileSystem"] = None
     path: Optional[str] = None
+
+    # odb could be an in-memory one
     odb: Optional["HashFileDB"] = None
+    # cache is typically a localfs odb
+    cache: Optional["HashFileDB"] = None
+    # remote is typically a cloud odb
     remote: Optional["HashFileDB"] = None
 
 
@@ -316,7 +322,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         if not entry.obj:
             storage = self.storage_map.get(key)
             entry.obj = _try_load(
-                [storage.odb, storage.remote], entry.hash_info
+                [storage.odb, storage.cache, storage.remote], entry.hash_info
             )
 
         if not entry.obj:

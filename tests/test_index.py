@@ -77,7 +77,7 @@ def test_fs(tmp_upath, odb, as_filesystem):
         }
     )
     index.storage_map = StorageMapping(
-        {("foo",): Storage(odb=odb), ("data",): Storage(odb=odb)}
+        {("foo",): Storage(cache=odb), ("data",): Storage(cache=odb)}
     )
     fs = DataFileSystem(index)
     assert fs.exists("foo")
@@ -211,7 +211,7 @@ def test_checkout(tmp_upath, odb, as_filesystem):
         }
     )
     index.storage_map = StorageMapping(
-        {("foo",): Storage(odb=odb), ("data",): Storage(odb=odb)}
+        {("foo",): Storage(cache=odb), ("data",): Storage(cache=odb)}
     )
     checkout(index, str(tmp_upath), as_filesystem(tmp_upath.fs))
     assert (tmp_upath / "foo").read_text() == "foo\n"
@@ -303,7 +303,7 @@ def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
             ),
         }
     )
-    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
+    index.storage_map = StorageMapping({("dir",): Storage(cache=odb)})
     index_view = view(index, filter_fn)
     assert keys == {
         key for key, _ in index_view._iteritems(ensure_loaded=ensure_loaded)
@@ -330,7 +330,7 @@ def test_view(odb):
             expected_key: expected_entry,
         }
     )
-    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
+    index.storage_map = StorageMapping({("dir",): Storage(cache=odb)})
     index_view = view(index, lambda k: "dir" in k)
     assert {expected_key} == set(index_view.keys())
     assert expected_key in index_view
@@ -359,7 +359,7 @@ def test_view_ls(odb):
             ),
         }
     )
-    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
+    index.storage_map = StorageMapping({("dir",): Storage(cache=odb)})
     index_view = view(index, lambda k: "dir" in k)
     assert list(index_view.ls((), detail=False)) == [("dir",)]
     assert list(index_view.ls(("dir",), detail=False)) == [
@@ -389,7 +389,7 @@ def test_view_traverse(odb):
             ),
         }
     )
-    index.storage_map = StorageMapping({("dir",): Storage(odb=odb)})
+    index.storage_map = StorageMapping({("dir",): Storage(cache=odb)})
     index_view = view(index, lambda k: "dir" in k)
 
     keys = []

@@ -72,7 +72,7 @@ def checkout(
             src_path = storage.path
         else:
             assert entry.hash_info
-            odb = storage.odb or storage.remote
+            odb = storage.odb or storage.cache or storage.remote
             assert odb
             src_fs = odb.fs
             src_path = odb.oid_to_path(entry.hash_info.value)
