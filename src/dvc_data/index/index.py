@@ -38,7 +38,6 @@ DataIndexKey = Tuple[str, ...]
 class DataIndexEntry:
     key: Optional[DataIndexKey] = None
     meta: Optional["Meta"] = None
-    obj: Optional["HashFile"] = None
     hash_info: Optional["HashInfo"] = None
 
     loaded: Optional[bool] = None
@@ -209,7 +208,6 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
                 "isexec": False,
                 "isdvc": bool(self.longest_prefix(key)),
                 "isout": False,
-                "obj": None,
                 "entry": None,
             }
 
@@ -220,7 +218,6 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
             "isexec": entry.meta.isexec if entry.meta else False,
             "isdvc": True,
             "isout": True,
-            "obj": entry.obj,
             "entry": entry,
         }
 
@@ -310,7 +307,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         if entry.loaded:
             return
 
-        if not entry.hash_info and not entry.obj:
+        if not entry.hash_info:
             return
 
         if not (
@@ -319,17 +316,16 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         ):
             return
 
-        if not entry.obj:
-            storage = self.storage_map.get(key)
-            entry.obj = _try_load(
-                [storage.odb, storage.cache, storage.remote], entry.hash_info
-            )
+        storage = self.storage_map.get(key)
+        obj = _try_load(
+            [storage.odb, storage.cache, storage.remote], entry.hash_info
+        )
 
-        if not entry.obj:
+        if not obj:
             return
 
         dirs = set()
-        for ikey, (meta, hash_info) in entry.obj.iteritems():
+        for ikey, (meta, hash_info) in obj.iteritems():
             if not meta and entry.hash_info and entry.hash_info == hash_info:
                 meta = entry.meta
 
@@ -408,7 +404,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
             and not entry.loaded
         ):
             self._load(prefix, entry)
-            if not entry.obj:
+            if not entry.loaded:
                 raise TreeError
 
     def ls(self, root_key: DataIndexKey, detail=True):

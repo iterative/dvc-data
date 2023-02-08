@@ -92,7 +92,6 @@ def _save_dir_entry(
     meta, tree = build_tree(index, key)
     tree = add_update_tree(cache, tree)
     entry.meta = meta
-    entry.obj = tree
     entry.hash_info = tree.hash_info
     assert tree.hash_info.name and tree.hash_info.value
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
