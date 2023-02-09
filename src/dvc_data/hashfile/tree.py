@@ -158,7 +158,7 @@ class Tree(HashFile):
         return tree
 
     @classmethod
-    def load(cls, odb, hash_info) -> "Tree":
+    def load(cls, odb, hash_info, hash_name: Optional[str] = None) -> "Tree":
         obj = odb.get(hash_info.value)
 
         try:
@@ -174,7 +174,7 @@ class Tree(HashFile):
             )
             raise ObjectFormatError(f"{obj} is corrupted")
 
-        tree = cls.from_list(raw)
+        tree = cls.from_list(raw, hash_name=hash_name)
         tree.path = obj.path
         tree.fs = obj.fs
         tree.hash_info = hash_info
