@@ -77,19 +77,16 @@ class DataIndexView(BaseDataIndex):
                 if key and value:
                     yield key, value
                     if ensure_loaded:
-                        for loaded_key in self._load_dir_keys(
+                        yield from self._load_dir_keys(
                             key, value, shallow=shallow
-                        ):
-                            # pylint: disable-next=protected-access
-                            trie = self._index._trie
-                            yield loaded_key, trie.get(loaded_key)
+                        )
 
     def _load_dir_keys(
         self,
         prefix: DataIndexKey,
         entry: Optional[DataIndexEntry],
         shallow: Optional[bool] = False,
-    ) -> Iterator[DataIndexKey]:
+    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         # NOTE: traverse() will not enter subtries that have been added
         # in-place during traversal. So for dirs which we load in-place, we
         # need to iterate over the new keys ourselves.
@@ -104,8 +101,8 @@ class DataIndexView(BaseDataIndex):
             )
             if not shallow:
                 yield from (
-                    key
-                    for key, _ in self._index.iteritems(entry.key)
+                    (key, val)
+                    for key, val in self._index.iteritems(entry.key)
                     if key != prefix
                 )
 
