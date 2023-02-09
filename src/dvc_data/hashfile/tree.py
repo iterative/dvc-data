@@ -76,11 +76,15 @@ class Tree(HashFile):
 
         memfs = MemoryFileSystem()
         path = "memory://{}".format(tmp_fname(""))
-        memfs.pipe_file(path, self.as_bytes(with_meta=with_meta))
-        self.fs = memfs
-        self.path = path
+        memfs.pipe_file(path, self.as_bytes())
         _, self.hash_info = hash_file(path, memfs, "md5")
         assert self.hash_info.value
+        self.fs = memfs
+        if with_meta:
+            self.path = path + ".with_meta"
+            memfs.pipe_file(self.path, self.as_bytes(with_meta=True))
+        else:
+            self.path = path
         self.hash_info.value += ".dir"
         self.oid = self.hash_info.value
 
