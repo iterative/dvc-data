@@ -70,13 +70,13 @@ class Tree(HashFile):
     ) -> Optional[Tuple[Optional["Meta"], "HashInfo"]]:
         return self._dict.get(key, default)
 
-    def digest(self):
+    def digest(self, with_meta: bool = False):
         from dvc_objects.fs import MemoryFileSystem
         from dvc_objects.fs.utils import tmp_fname
 
         memfs = MemoryFileSystem()
         path = "memory://{}".format(tmp_fname(""))
-        memfs.pipe_file(path, self.as_bytes())
+        memfs.pipe_file(path, self.as_bytes(with_meta=with_meta))
         self.fs = memfs
         self.path = path
         _, self.hash_info = hash_file(path, memfs, "md5")
@@ -135,8 +135,10 @@ class Tree(HashFile):
             key=itemgetter(self.PARAM_RELPATH),
         )
 
-    def as_bytes(self):
-        return json.dumps(self.as_list(), sort_keys=True).encode("utf-8")
+    def as_bytes(self, with_meta: bool = False):
+        return json.dumps(
+            self.as_list(with_meta=with_meta), sort_keys=True
+        ).encode("utf-8")
 
     @classmethod
     def from_list(cls, lst, hash_name: Optional[str] = None):
