@@ -119,7 +119,7 @@ def _try_load(
             continue
 
         try:
-            return Tree.load(odb, hash_info)
+            return Tree.load(odb, hash_info, hash_name="md5")
         except (FileNotFoundError, ObjectFormatError):
             pass
 
