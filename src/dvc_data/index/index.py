@@ -160,12 +160,18 @@ class StorageMapping(MutableMapping):
                 continue
 
             if key[: len(prefix)] == prefix:
-                if storage.path:
+                if storage.path or storage.remote_path:
                     storage = copy(storage)
-                    storage.path = storage.fs.path.join(
-                        storage.path,
-                        *key[len(prefix) :],
-                    )
+                    if storage.path:
+                        storage.path = storage.fs.path.join(
+                            storage.path,
+                            *key[len(prefix) :],
+                        )
+                    if storage.remote_path:
+                        storage.remote_path = storage.remote_fs.path.join(
+                            storage.remote_path,
+                            *key[len(prefix) :],
+                        )
                 return storage
 
         return None
