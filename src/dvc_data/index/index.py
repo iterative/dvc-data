@@ -133,6 +133,8 @@ class Storage:
     # fs/path pair if we have the file stashed somewhere
     fs: Optional["FileSystem"] = None
     path: Optional[str] = None
+    remote_fs: Optional["FileSystem"] = None
+    remote_path: Optional[str] = None
 
     # odb could be an in-memory one
     odb: Optional["HashFileDB"] = None
