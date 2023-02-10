@@ -182,6 +182,32 @@ class StorageMapping(MutableMapping):
     def __len__(self):
         return len(self._map)
 
+    def cache_exists(self, entry: "DataIndexEntry") -> bool:
+        storage = self[entry.key]
+
+        if storage.cache and entry.hash_info:
+            return storage.cache.exists(entry.hash_info.value)
+
+        return False
+
+    def remote_exists(self, entry: "DataIndexEntry") -> bool:
+        storage = self[entry.key]
+
+        if storage.remote_fs and storage.remote_path:
+            if entry.meta and entry.meta.version_id:
+                path = storage.remote_fs.path.version_path(
+                    storage.remote_path,
+                    entry.meta.version_id,
+                )
+            else:
+                path = storage.remote_path
+            return storage.remote_fs.exists(path)
+
+        if storage.remote and entry.hash_info:
+            return storage.remote.exists(entry.hash_info.value)
+
+        return False
+
 
 class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
     storage_map: StorageMapping
