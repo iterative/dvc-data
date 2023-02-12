@@ -53,14 +53,13 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         entry = info["entry"]
 
-        storage = self.index.storage_map.get(entry.key)
-        cache = storage.cache
+        cache = self.index.storage_map.get_cache_odb(entry)
         if cache:
             cache_path = cache.oid_to_path(value)
             if cache.fs.exists(cache_path):
                 return cache.fs, cache_path
 
-        remote = storage.remote
+        remote = self.index.storage_map.get_remote_odb(entry)
         if remote:
             remote_path = remote.oid_to_path(value)
             return remote.fs, remote_path

@@ -15,6 +15,7 @@ from dvc_objects.fs.utils import exists as batch_exists
 
 from ..hashfile.meta import Meta
 from .diff import ADD, DELETE, MODIFY, diff
+from .index import FileStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
@@ -54,6 +55,7 @@ def checkout(  # noqa: C901
     latest_only: bool = True,
     update_meta: bool = True,
     jobs: Optional[int] = None,
+    storage: str = "cache",
     **kwargs,
 ) -> int:
     create, to_delete = _get_changes(index, old, **kwargs)
@@ -86,17 +88,7 @@ def checkout(  # noqa: C901
             continue
         dest_path = fs.path.join(path, *entry.key)
         parents.add(fs.path.parent(dest_path))
-        storage = index.storage_map[entry.key]
-        assert storage
-        if storage.fs and storage.path:
-            src_fs: "FileSystem" = storage.fs
-            src_path = storage.path
-        else:
-            assert entry.hash_info
-            odb = storage.cache or storage.remote
-            assert odb
-            src_fs = odb.fs
-            src_path = odb.oid_to_path(entry.hash_info.value)
+        src_fs, src_path = index.storage_map.get_storage(entry, storage)
         fs_map[src_fs].append((entry, src_path, dest_path))
 
     for parent in parents:
@@ -140,10 +132,13 @@ def checkout(  # noqa: C901
                     index.add(entry)
     # FIXME should return new index
     for key in list(index.storage_map.keys()):
-        storage = index.storage_map[key]
-        storage.fs = fs
-        storage.path = fs.path.join(path, *key)
-        index.storage_map[key] = storage
+        index.storage_map.add_data(
+            FileStorage(
+                key,
+                fs,
+                fs.path.join(path, *key),
+            )
+        )
     return transferred
 
 

@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from copy import copy
 from dataclasses import dataclass
 from functools import cached_property
 from typing import (
@@ -126,22 +125,74 @@ def _try_load(
     return None
 
 
+class Storage(ABC):
+    def __init__(self, key: "DataIndexKey"):
+        self.key = key
+
+    @abstractmethod
+    def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+        pass
+
+    def exists(self, entry: "DataIndexEntry") -> bool:
+        fs, path = self.get(entry)
+        return fs.exists(path)
+
+
+class ObjectStorage(Storage):
+    def __init__(self, key: "DataIndexKey", odb: "HashFileDB"):
+        self.odb = odb
+        super().__init__(key)
+
+    def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+        if not entry.hash_info:
+            raise ValueError
+
+        return self.odb.fs, self.odb.oid_to_path(entry.hash_info.value)
+
+    def exists(self, entry: "DataIndexEntry") -> bool:
+        if not entry.hash_info:
+            return False
+
+        return self.odb.exists(cast(str, entry.hash_info.value))
+
+
+class FileStorage(Storage):
+    def __init__(
+        self,
+        key: "DataIndexKey",
+        fs: "FileSystem",
+        path: "str",
+        index: Optional["DataIndex"] = None,
+    ):
+        self.fs = fs
+        self.path = path
+        self.index = index
+        super().__init__(key)
+
+    def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+        assert entry.key is not None
+        path = self.fs.path.join(self.path, *entry.key[len(self.key) :])
+        if entry.meta and entry.meta.version_id:
+            path = self.fs.path.version_path(path, entry.meta.version_id)
+        return self.fs, path
+
+    def exists(self, entry: "DataIndexEntry") -> bool:
+        if self.index is None:
+            return super().exists(entry)
+
+        return entry.key in self.index
+
+
 @dataclass
-class Storage:
+class StorageInfo:
     """Describes where the data contents could be found"""
 
-    # fs/path pair if we have the file stashed somewhere
-    fs: Optional["FileSystem"] = None
-    path: Optional[str] = None
-    remote_fs: Optional["FileSystem"] = None
-    remote_path: Optional[str] = None
-
-    # odb could be an in-memory one
-    odb: Optional["HashFileDB"] = None
-    # cache is typically a localfs odb
-    cache: Optional["HashFileDB"] = None
-    # remote is typically a cloud odb
-    remote: Optional["HashFileDB"] = None
+    # could be in memory
+    data: Optional[Storage] = None
+    # typically localfs
+    cache: Optional[Storage] = None
+    # typically cloud
+    remote: Optional[Storage] = None
 
 
 class StorageMapping(MutableMapping):
@@ -160,18 +211,6 @@ class StorageMapping(MutableMapping):
                 continue
 
             if key[: len(prefix)] == prefix:
-                if storage.path or storage.remote_path:
-                    storage = copy(storage)
-                    if storage.path:
-                        storage.path = storage.fs.path.join(
-                            storage.path,
-                            *key[len(prefix) :],
-                        )
-                    if storage.remote_path:
-                        storage.remote_path = storage.remote_fs.path.join(
-                            storage.remote_path,
-                            *key[len(prefix) :],
-                        )
                 return storage
 
         return None
@@ -182,29 +221,82 @@ class StorageMapping(MutableMapping):
     def __len__(self):
         return len(self._map)
 
+    def odbs(self, key):
+        sinfo = self[key]
+
+        ret = []
+        for storage in [sinfo.data, sinfo.cache, sinfo.remote]:
+            if isinstance(storage, ObjectStorage):
+                ret.append(storage.odb)
+        return ret
+
+    def add_data(self, storage: "Storage"):
+        info = self.get(storage.key) or StorageInfo()
+        info.data = storage
+        self[storage.key] = info
+
+    def add_cache(self, storage: "Storage"):
+        info = self.get(storage.key) or StorageInfo()
+        info.cache = storage
+        self[storage.key] = info
+
+    def add_remote(self, storage: "Storage"):
+        info = self.get(storage.key) or StorageInfo()
+        info.remote = storage
+        self[storage.key] = info
+
+    def get_storage_odb(
+        self, entry: "DataIndexEntry", typ: str
+    ) -> Optional["HashFileDB"]:
+        info = self[entry.key]
+        if not info:
+            return None
+
+        storage = getattr(info, typ, None)
+        if not storage:
+            return None
+
+        if not isinstance(storage, ObjectStorage):
+            return None
+
+        return storage.odb
+
+    def get_data_odb(self, entry: "DataIndexEntry"):
+        return self.get_storage_odb(entry, "data")
+
+    def get_cache_odb(self, entry: "DataIndexEntry"):
+        return self.get_storage_odb(entry, "cache")
+
+    def get_remote_odb(self, entry: "DataIndexEntry"):
+        return self.get_storage_odb(entry, "remote")
+
+    def get_storage(
+        self, entry: "DataIndexEntry", typ: str
+    ) -> Tuple["FileSystem", str]:
+        return getattr(self[entry.key], typ).get(entry)
+
+    def get_data(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+        return self[entry.key].data.get(entry)
+
+    def get_cache(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+        return self[entry.key].cache.get(entry)
+
+    def get_remote(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+        return self[entry.key].remote.get(entry)
+
     def cache_exists(self, entry: "DataIndexEntry") -> bool:
         storage = self[entry.key]
 
-        if storage.cache and entry.hash_info:
-            return storage.cache.exists(entry.hash_info.value)
+        if storage.cache:
+            return storage.cache.exists(entry)
 
         return False
 
     def remote_exists(self, entry: "DataIndexEntry") -> bool:
         storage = self[entry.key]
 
-        if storage.remote_fs and storage.remote_path:
-            if entry.meta and entry.meta.version_id:
-                path = storage.remote_fs.path.version_path(
-                    storage.remote_path,
-                    entry.meta.version_id,
-                )
-            else:
-                path = storage.remote_path
-            return storage.remote_fs.exists(path)
-
-        if storage.remote and entry.hash_info:
-            return storage.remote.exists(entry.hash_info.value)
+        if storage.remote:
+            return storage.remote.exists(entry)
 
         return False
 
@@ -350,10 +442,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         ):
             return
 
-        storage = self.storage_map.get(key)
-        obj = _try_load(
-            [storage.odb, storage.cache, storage.remote], entry.hash_info
-        )
+        obj = _try_load(self.storage_map.odbs(key), entry.hash_info)
 
         if not obj:
             return

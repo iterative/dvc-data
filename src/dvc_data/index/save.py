@@ -28,8 +28,7 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
             continue
 
         storage = index.storage_map[entry.key]
-        fs = storage.fs
-        path = storage.path
+        fs, path = storage.data.get(entry)
         assert fs
         if entry.meta and entry.meta.version_id and fs.version_aware:
             # NOTE: if we have versioning available - there is no need to check
@@ -87,7 +86,7 @@ def _save_dir_entry(
     from ..hashfile.db import add_update_tree
 
     entry = index[key]
-    cache = odb or index.storage_map[key].cache
+    cache = odb or index.storage_map[key].cache.odb
     assert cache
     meta, tree = build_tree(index, key)
     tree = add_update_tree(cache, tree)
@@ -119,6 +118,7 @@ def save(
     odb: Optional["HashFileDB"] = None,
     callback: "Callback" = DEFAULT_CALLBACK,
     jobs: Optional[int] = None,
+    storage: str = "data",
     **kwargs,
 ) -> int:
     dir_entries: List["DataIndexKey"] = []
@@ -129,9 +129,7 @@ def save(
         if entry.meta and entry.meta.isdir:
             dir_entries.append(key)
             continue
-        storage = index.storage_map[entry.key]
-        fs = storage.fs
-        path = storage.path
+        fs, path = index.storage_map.get_storage(entry, storage)
         assert fs
         if entry.meta and entry.meta.version_id and fs.version_aware:
             # NOTE: if we have versioning available - there is no need to check
@@ -139,7 +137,7 @@ def save(
             # version_id.
             path = fs.path.version_path(path, entry.meta.version_id)
         if entry.hash_info:
-            cache = odb or index.storage_map[key].cache
+            cache = odb or index.storage_map[key].cache.odb
             assert cache
             assert entry.hash_info.value
             oid = entry.hash_info.value
