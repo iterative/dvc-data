@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Optional
 
 from .build import build_entries, build_entry
-from .index import Storage
+from .index import FileStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs import FileSystem
@@ -21,7 +21,7 @@ def add(
     entry.key = key
     index.add(entry)
 
-    index.storage_map[key] = Storage(fs=fs, path=path)
+    index.storage_map.add_data(FileStorage(key=key, fs=fs, path=path))
 
     if not fs.isdir(path):
         return

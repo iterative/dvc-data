@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional
 
 from ..hashfile.hash import hash_file
 from ..hashfile.meta import Meta
-from .index import DataIndex, DataIndexEntry, Storage
+from .index import DataIndex, DataIndexEntry, FileStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
@@ -69,7 +69,7 @@ def build(
 ) -> DataIndex:
     index = DataIndex()
 
-    index.storage_map[()] = Storage(fs=fs, path=path)
+    index.storage_map.add_data(FileStorage(key=(), fs=fs, path=path))
 
     for entry in build_entries(path, fs, ignore=ignore):
         index.add(entry)
