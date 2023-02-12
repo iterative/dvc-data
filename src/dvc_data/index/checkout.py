@@ -131,14 +131,15 @@ def checkout(  # noqa: C901
                     entry.meta = Meta.from_info(info, fs.protocol)
                     index.add(entry)
     # FIXME should return new index
-    for key in list(index.storage_map.keys()):
-        index.storage_map.add_data(
-            FileStorage(
-                key,
-                fs,
-                fs.path.join(path, *key),
+    if update_meta:
+        for key in list(index.storage_map.keys()):
+            index.storage_map.add_data(
+                FileStorage(
+                    key,
+                    fs,
+                    fs.path.join(path, *key),
+                )
             )
-        )
     return transferred
 
 
