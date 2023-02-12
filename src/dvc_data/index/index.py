@@ -172,7 +172,7 @@ class FileStorage(Storage):
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         assert entry.key is not None
         path = self.fs.path.join(self.path, *entry.key[len(self.key) :])
-        if entry.meta and entry.meta.version_id:
+        if self.fs.version_aware and entry.meta and entry.meta.version_id:
             path = self.fs.path.version_path(path, entry.meta.version_id)
         return self.fs, path
 
