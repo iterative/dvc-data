@@ -56,20 +56,15 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         entry = info["entry"]
 
-        try:
-            cache = self.index.storage_map.get_cache_odb(entry)
-            cache_path = cache.oid_to_path(value)
-            if cache.fs.exists(cache_path):
-                return cache.fs, cache_path
-        except StorageKeyError:
-            pass
-
-        try:
-            remote = self.index.storage_map.get_remote_odb(entry)
-            remote_path = remote.oid_to_path(value)
-            return remote.fs, remote_path
-        except StorageKeyError:
-            pass
+        for typ in ["cache", "remote", "data"]:
+            try:
+                data = self.index.storage_map.get_storage(entry, typ)
+            except StorageKeyError:
+                continue
+            if data:
+                fs, fs_path = data
+                if fs.exists(fs_path):
+                    return fs, fs_path
 
         raise FileNotFoundError
 
