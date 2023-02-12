@@ -27,14 +27,7 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
         if entry.hash_info and entry.hash_info.name == "md5":
             continue
 
-        storage = index.storage_map[entry.key]
-        fs, path = storage.data.get(entry)
-        assert fs
-        if entry.meta and entry.meta.version_id and fs.version_aware:
-            # NOTE: if we have versioning available - there is no need to check
-            # metadata as we can directly get correct file content using
-            # version_id.
-            path = fs.path.version_path(path, entry.meta.version_id)
+        fs, path = index.storage_map.get_data(entry)
 
         try:
             meta = Meta.from_info(fs.info(path), fs.protocol)
@@ -86,7 +79,7 @@ def _save_dir_entry(
     from ..hashfile.db import add_update_tree
 
     entry = index[key]
-    cache = odb or index.storage_map[key].cache.odb
+    cache = odb or index.storage_map.get_cache_odb(entry)
     assert cache
     meta, tree = build_tree(index, key)
     tree = add_update_tree(cache, tree)
@@ -130,14 +123,8 @@ def save(
             dir_entries.append(key)
             continue
         fs, path = index.storage_map.get_storage(entry, storage)
-        assert fs
-        if entry.meta and entry.meta.version_id and fs.version_aware:
-            # NOTE: if we have versioning available - there is no need to check
-            # metadata as we can directly get correct file content using
-            # version_id.
-            path = fs.path.version_path(path, entry.meta.version_id)
         if entry.hash_info:
-            cache = odb or index.storage_map[key].cache.odb
+            cache = odb or index.storage_map.get_cache_odb(entry)
             assert cache
             assert entry.hash_info.value
             oid = entry.hash_info.value

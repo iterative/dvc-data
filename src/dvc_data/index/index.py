@@ -195,6 +195,14 @@ class StorageInfo:
     remote: Optional[Storage] = None
 
 
+class StorageError(Exception):
+    pass
+
+
+class StorageKeyError(StorageError, KeyError):
+    pass
+
+
 class StorageMapping(MutableMapping):
     def __init__(self, *args, **kwargs):
         self._map = dict(*args, **kwargs)
@@ -213,7 +221,7 @@ class StorageMapping(MutableMapping):
             if key[: len(prefix)] == prefix:
                 return storage
 
-        return None
+        raise StorageKeyError(key)
 
     def __iter__(self):
         yield from self._map.keys()
@@ -247,42 +255,44 @@ class StorageMapping(MutableMapping):
 
     def get_storage_odb(
         self, entry: "DataIndexEntry", typ: str
-    ) -> Optional["HashFileDB"]:
+    ) -> "HashFileDB":
         info = self[entry.key]
-        if not info:
-            return None
-
-        storage = getattr(info, typ, None)
+        storage = getattr(info, typ)
         if not storage:
-            return None
+            raise StorageKeyError(entry.key)
 
         if not isinstance(storage, ObjectStorage):
-            return None
+            raise StorageKeyError(entry.key)
 
         return storage.odb
 
-    def get_data_odb(self, entry: "DataIndexEntry"):
+    def get_data_odb(self, entry: "DataIndexEntry") -> "HashFileDB":
         return self.get_storage_odb(entry, "data")
 
-    def get_cache_odb(self, entry: "DataIndexEntry"):
+    def get_cache_odb(self, entry: "DataIndexEntry") -> "HashFileDB":
         return self.get_storage_odb(entry, "cache")
 
-    def get_remote_odb(self, entry: "DataIndexEntry"):
+    def get_remote_odb(self, entry: "DataIndexEntry") -> "HashFileDB":
         return self.get_storage_odb(entry, "remote")
 
     def get_storage(
         self, entry: "DataIndexEntry", typ: str
     ) -> Tuple["FileSystem", str]:
-        return getattr(self[entry.key], typ).get(entry)
+        info = self[entry.key]
+        storage = getattr(info, typ)
+        if not storage:
+            raise StorageKeyError(entry.key)
+
+        return storage.get(entry)
 
     def get_data(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
-        return self[entry.key].data.get(entry)
+        return self.get_storage(entry, "data")
 
     def get_cache(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
-        return self[entry.key].cache.get(entry)
+        return self.get_storage(entry, "cache")
 
     def get_remote(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
-        return self[entry.key].remote.get(entry)
+        return self.get_storage(entry, "remote")
 
     def cache_exists(self, entry: "DataIndexEntry") -> bool:
         storage = self[entry.key]

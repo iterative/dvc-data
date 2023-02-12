@@ -43,6 +43,8 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return key
 
     def _get_fs_path(self, path: "AnyFSPath"):
+        from .index import StorageKeyError
+
         info = self.info(path)
         if info["type"] == "directory":
             raise IsADirectoryError
@@ -53,16 +55,20 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         entry = info["entry"]
 
-        cache = self.index.storage_map.get_cache_odb(entry)
-        if cache:
+        try:
+            cache = self.index.storage_map.get_cache_odb(entry)
             cache_path = cache.oid_to_path(value)
             if cache.fs.exists(cache_path):
                 return cache.fs, cache_path
+        except StorageKeyError:
+            pass
 
-        remote = self.index.storage_map.get_remote_odb(entry)
-        if remote:
+        try:
+            remote = self.index.storage_map.get_remote_odb(entry)
             remote_path = remote.oid_to_path(value)
             return remote.fs, remote_path
+        except StorageKeyError:
+            pass
 
         raise FileNotFoundError
 
