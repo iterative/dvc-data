@@ -139,8 +139,14 @@ class Storage(ABC):
 
 
 class ObjectStorage(Storage):
-    def __init__(self, key: "DataIndexKey", odb: "HashFileDB"):
+    def __init__(
+        self,
+        key: "DataIndexKey",
+        odb: "HashFileDB",
+        index: Optional["DataIndex"] = None,
+    ):
         self.odb = odb
+        self.index = index
         super().__init__(key)
 
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
@@ -153,7 +159,13 @@ class ObjectStorage(Storage):
         if not entry.hash_info:
             return False
 
-        return self.odb.exists(cast(str, entry.hash_info.value))
+        value = cast(str, entry.hash_info.value)
+
+        if self.index is None:
+            return self.odb.exists(value)
+
+        key = self.odb._oid_parts(value)  # pylint: disable=protected-access
+        return key in self.index
 
 
 class FileStorage(Storage):
