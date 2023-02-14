@@ -296,19 +296,17 @@ class StorageMapping(MutableMapping):
 
     def cache_exists(self, entry: "DataIndexEntry") -> bool:
         storage = self[entry.key]
+        if not storage.cache:
+            raise StorageKeyError(entry.key)
 
-        if storage.cache:
-            return storage.cache.exists(entry)
-
-        return False
+        return storage.cache.exists(entry)
 
     def remote_exists(self, entry: "DataIndexEntry") -> bool:
         storage = self[entry.key]
+        if not storage.remote:
+            raise StorageKeyError(entry.key)
 
-        if storage.remote:
-            return storage.remote.exists(entry)
-
-        return False
+        return storage.remote.exists(entry)
 
 
 class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
