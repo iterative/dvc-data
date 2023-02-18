@@ -124,23 +124,15 @@ class DataIndexView(BaseDataIndex):
         return self._index.traverse(_node_factory, **kwargs)
 
     def ls(self, root_key: DataIndexKey, detail=True):
-        def node_factory(_, key, children, entry=None):
-            if key == root_key:
-                return children
-
-            if detail:
-                return key, self._info_from_entry(key, entry)
-
-            return key
-
         self._index._ensure_loaded(  # pylint: disable=protected-access
             root_key
         )
-        yield from (
-            entry
-            for entry in self.traverse(node_factory, prefix=root_key)
-            if entry is not None
-        )
+
+        def _filter_fn(entry):
+            key = entry[0] if detail else entry
+            return self.filter_fn(key)
+
+        yield from filter(_filter_fn, self._index.ls(root_key, detail=detail))
 
     def has_node(self, key: DataIndexKey) -> bool:
         return self.filter_fn(key) and self._index.has_node(key)
