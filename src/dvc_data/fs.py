@@ -1,4 +1,5 @@
 import logging
+import os
 import typing
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
@@ -121,7 +122,12 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def get_file(  # pylint: disable=arguments-differ
         self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        fs, path = self._get_fs_path(rpath)
+        try:
+            fs, path = self._get_fs_path(rpath)
+        except IsADirectoryError:
+            os.makedirs(lpath, exist_ok=True)
+            return None
+
         fs.get_file(path, lpath, callback=callback, **kwargs)
 
     def checksum(self, path):
