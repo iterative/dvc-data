@@ -173,10 +173,12 @@ class ObjectStorage(Storage):
 
             fs, path = self.get(entry)
             self.index[key] = build_entry(path, fs)
-            self.index.commit()
             return True
         except FileNotFoundError:
+            self.index.pop(key, None)
             return False
+        finally:
+            self.index.commit()
 
 
 class FileStorage(Storage):
@@ -213,10 +215,12 @@ class FileStorage(Storage):
 
             fs, path = self.get(entry)
             self.index[key] = build_entry(path, fs)
-            self.index.commit()
             return True
         except FileNotFoundError:
+            self.index.pop(key, None)
             return False
+        finally:
+            self.index.commit()
 
 
 @dataclass
