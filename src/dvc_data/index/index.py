@@ -155,7 +155,7 @@ class ObjectStorage(Storage):
 
         return self.odb.fs, self.odb.oid_to_path(entry.hash_info.value)
 
-    def exists(self, entry: "DataIndexEntry") -> bool:
+    def exists(self, entry: "DataIndexEntry", refresh: bool = False) -> bool:
         if not entry.hash_info:
             return False
 
@@ -165,7 +165,18 @@ class ObjectStorage(Storage):
             return self.odb.exists(value)
 
         key = self.odb._oid_parts(value)  # pylint: disable=protected-access
-        return key in self.index
+        if not refresh:
+            return key in self.index
+
+        try:
+            from .build import build_entry
+
+            fs, path = self.get(entry)
+            self.index[key] = build_entry(path, fs)
+            self.index.commit()
+            return True
+        except FileNotFoundError:
+            return False
 
 
 class FileStorage(Storage):
@@ -188,11 +199,24 @@ class FileStorage(Storage):
             path = self.fs.path.version_path(path, entry.meta.version_id)
         return self.fs, path
 
-    def exists(self, entry: "DataIndexEntry") -> bool:
+    def exists(self, entry: "DataIndexEntry", refresh: bool = False) -> bool:
         if self.index is None:
             return super().exists(entry)
 
-        return entry.key in self.index
+        assert entry.key
+        key = entry.key[len(self.key) :]
+        if not refresh:
+            return key in self.index
+
+        try:
+            from .build import build_entry
+
+            fs, path = self.get(entry)
+            self.index[key] = build_entry(path, fs)
+            self.index.commit()
+            return True
+        except FileNotFoundError:
+            return False
 
 
 @dataclass
@@ -306,19 +330,19 @@ class StorageMapping(MutableMapping):
     def get_remote(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         return self.get_storage(entry, "remote")
 
-    def cache_exists(self, entry: "DataIndexEntry") -> bool:
+    def cache_exists(self, entry: "DataIndexEntry", **kwargs) -> bool:
         storage = self[entry.key]
         if not storage.cache:
             raise StorageKeyError(entry.key)
 
-        return storage.cache.exists(entry)
+        return storage.cache.exists(entry, **kwargs)
 
-    def remote_exists(self, entry: "DataIndexEntry") -> bool:
+    def remote_exists(self, entry: "DataIndexEntry", **kwargs) -> bool:
         storage = self[entry.key]
         if not storage.remote:
             raise StorageKeyError(entry.key)
 
-        return storage.remote.exists(entry)
+        return storage.remote.exists(entry, **kwargs)
 
 
 class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
