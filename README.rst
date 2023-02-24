@@ -56,6 +56,54 @@ You can install *DVC data* via pip_ from PyPI_:
 Usage
 -----
 
+HashFile
+^^^^^^^^
+
+HashFile
+""""""""
+
+Based on dvc-object's `Object`, this is an object that has a particular hash that can be used to verify its contents. Similar to git's `ShaFile`.
+
+.. code:: python
+
+    from dvc_data.hashfile import HashFile
+
+    obj = HashFile("/path/to/file", fs, HashInfo("md5", "36eba1e1e343279857ea7f69a597324e")
+
+HashFileDB
+""""""""""
+
+Based on dvc-object's `ObjectDB`, but stores `HashFile` objects and so is able to verify their contents by their `hash_info`. Similar to git's `ObjectStore`.
+
+.. code:: python
+
+    from dvc_data.hashfile import HashFileDB
+
+    odb = HashFileDB(fs, "/path/to/odb")
+
+Index
+^^^^^
+
+Index
+"""""
+
+A trie-like structure that represents data files and directories.
+
+.. code:: python
+
+    from dvc_data.index import DataIndex, DataIndexEntry
+
+    index = DataIndex()
+    index[("foo",)] = DataIndexEntry(hash_info=hash_info, meta=meta)
+
+
+Storage
+"""""""
+
+A mapping that describes where to find data contents for index entries. Can be either `ObjectStorage` for `HashFileDB`-based storage or `FileStorage` for backup-like plain file storage.
+
+.. code:: python
+    index.storage_map[("foo",)] = ObjectStorage(...)
 
 Contributing
 ------------
