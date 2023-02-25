@@ -103,6 +103,7 @@ Storage
 A mapping that describes where to find data contents for index entries. Can be either `ObjectStorage` for `HashFileDB`-based storage or `FileStorage` for backup-like plain file storage.
 
 .. code:: python
+
     index.storage_map[("foo",)] = ObjectStorage(...)
 
 Contributing
