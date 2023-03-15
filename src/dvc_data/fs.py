@@ -64,14 +64,22 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             if data:
                 fs, fs_path = data
                 if fs.exists(fs_path):
-                    return fs, fs_path
+                    return fs, typ, fs_path
 
         raise FileNotFoundError
 
     def open(  # type: ignore
         self, path: str, mode="r", encoding=None, **kwargs
     ):  # pylint: disable=arguments-renamed, arguments-differ
-        fs, fspath = self._get_fs_path(path, **kwargs)
+        cache_odb = kwargs.pop("cache_odb", None)
+        fs, typ, fspath = self._get_fs_path(path, **kwargs)
+
+        if cache_odb and typ == "remote":
+            from dvc_data.hashfile.build import _upload_file
+
+            _, obj = _upload_file(fspath, fs, cache_odb, cache_odb)
+            fs, fspath = cache_odb.fs, obj.path
+
         return fs.open(fspath, mode=mode, encoding=encoding)
 
     def ls(self, path, detail=True, **kwargs):
@@ -118,7 +126,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
     ):
         try:
-            fs, path = self._get_fs_path(rpath)
+            fs, _, path = self._get_fs_path(rpath)
         except IsADirectoryError:
             os.makedirs(lpath, exist_ok=True)
             return None
