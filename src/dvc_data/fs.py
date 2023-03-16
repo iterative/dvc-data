@@ -83,26 +83,31 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return fs.open(fspath, mode=mode, encoding=encoding)
 
     def ls(self, path, detail=True, **kwargs):
+        from .index import TreeError
+
         root_key = self._get_key(path)
-        info = self.index.info(root_key)
-        if info["type"] != "directory":
-            if detail:
-                info["name"] = path
-                return [info]
-            else:
-                return [path]
+        try:
+            info = self.index.info(root_key)
+            if info["type"] != "directory":
+                if detail:
+                    info["name"] = path
+                    return [info]
+                else:
+                    return [path]
 
-        if not detail:
-            return [
-                self.path.join(path, key[-1])
-                for key in self.index.ls(root_key, detail=False)
-            ]
+            if not detail:
+                return [
+                    self.path.join(path, key[-1])
+                    for key in self.index.ls(root_key, detail=False)
+                ]
 
-        entries = []
-        for key, info in self.index.ls(root_key, detail=True):
-            info["name"] = self.path.join(path, key[-1])
-            entries.append(info)
-        return entries
+            entries = []
+            for key, info in self.index.ls(root_key, detail=True):
+                info["name"] = self.path.join(path, key[-1])
+                entries.append(info)
+            return entries
+        except TreeError as exc:
+            raise FileNotFoundError from exc
 
     def isdvc(self, path, recursive=False):
         try:
