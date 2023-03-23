@@ -150,6 +150,11 @@ def _build_tree(
                 tree_meta.size += meta.size or 0
                 tree_meta.nfiles += 1
 
+    if not tree_meta.nfiles:
+        # This will raise FileNotFoundError if it is a
+        # broken symlink or TreeError
+        next(iter(fs.ls(path)))
+
     tree.digest()
     tree = add_update_tree(odb, tree)
     return tree_meta, tree
