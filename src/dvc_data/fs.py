@@ -50,16 +50,12 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if info["type"] == "directory":
             raise IsADirectoryError
 
-        value = info.get("md5")
-        if not value:
-            raise FileNotFoundError
-
         entry = info["entry"]
 
         for typ in ["cache", "remote", "data"]:
             try:
                 data = self.index.storage_map.get_storage(entry, typ)
-            except StorageKeyError:
+            except (ValueError, StorageKeyError):
                 continue
             if data:
                 fs, fs_path = data

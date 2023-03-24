@@ -7,6 +7,7 @@ from dvc_data.hashfile.meta import Meta
 from dvc_data.index import (
     DataIndex,
     DataIndexEntry,
+    FileStorage,
     ObjectStorage,
     add,
     build,
@@ -88,6 +89,47 @@ def test_fs(tmp_upath, odb, as_filesystem):
         fs.info("/data/bar"),
         fs.info("/data/baz"),
     ]
+
+
+def test_fs_file_storage(tmp_upath, as_filesystem):
+    (tmp_upath / "foo").write_bytes(b"foo\n")
+    (tmp_upath / "data").mkdir()
+    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(
+                key=("foo",),
+            ),
+            ("data",): DataIndexEntry(
+                key=("data",),
+                meta=Meta(isdir=True),
+            ),
+        }
+    )
+    index.storage_map.add_cache(
+        FileStorage((), as_filesystem(tmp_upath.fs), str(tmp_upath))
+    )
+    fs = DataFileSystem(index)
+    assert fs.exists("foo")
+    assert fs.cat("foo") == b"foo\n"
+    assert fs.ls("/", detail=False) == ["/foo", "/data"]
+    assert fs.ls("/", detail=True) == [fs.info("/foo"), fs.info("/data")]
+    assert fs.cat("/data/bar") == b"bar\n"
+    assert fs.cat("/data/baz") == b"baz\n"
+    assert sorted(fs.ls("/data", detail=False)) == sorted(
+        ["/data/bar", "/data/baz"]
+    )
+    assert sorted(
+        fs.ls("/data", detail=True), key=lambda entry: entry["name"]
+    ) == sorted(
+        [
+            fs.info("/data/bar"),
+            fs.info("/data/baz"),
+        ],
+        key=lambda entry: entry["name"],
+    )
 
 
 def test_md5(tmp_upath, odb, as_filesystem):
@@ -292,15 +334,18 @@ def test_view_iteritems(odb, keys, filter_fn, ensure_loaded):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
+                key=("foo",),
                 hash_info=HashInfo(
                     name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
                 ),
             ),
             ("dir", "subdir", "bar"): DataIndexEntry(
+                key=("dir", "subdir", "bar"),
                 hash_info=HashInfo(
                     name="md5",
                     value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
                 ),
+                meta=Meta(isdir=True),
             ),
         }
     )
