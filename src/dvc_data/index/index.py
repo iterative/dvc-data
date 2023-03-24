@@ -7,7 +7,6 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     Iterator,
     MutableMapping,
     Optional,
@@ -27,7 +26,6 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
     from ..hashfile.db import HashFileDB
-    from ..hashfile.obj import HashFile
 
 
 DataIndexKey = Tuple[str, ...]
@@ -107,22 +105,6 @@ class DataIndexTrie(JSONTrie):
     def __delitem__(self, key):
         self._cache.pop(key, None)
         super().__delitem__(key)
-
-
-def _try_load(
-    odbs: Iterable["HashFileDB"],
-    hash_info: "HashInfo",
-) -> Optional["HashFile"]:
-    for odb in odbs:
-        if not odb:
-            continue
-
-        try:
-            return Tree.load(odb, hash_info, hash_name="md5")
-        except (FileNotFoundError, ObjectFormatError):
-            pass
-
-    return None
 
 
 class Storage(ABC):
@@ -269,15 +251,6 @@ class StorageMapping(MutableMapping):
     def __len__(self):
         return len(self._map)
 
-    def odbs(self, key):
-        sinfo = self[key]
-
-        ret = []
-        for storage in [sinfo.data, sinfo.cache, sinfo.remote]:
-            if isinstance(storage, ObjectStorage):
-                ret.append(storage.odb)
-        return ret
-
     def add_data(self, storage: "Storage"):
         info = self.get(storage.key) or StorageInfo()
         info.data = storage
@@ -419,6 +392,80 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
         return self._info_from_entry(key, entry)
 
 
+def _load_from_object_storage(trie, root_entry, storage):
+    obj = Tree.load(storage.odb, root_entry.hash_info, hash_name="md5")
+
+    dirs = set()
+    for ikey, (meta, hash_info) in obj.iteritems():
+        if (
+            not meta
+            and root_entry.hash_info
+            and root_entry.hash_info == hash_info
+        ):
+            meta = root_entry.meta
+
+        if len(ikey) >= 2:
+            # NOTE: current .dir obj format doesn't include subdirs, so
+            # we need to create entries for them manually.
+            for idx in range(1, len(ikey)):
+                dirs.add(ikey[:-idx])
+
+        entry_key = root_entry.key + ikey
+        child_entry = DataIndexEntry(
+            key=entry_key,
+            hash_info=hash_info,
+            meta=meta,
+        )
+        trie[entry_key] = child_entry
+
+    for dkey in dirs:
+        entry_key = root_entry.key + dkey
+        trie[entry_key] = DataIndexEntry(
+            key=entry_key,
+            meta=Meta(isdir=True),
+            loaded=True,
+        )
+
+
+def _load_from_file_storage(trie, root_entry, storage):
+    from .build import build_entries
+
+    fs, path = storage.get(root_entry)
+
+    for entry in build_entries(path, fs):
+        entry.key = root_entry.key + entry.key
+        trie[entry.key] = entry
+
+
+class DataIndexError(Exception):
+    pass
+
+
+def _load_from_storage(trie, entry, storage_info):
+    for storage in [
+        storage_info.data,
+        storage_info.cache,
+        storage_info.remote,
+    ]:
+        if not storage:
+            continue
+
+        try:
+            if (
+                isinstance(storage, ObjectStorage)
+                and entry.hash_info
+                and entry.hash_info.isdir
+            ):
+                _load_from_object_storage(trie, entry, storage)
+            else:
+                _load_from_file_storage(trie, entry, storage)
+            return
+        except (FileNotFoundError, ObjectFormatError):
+            pass
+
+    raise DataIndexError
+
+
 class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
     def __init__(self, *args, **kwargs):
         # NOTE: by default, using an in-memory pygtrie trie that doesn't
@@ -481,45 +528,16 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         if entry.loaded:
             return
 
-        if not entry.hash_info:
-            return
-
         if not (
-            entry.hash_info.isdir
-            or (entry.meta is not None and entry.meta.isdir)
+            (entry.meta and entry.meta.isdir)
+            or (entry.hash_info and entry.hash_info.isdir)
         ):
             return
 
-        obj = _try_load(self.storage_map.odbs(key), entry.hash_info)
-
-        if not obj:
+        try:
+            _load_from_storage(self._trie, entry, self.storage_map[key])
+        except DataIndexError:
             return
-
-        dirs = set()
-        for ikey, (meta, hash_info) in obj.iteritems():
-            if not meta and entry.hash_info and entry.hash_info == hash_info:
-                meta = entry.meta
-
-            if len(ikey) >= 2:
-                # NOTE: current .dir obj format doesn't include subdirs, so
-                # we need to create entries for them manually.
-                for idx in range(1, len(ikey)):
-                    dirs.add(ikey[:-idx])
-
-            entry_key = key + ikey
-            child_entry = DataIndexEntry(
-                key=entry_key,
-                hash_info=hash_info,
-                meta=meta,
-            )
-            self._trie[entry_key] = child_entry
-
-        for dkey in dirs:
-            entry_key = key + dkey
-            self._trie[entry_key] = DataIndexEntry(
-                key=entry_key,
-                meta=Meta(isdir=True),
-            )
 
         entry.loaded = True
         del self._trie[key]

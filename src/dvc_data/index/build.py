@@ -30,6 +30,7 @@ def build_entry(
     return DataIndexEntry(
         meta=meta,
         hash_info=hash_info,
+        loaded=meta.isdir or None,
     )
 
 
