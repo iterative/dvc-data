@@ -4,7 +4,7 @@ from attrs import define, field, fields_dict
 from dvc_objects.fs.utils import is_exec
 
 
-@define
+@define(hash=True)
 class Meta:
     PARAM_ISDIR: ClassVar[str] = "isdir"
     PARAM_SIZE: ClassVar[str] = "size"

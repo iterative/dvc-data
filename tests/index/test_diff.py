@@ -18,6 +18,7 @@ def test_diff():
     old_foo_key = ("foo",)
     old_foo_entry = DataIndexEntry(
         key=old_foo_key,
+        meta=Meta(),
         hash_info=HashInfo(
             name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
         ),
@@ -25,6 +26,7 @@ def test_diff():
     old_bar_key = ("dir", "subdir", "bar")
     old_bar_entry = DataIndexEntry(
         key=old_bar_key,
+        meta=Meta(isdir=True),
         hash_info=HashInfo(
             name="md5",
             value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
@@ -44,6 +46,7 @@ def test_diff():
     new_foo_key = ("data", "FOO")
     new_foo_entry = DataIndexEntry(
         key=new_foo_key,
+        meta=Meta(),
         hash_info=HashInfo(
             name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
         ),
