@@ -347,6 +347,30 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
     ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
         pass
 
+    def _get_meta(self, key, entry):
+        if entry.hash_info:
+            return Meta(isdir=entry.hash_info.isdir)
+
+        info = self.storage_map.get(key)
+        if not info:
+            return None
+
+        for storage in [info.data, info.cache, info.remote]:
+            if not storage:
+                continue
+
+            if not isinstance(storage, FileStorage):
+                continue
+
+            fs, path = storage.get(entry)
+            try:
+                info = fs.info(path)
+                return Meta(isdir=(info["type"] == "directory"))
+            except FileNotFoundError:
+                continue
+
+        return None
+
     def _info_from_entry(self, key, entry):
         if entry is None:
             return {
@@ -358,11 +382,15 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
                 "entry": None,
             }
 
-        isdir = entry.meta and entry.meta.isdir
+        meta = entry.meta
+        if meta is None:
+            meta = self._get_meta(key, entry)
+
+        isdir = meta and meta.isdir
         ret = {
             "type": "directory" if isdir else "file",
-            "size": entry.meta.size if entry.meta else 0,
-            "isexec": entry.meta.isexec if entry.meta else False,
+            "size": meta.size if meta else 0,
+            "isexec": meta.isexec if meta else False,
             "isdvc": True,
             "isout": True,
             "entry": entry,
@@ -503,6 +531,8 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
     def __getitem__(self, key):
         item = self._trie.get(key)
         if item:
+            if item.meta is None:
+                item.meta = self._get_meta(key, item)
             return item
 
         lprefix = self._trie.longest_prefix(key)
@@ -585,13 +615,8 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         return self._trie.keys(*args, **kwargs)
 
     def _ensure_loaded(self, prefix):
-        entry = self._trie.get(prefix)
-        if (
-            entry
-            and entry.hash_info
-            and entry.hash_info.isdir
-            and not entry.loaded
-        ):
+        entry = self.get(prefix)
+        if entry and entry.meta and entry.meta.isdir and not entry.loaded:
             self._load(prefix, entry)
             if not entry.loaded:
                 raise TreeError
