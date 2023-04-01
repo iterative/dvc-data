@@ -385,6 +385,7 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
         meta = entry.meta
         if meta is None:
             meta = self._get_meta(key, entry)
+            entry.meta = meta
 
         isdir = meta and meta.isdir
         ret = {

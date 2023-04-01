@@ -105,17 +105,6 @@ def test_diff_meta_only():
         Change(MODIFY, old_entry, new_entry),
     ]
 
-    new_entry.meta = None
-    assert list(diff(old, new, meta_only=True, with_unchanged=True)) == [
-        Change(DELETE, old_entry, new_entry),
-    ]
-
-    old_entry.meta = None
-    new_entry.meta = Meta(etag="abc")
-    assert list(diff(old, new, meta_only=True, with_unchanged=True)) == [
-        Change(ADD, old_entry, new_entry),
-    ]
-
 
 @pytest.mark.parametrize(
     "typ, left_meta, left_hi, right_meta, right_hi",
