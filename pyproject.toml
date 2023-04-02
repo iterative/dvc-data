@@ -89,3 +89,7 @@ ignored-argument-names = "_.*|^ignored_|^unused_|args|kwargs"
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = ["B101"]
+
+authors = [
+    "J. David Ibáñez <jdavid.ibp@gmail.com>",
+]
