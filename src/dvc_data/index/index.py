@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
 from typing import (
@@ -631,30 +630,3 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
             )
         else:
             yield from self._trie.ls(root_key)
-
-
-def transfer(index, src, dst):
-    from ..hashfile.transfer import transfer as otransfer
-
-    by_direction = defaultdict(set)
-    for _, entry in index.iteritems():
-        src_odb = getattr(entry, src)
-        assert src_odb
-        dst_odb = getattr(entry, dst)
-        assert dst_odb
-        by_direction[(src_odb, dst_odb)].add(entry.hash_info)
-
-    for (src_odb, dst_odb), hash_infos in by_direction.items():
-        otransfer(src_odb, dst_odb, hash_infos)
-
-
-def commit(index):
-    transfer(index, "odb", "cache")
-
-
-def push(index):
-    transfer(index, "cache", "remote")
-
-
-def fetch(index):
-    transfer(index, "remote", "cache")
