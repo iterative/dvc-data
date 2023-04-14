@@ -110,6 +110,20 @@ class Storage(ABC):
     def __init__(self, key: "DataIndexKey"):
         self.key = key
 
+    @property
+    @abstractmethod
+    def fs(self):
+        pass
+
+    @property
+    @abstractmethod
+    def path(self):
+        pass
+
+    @abstractmethod
+    def get_key(self, entry: "DataIndexEntry") -> "DataIndexKey":
+        pass
+
     @abstractmethod
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         pass
@@ -129,6 +143,21 @@ class ObjectStorage(Storage):
         self.odb = odb
         self.index = index
         super().__init__(key)
+
+    @property
+    def fs(self):
+        return self.odb.fs
+
+    @property
+    def path(self):
+        return self.odb.path
+
+    def get_key(self, entry: "DataIndexEntry") -> "DataIndexKey":
+        assert entry.hash_info
+        assert entry.hash_info.value
+        return self.odb._oid_parts(  # pylint: disable=protected-access
+            entry.hash_info.value
+        )
 
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         if not entry.hash_info:
@@ -170,10 +199,28 @@ class FileStorage(Storage):
         path: "str",
         index: Optional["DataIndex"] = None,
     ):
-        self.fs = fs
-        self.path = path
+        self._fs = fs
+        self._path = path
         self.index = index
         super().__init__(key)
+
+    @property
+    def fs(self):
+        return self._fs
+
+    @property
+    def path(self):
+        return self._path
+
+    def get_key(self, entry: "DataIndexEntry") -> "DataIndexKey":
+        assert entry.key
+        key: "DataIndexKey" = entry.key[len(self.key) :]
+        if self.fs.version_aware and entry.meta and entry.meta.version_id:
+            key = (
+                *key[:-1],
+                self.fs.path.version_path(key[-1], entry.meta.version_id),
+            )
+        return key
 
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         assert entry.key is not None

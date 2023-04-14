@@ -12,6 +12,7 @@ from dvc_data.index import (
     add,
     build,
     checkout,
+    fetch,
     md5,
     read_db,
     read_json,
@@ -24,10 +25,18 @@ from dvc_data.index import (
 
 
 @pytest.fixture
-def odb(tmp_upath_factory, as_filesystem):
-    path = tmp_upath_factory.mktemp()
-    fs = as_filesystem(path.fs)
-    odb = HashFileDB(fs, path)
+def make_odb(tmp_upath_factory, as_filesystem):
+    def _make_odb():
+        path = tmp_upath_factory.mktemp()
+        fs = as_filesystem(path.fs)
+        return HashFileDB(fs, path)
+
+    return _make_odb
+
+
+@pytest.fixture
+def odb(tmp_upath_factory, make_odb):
+    odb = make_odb()
 
     foo = tmp_upath_factory.mktemp() / "foo"
     foo.write_bytes(b"foo\n")
@@ -44,10 +53,10 @@ def odb(tmp_upath_factory, as_filesystem):
     baz = tmp_upath_factory.mktemp() / "baz"
     baz.write_bytes(b"baz\n")
 
-    odb.add(str(foo), fs, "d3b07384d113edec49eaa6238ad5ff00")
-    odb.add(str(data), fs, "1f69c66028c35037e8bf67e5bc4ceb6a.dir")
-    odb.add(str(bar), fs, "c157a79031e1c40f85931829bc5fc552")
-    odb.add(str(baz), fs, "258622b1688250cb619f3c9ccaefb7eb")
+    odb.add(str(foo), odb.fs, "d3b07384d113edec49eaa6238ad5ff00")
+    odb.add(str(data), odb.fs, "1f69c66028c35037e8bf67e5bc4ceb6a.dir")
+    odb.add(str(bar), odb.fs, "c157a79031e1c40f85931829bc5fc552")
+    odb.add(str(baz), odb.fs, "258622b1688250cb619f3c9ccaefb7eb")
 
     return odb
 
@@ -272,6 +281,52 @@ def test_checkout(tmp_upath, odb, as_filesystem):
     assert set((tmp_upath / "data").iterdir()) == {
         (tmp_upath / "data" / "bar"),
         (tmp_upath / "data" / "baz"),
+    }
+
+
+def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(
+                key=("foo",),
+                meta=Meta(),
+                hash_info=HashInfo(
+                    name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
+                ),
+            ),
+            ("data",): DataIndexEntry(
+                key=("data",),
+                meta=Meta(isdir=True),
+                hash_info=HashInfo(
+                    name="md5",
+                    value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
+                ),
+            ),
+        }
+    )
+    cache_odb = make_odb()
+    index.storage_map.add_cache(ObjectStorage((), cache_odb))
+    index.storage_map.add_remote(ObjectStorage((), odb))
+
+    (tmp_upath / "fetched").mkdir()
+    fetch([index])  # , str(tmp_upath / "fetched"))
+    checkout(
+        index,
+        str(tmp_upath / "checkout"),
+        as_filesystem(tmp_upath.fs),
+        storage="cache",
+    )
+    assert (tmp_upath / "checkout" / "foo").read_text() == "foo\n"
+    assert (tmp_upath / "checkout" / "data").is_dir()
+    assert (tmp_upath / "checkout" / "data" / "bar").read_text() == "bar\n"
+    assert (tmp_upath / "checkout" / "data" / "baz").read_text() == "baz\n"
+    assert set((tmp_upath / "checkout").iterdir()) == {
+        (tmp_upath / "checkout" / "foo"),
+        (tmp_upath / "checkout" / "data"),
+    }
+    assert set((tmp_upath / "checkout" / "data").iterdir()) == {
+        (tmp_upath / "checkout" / "data" / "bar"),
+        (tmp_upath / "checkout" / "data" / "baz"),
     }
 
 
