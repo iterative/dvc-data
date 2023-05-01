@@ -1,7 +1,7 @@
 import json
 import logging
 import posixpath
-from typing import TYPE_CHECKING, Dict, Final, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Final, Iterable, List, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 from funcy import cached_property
@@ -354,3 +354,20 @@ def update_meta(ours: "Tree", theirs: "Tree") -> "Tree":
     updated.hash_info = ours.hash_info
     updated.oid = ours.oid
     return updated
+
+
+def update_tree(
+    tree: "Tree",
+    update: Dict[Tuple[str, ...], Tuple[Optional["Meta"], "HashInfo"]],
+    remove: List[Tuple[str, ...]],
+) -> "Tree":
+    d = tree.as_dict()
+    d.update(update)
+    for item in remove:
+        d.pop(item)
+
+    new_tree = Tree()
+    new_tree._dict = d  # pylint: disable=protected-access
+    new_tree.fs = tree.fs
+    new_tree.digest()
+    return new_tree
