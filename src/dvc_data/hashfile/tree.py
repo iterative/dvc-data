@@ -11,6 +11,8 @@ from ..hashfile.meta import Meta
 from ..hashfile.obj import HashFile
 
 if TYPE_CHECKING:
+    from pygtrie import Trie
+
     from ..hashfile.db import HashFileDB
     from ..hashfile.hash_info import HashInfo
 
@@ -54,7 +56,7 @@ class Tree(HashFile):
         ] = {}
 
     @cached_property
-    def _trie(self):
+    def _trie(self) -> "Trie":
         from pygtrie import Trie
 
         return Trie(self._dict)
@@ -139,6 +141,9 @@ class Tree(HashFile):
             key=itemgetter(self.PARAM_RELPATH),
         )
 
+    def as_trie(self) -> "Trie":
+        return self._trie.copy()
+
     def as_bytes(self, with_meta: bool = False):
         return json.dumps(
             self.as_list(with_meta=with_meta), sort_keys=True
@@ -159,6 +164,12 @@ class Tree(HashFile):
             else:
                 hash_info = HashInfo.from_dict(entry)
             tree.add(parts, meta, hash_info)
+        return tree
+
+    @classmethod
+    def from_trie(cls, trie: "Trie") -> "Tree":
+        tree = cls()
+        tree._dict = dict(trie.iteritems())
         return tree
 
     @classmethod
