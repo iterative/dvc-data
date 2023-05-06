@@ -230,8 +230,11 @@ def get_odb(**config):
         typer.echo(exc, err=True)
         raise typer.Abort(1)
 
-    state = State(root_dir=repo.root, tmp_dir=repo.tmp_dir)
-    return HashFileDB(repo.fs, repo.object_dir, state=state, **config)
+    if "state" not in config:
+        config.setdefault(
+            "state", State(root_dir=repo.root, tmp_dir=repo.tmp_dir)
+        )
+    return HashFileDB(repo.fs, repo.object_dir, **config)
 
 
 @app.command(help="Oid to path")
@@ -381,10 +384,23 @@ def fsck():
 
 
 @app.command(help="Diff two objects in the database")
-def diff(short_oid1, short_oid2: str, unchanged: bool = False):
+def diff(
+    short_oid1,
+    short_oid2: str,
+    unchanged: bool = False,
+    check_cache: bool = False,
+    check_hash: bool = False,
+):
     odb = get_odb()
     obj1 = odb.get(from_shortoid(odb, short_oid1))
     obj2 = odb.get(from_shortoid(odb, short_oid2))
+
+    odb_check = odb.check
+
+    def check(oid: str, check_hash: bool = check_hash):
+        return not check_cache or odb_check(oid, check_hash=check_hash)
+
+    odb.check = check
     d = _diff(load(odb, obj1.hash_info), load(odb, obj2.hash_info), odb)
 
     def _prepare_info(entry):
