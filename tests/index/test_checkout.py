@@ -37,3 +37,20 @@ def test_checkout(tmp_upath, odb, as_filesystem):
         (tmp_upath / "data" / "bar"),
         (tmp_upath / "data" / "baz"),
     }
+
+
+def test_checkout_file(tmp_upath, odb, as_filesystem):
+    index = DataIndex(
+        {
+            (): DataIndexEntry(
+                key=(),
+                meta=Meta(),
+                hash_info=HashInfo(
+                    name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
+                ),
+            ),
+        }
+    )
+    index.storage_map.add_cache(ObjectStorage((), odb))
+    checkout(index, str(tmp_upath / "foo"), as_filesystem(tmp_upath.fs))
+    assert (tmp_upath / "foo").read_text() == "foo\n"

@@ -157,19 +157,24 @@ def _diff(
     meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
     shallow: Optional[bool] = False,
 ):
-    todo = deque([((), None, None, False)])
+    old_root_items = {}
+    new_root_items = {}
+
+    if old is not None:
+        try:
+            old_root_items[()] = old.info(())
+        except FileNotFoundError:
+            pass
+
+    if new is not None:
+        try:
+            new_root_items[()] = new.info(())
+        except FileNotFoundError:
+            pass
+
+    todo = deque([(old_root_items, new_root_items, False)])
     while todo:
-        dirkey, old_direntry, new_direntry, unknown = todo.popleft()
-
-        kwargs = {"shallow": shallow, "with_unknown": with_unknown}
-        old_items, old_unknown = _get_items(
-            old, dirkey, old_direntry, **kwargs
-        )
-        new_items, new_unknown = _get_items(
-            new, dirkey, new_direntry, **kwargs
-        )
-        unknown = old_unknown or new_unknown
-
+        old_items, new_items, unknown = todo.popleft()
         for key in old_items.keys() | new_items.keys():
             old_info = old_items.get(key) or {}
             new_info = new_items.get(key) or {}
@@ -201,7 +206,15 @@ def _diff(
                 old_info.get("type") == "directory"
                 or new_info.get("type") == "directory"
             ):
-                todo.append((key, old_entry, new_entry, unknown))
+                kwargs = {"shallow": shallow, "with_unknown": with_unknown}
+                old_dir_items, old_unknown = _get_items(
+                    old, key, old_entry, **kwargs
+                )
+                new_dir_items, new_unknown = _get_items(
+                    new, key, new_entry, **kwargs
+                )
+                dir_unknown = old_unknown or new_unknown
+                todo.append((old_dir_items, new_dir_items, dir_unknown))
 
             if old_entry is None and new_entry is None:
                 continue
