@@ -27,7 +27,7 @@ class DataIndexView(BaseDataIndex):
             raise KeyError
 
     def __getitem__(self, key: DataIndexKey) -> DataIndexEntry:
-        if self.filter_fn(key):
+        if key == () or self.filter_fn(key):
             return self._index[key]
         raise KeyError
 
