@@ -141,3 +141,5 @@ cython_debug/
 # vim
 *.swp
 .dvc/
+
+.DS_Store
