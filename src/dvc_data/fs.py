@@ -54,13 +54,17 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         for typ in ["cache", "remote", "data"]:
             try:
-                data = self.index.storage_map.get_storage(entry, typ)
+                info = self.index.storage_map[entry.key]
+                storage = getattr(info, typ)
+                if not storage:
+                    continue
+                data = storage.get(entry)
             except (ValueError, StorageKeyError):
                 continue
             if data:
                 fs, fs_path = data
                 if fs.exists(fs_path):
-                    return fs, typ, fs_path
+                    return typ, storage, fs, fs_path
 
         raise FileNotFoundError
 
@@ -68,7 +72,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         self, path: str, mode="r", encoding=None, **kwargs
     ):  # pylint: disable=arguments-renamed, arguments-differ
         cache_odb = kwargs.pop("cache_odb", None)
-        fs, typ, fspath = self._get_fs_path(path, **kwargs)
+        typ, _, fs, fspath = self._get_fs_path(path, **kwargs)
 
         if cache_odb and typ == "remote":
             from dvc_data.hashfile.build import _upload_file
@@ -126,13 +130,30 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def get_file(  # pylint: disable=arguments-differ
         self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
     ):
+        from dvc_objects.fs.generic import transfer
+        from dvc_objects.fs.local import LocalFileSystem
+
+        from dvc_data.index import ObjectStorage
+
         try:
-            fs, _, path = self._get_fs_path(rpath)
+            _, storage, fs, path = self._get_fs_path(rpath)
         except IsADirectoryError:
             os.makedirs(lpath, exist_ok=True)
             return None
 
-        fs.get_file(path, lpath, callback=callback, **kwargs)
+        if isinstance(storage, ObjectStorage) and isinstance(
+            fs, LocalFileSystem
+        ):
+            transfer(
+                fs,
+                path,
+                fs,
+                os.fspath(lpath),
+                callback=callback,
+                links=storage.odb.cache_types,
+            )
+        else:
+            fs.get_file(path, lpath, callback=callback, **kwargs)
 
     def checksum(self, path):
         info = self.info(path)
