@@ -1,3 +1,5 @@
+import errno
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
@@ -506,6 +508,9 @@ def _load_from_file_storage(trie, root_entry, storage):
     from .build import build_entries
 
     fs, path = storage.get(root_entry)
+
+    if not fs.exists(path):
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
 
     for entry in build_entries(path, fs):
         entry.key = root_entry.key + entry.key
