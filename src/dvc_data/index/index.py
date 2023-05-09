@@ -155,8 +155,9 @@ class ObjectStorage(Storage):
         return self.odb.path
 
     def get_key(self, entry: "DataIndexEntry") -> "DataIndexKey":
-        assert entry.hash_info
-        assert entry.hash_info.value
+        if not entry.hash_info or not entry.hash_info.value:
+            raise ValueError
+
         return self.odb._oid_parts(  # pylint: disable=protected-access
             entry.hash_info.value
         )

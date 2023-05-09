@@ -163,6 +163,9 @@ def _create_files(  # noqa: C901
 
         if state:
             for (entry, _, dest_path) in args:
+                if not entry.hash_info:
+                    continue
+
                 try:
                     state.save(dest_path, fs, entry.hash_info)
                 except FileNotFoundError:
