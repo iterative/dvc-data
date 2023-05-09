@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from dvc_data.hashfile.db import HashFileDB
@@ -8,7 +10,7 @@ def make_odb(tmp_upath_factory, as_filesystem):
     def _make_odb():
         path = tmp_upath_factory.mktemp()
         fs = as_filesystem(path.fs)
-        return HashFileDB(fs, path)
+        return HashFileDB(fs, os.fspath(path))
 
     return _make_odb
 

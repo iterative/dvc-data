@@ -14,13 +14,14 @@ from typing import (
     Tuple,
 )
 
-from dvc_objects.fs.callbacks import Callback
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from funcy import split
 
 from .hash_info import HashInfo
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
+    from dvc_objects.fs.callbacks import Callback
 
     from .db import HashFileDB
     from .db.index import ObjectDBIndexBase
@@ -185,6 +186,7 @@ def transfer(
     dest_index: Optional["ObjectDBIndexBase"] = None,
     cache_odb: Optional["HashFileDB"] = None,
     shallow: bool = True,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> "TransferResult":
     """Transfer (copy) the specified objects from one ODB to another.
 
@@ -218,25 +220,24 @@ def transfer(
     if not status.new:
         return TransferResult(set(), set())
 
-    total = len(status.new)
+    if callback != DEFAULT_CALLBACK:
+        callback = callback.as_tqdm_callback(unit="file", desc="Transferring")
+
+    callback.set_size(len(status.new))
     jobs = jobs or dest.fs.jobs
-    with Callback.as_tqdm_callback(
-        total=total,
-        unit="file",
-        desc="Transferring",
-    ) as cb:
-        failed = _do_transfer(
-            src,
-            dest,
-            status.new,
-            status.missing,
-            verify=verify,
-            hardlink=hardlink,
-            callback=cb,
-            batch_size=jobs,
-            check_exists=False,
-            src_index=src_index,
-            dest_index=dest_index,
-            cache_odb=cache_odb,
-        )
+
+    failed = _do_transfer(
+        src,
+        dest,
+        status.new,
+        status.missing,
+        verify=verify,
+        hardlink=hardlink,
+        callback=callback,
+        batch_size=jobs,
+        check_exists=False,
+        src_index=src_index,
+        dest_index=dest_index,
+        cache_odb=cache_odb,
+    )
     return TransferResult(status.new - failed, failed)

@@ -17,7 +17,11 @@ if TYPE_CHECKING:
     from .index import BaseDataIndex, DataIndexKey
 
 
-def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
+def md5(
+    index: "BaseDataIndex",
+    state: Optional["StateBase"] = None,
+    storage: str = "data",
+) -> None:
     from ..hashfile.hash import fobj_md5
 
     for _, entry in index.iteritems():
@@ -27,7 +31,7 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
         if entry.hash_info and entry.hash_info.name == "md5":
             continue
 
-        fs, path = index.storage_map.get_data(entry)
+        fs, path = index.storage_map.get_storage(entry, storage)
 
         try:
             meta = Meta.from_info(fs.info(path), fs.protocol)
