@@ -1,6 +1,8 @@
 from collections import defaultdict
+from itertools import chain
 from typing import (
     TYPE_CHECKING,
+    Callable,
     Collection,
     Dict,
     Iterator,
@@ -14,13 +16,14 @@ from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.utils import exists as batch_exists
 
 from ..hashfile.meta import Meta
-from .diff import ADD, DELETE, MODIFY, diff
-from .index import FileStorage
+from .diff import ADD, DELETE, MODIFY, UNCHANGED, diff
+from .index import FileStorage, ObjectStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
-    from .index import BaseDataIndex, DataIndexEntry
+    from .diff import Change
+    from .index import BaseDataIndex, DataIndexEntry, Storage
 
 
 class VersioningNotSupported(Exception):
@@ -56,15 +59,49 @@ def checkout(  # noqa: C901
     update_meta: bool = True,
     jobs: Optional[int] = None,
     storage: str = "cache",
+    prompt: Optional[Callable] = None,
+    relink: bool = False,
+    force: bool = False,
     **kwargs,
-) -> int:
-    create, to_delete = _get_changes(index, old, **kwargs)
+) -> Dict[str, List["Change"]]:
+
+    changes = defaultdict(list)
+
+    for change in diff(old, index, with_unchanged=relink, **kwargs):
+        changes[change.typ].append(change)
+
+    create = [change.new for change in chain(changes[ADD], changes[MODIFY])]
+    if relink:
+        create.extend(change.new for change in changes[UNCHANGED])
+
     if delete:
         to_delete = [
-            entry
-            for entry in to_delete
-            if not entry.meta or not entry.meta.isdir
+            change.old
+            for change in chain(changes[DELETE], changes[MODIFY])
+            if not change.old.meta or not change.old.meta.isdir
         ]
+        if relink:
+            to_delete.extend(
+                change.old
+                for change in changes[UNCHANGED]
+                if not change.old.meta or not change.old.meta.isdir
+            )
+
+        if prompt:
+            for entry in to_delete:
+                cache_fs, cache_path = index.storage_map.get_cache(entry)
+                if not force and not cache_fs.exists(cache_path):
+                    entry_path = fs.path.join(path, *entry.key)
+                    msg = (
+                        f"file/directory '{entry_path}' is going to be "
+                        "removed. Are you sure you want to proceed?"
+                    )
+
+                    if not prompt(msg):
+                        from dvc_data.hashfile.checkout import PromptError
+
+                        raise PromptError(entry_path)
+
         if to_delete:
             fs.remove([fs.path.join(path, *entry.key) for entry in to_delete])
 
@@ -79,37 +116,51 @@ def checkout(  # noqa: C901
                 _prune_existing_versions(create, fs, path, callback=cb)
             )
 
-    fs_map: Dict[
-        "FileSystem", List[Tuple["DataIndexEntry", str, str]]
+    by_storage: Dict[
+        "Storage", List[Tuple["DataIndexEntry", str, str]]
     ] = defaultdict(list)
     parents = set()
     for entry in create:
-        if entry.meta and entry.meta.isdir:
-            continue
         dest_path = fs.path.join(path, *entry.key)
+        if entry.meta and entry.meta.isdir:
+            parents.add(dest_path)
+            continue
         parents.add(fs.path.parent(dest_path))
-        src_fs, src_path = index.storage_map.get_storage(entry, storage)
-        fs_map[src_fs].append((entry, src_path, dest_path))
+
+        storage_info = index.storage_map[entry.key]
+        storage_obj = getattr(storage_info, storage)
+
+        try:
+            src_fs, src_path = storage_obj.get(entry)
+        except ValueError:
+            pass
+
+        by_storage[storage_obj].append((entry, src_path, dest_path))
 
     for parent in parents:
         fs.makedirs(parent, exist_ok=True)
 
-    transferred = 0
-    if fs.version_aware and fs_map:
-        src_fs, items = next(iter(fs_map.items()))
+    if fs.version_aware and by_storage:
+        storage_obj, items = next(iter(by_storage.items()))
+        src_fs = storage_obj.fs
         if items:
             entry, src_path, dest_path = items.pop()
             entry.meta = test_versioning(
                 src_fs, src_path, fs, dest_path, callback=callback
             )
             index.add(entry)
-            transferred += 1
 
-    for src_fs, args in fs_map.items():
+    for storage_obj, args in by_storage.items():
         if not args:
             continue
 
+        src_fs = storage_obj.fs
         entries, src_paths, dest_paths = zip(*args)
+
+        links = None
+        if isinstance(storage_obj, ObjectStorage):
+            links = storage_obj.odb.cache_types
+
         transfer(
             src_fs,
             list(src_paths),
@@ -117,8 +168,8 @@ def checkout(  # noqa: C901
             list(dest_paths),
             callback=callback,
             batch_size=jobs,
+            links=links,
         )
-        transferred += len(entries)
         if update_meta:
             if callback == DEFAULT_CALLBACK:
                 cb = callback
@@ -140,25 +191,7 @@ def checkout(  # noqa: C901
                     fs.path.join(path, *key),
                 )
             )
-    return transferred
-
-
-def _get_changes(
-    index: "BaseDataIndex", old: Optional["BaseDataIndex"], **kwargs
-) -> Tuple[List["DataIndexEntry"], List["DataIndexEntry"]]:
-    create = []
-    delete = []
-    for change in diff(old, index, **kwargs):
-        if change.typ == ADD:
-            create.append(change.new)
-        elif change.typ == MODIFY:
-            if change.new:
-                create.append(change.new)
-            if change.old:
-                delete.append(change.old)
-        elif change.typ == DELETE and delete:
-            delete.append(change.old)
-    return create, delete
+    return changes
 
 
 def _prune_existing_versions(
