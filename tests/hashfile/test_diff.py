@@ -35,7 +35,8 @@ def test_different_object_type_tree_to_hashfile(mocker, tree, mocked_cache):
     obj = HashFile("data", mocker.MagicMock(), bar_oid)
     d = diff(tree, obj, mocked_cache)
 
-    assert d.stats == {"modified": 1, "deleted": 2, "added": 0, "unchanged": 0}
+    assert d.stats == {"modified": 1, "deleted": 2, "added": 0}
+    assert not d.unchanged
     assert d.modified == [
         Change(
             old=TreeEntry(in_cache=True, key=ROOT, oid=tree.hash_info),
@@ -59,7 +60,8 @@ def test_different_object_type_hashfile_to_tree(mocker, tree, mocked_cache):
     obj = HashFile("data", mocker.MagicMock(), bar_oid)
     d = diff(obj, tree, mocked_cache)
 
-    assert d.stats == {"modified": 1, "deleted": 0, "added": 2, "unchanged": 0}
+    assert d.stats == {"modified": 1, "deleted": 0, "added": 2}
+    assert not d.unchanged
     assert d.modified == [
         Change(
             old=TreeEntry(in_cache=True, key=ROOT, oid=bar_oid),

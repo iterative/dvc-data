@@ -195,6 +195,8 @@ def _checkout(
     links = test_links(cache.cache_types, cache.fs, cache.path, fs, path)
     if not links:
         raise LinkError(path)
+
+    progress_callback.set_size(sum(diff.stats.values()))
     link = Link(links, callback=progress_callback)
     for change in diff.deleted:
         entry_path = (

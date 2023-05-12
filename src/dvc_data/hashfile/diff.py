@@ -65,7 +65,7 @@ class DiffResult:
 
     @property
     def stats(self) -> Dict[str, int]:
-        return {k: len(v) for k, v in asdict(self).items()}
+        return {k: len(v) for k, v in asdict(self).items() if k != "unchanged"}
 
 
 ROOT = ("",)
