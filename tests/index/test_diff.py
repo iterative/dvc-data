@@ -147,17 +147,22 @@ def test_diff_combined(typ, left_meta, left_hi, right_meta, right_hi):
     old = DataIndex({key: old_entry})
     new = DataIndex({key: new_entry})
 
-    # diff should return UNCHANGED/ADD/DELETE only when both meta and hash info
-    # diff match
+    # diff should return UNCHANGED if both meta and hash info match,
+    # but MODIFY if they don't since entries still exist
     assert list(diff(old, new, with_unchanged=True)) == [
-        Change(typ, old_entry, new_entry),
+        Change(
+            UNCHANGED if typ == UNCHANGED else MODIFY, old_entry, new_entry
+        ),
     ]
 
-    # diff should return hash info diff when both meta's are None
+    # diff should return UNCHANGED if both meta and hash info match,
+    # but MODIFY if they don't since entries still exist
     old_entry.meta = None
     new_entry.meta = None
     assert list(diff(old, new, with_unchanged=True)) == [
-        Change(typ, old_entry, new_entry),
+        Change(
+            UNCHANGED if typ == UNCHANGED else MODIFY, old_entry, new_entry
+        ),
     ]
 
     # diff should return meta diff when both hash infos are None

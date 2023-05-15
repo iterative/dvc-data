@@ -52,7 +52,7 @@ class Tree(HashFile):
         self.hash_info = None
         self.oid = None
         self._dict: Dict[
-            Tuple[str, ...], Tuple[Optional["Meta"], "HashInfo"]
+            Tuple[str, ...], Tuple[Optional["Meta"], Optional["HashInfo"]]
         ] = {}
 
     @cached_property
@@ -62,14 +62,17 @@ class Tree(HashFile):
         return Trie(self._dict)
 
     def add(
-        self, key: Tuple[str, ...], meta: Optional["Meta"], oid: "HashInfo"
+        self,
+        key: Tuple[str, ...],
+        meta: Optional["Meta"],
+        oid: Optional["HashInfo"],
     ):
         self.__dict__.pop("_trie", None)
         self._dict[key] = (meta, oid)
 
     def get(
         self, key: Tuple[str, ...], default=None
-    ) -> Optional[Tuple[Optional["Meta"], "HashInfo"]]:
+    ) -> Optional[Tuple[Optional["Meta"], Optional["HashInfo"]]]:
         return self._dict.get(key, default)
 
     def digest(self, with_meta: bool = False):
@@ -133,7 +136,7 @@ class Tree(HashFile):
             (
                 {
                     **(meta.to_dict() if with_meta else {}),
-                    **hi.to_dict(),
+                    **(hi.to_dict() if hi else {}),
                     self.PARAM_RELPATH: posixpath.sep.join(parts),
                 }
                 for parts, meta, hi in self  # noqa: B301
