@@ -20,7 +20,10 @@ def build_entry(
     state: Optional["StateBase"] = None,
 ):
     if info is None:
-        info = fs.info(path)
+        try:
+            info = fs.info(path)
+        except FileNotFoundError:
+            return DataIndexEntry()
 
     if compute_hash and info["type"] != "directory":
         meta, hash_info = hash_file(path, fs, "md5", state=state, info=info)
@@ -41,11 +44,12 @@ def build_entries(
     compute_hash: Optional[bool] = False,
     state: Optional["StateBase"] = None,
 ) -> Iterable[DataIndexEntry]:
-    walk_kwargs = {"detail": True}
+    # NOTE: can't use detail=True with walk, because that will make it error
+    # out on broken symlinks.
     if ignore:
-        walk_iter = ignore.walk(fs, path, **walk_kwargs)
+        walk_iter = ignore.walk(fs, path)
     else:
-        walk_iter = fs.walk(path, **walk_kwargs)
+        walk_iter = fs.walk(path)
 
     for root, dirs, files in walk_iter:
         if root == path:
@@ -53,11 +57,10 @@ def build_entries(
         else:
             root_key = fs.path.relparts(root, path)
 
-        for name, info in chain(dirs.items(), files.items()):
+        for name in chain(dirs, files):
             entry = build_entry(
                 fs.path.join(root, name),
                 fs,
-                info=info,
                 compute_hash=compute_hash,
                 state=state,
             )

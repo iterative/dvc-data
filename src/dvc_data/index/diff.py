@@ -102,6 +102,13 @@ def _diff_entry(
     meta_diff = _diff_meta(old_meta, new_meta, cmp_key=meta_cmp_key)
     hi_diff = _diff_hash_info(old_hi, new_hi)
 
+    if old is None and new is not None:
+        entry_diff = ADD
+    elif old is not None and new is None:
+        entry_diff = DELETE
+    else:
+        entry_diff = UNCHANGED
+
     if meta_only:
         return meta_diff
 
@@ -118,7 +125,7 @@ def _diff_entry(
 
     # Only return UNCHANGED/ADD/DELETE when hi_diff and meta_diff match,
     # otherwise return MODIFY
-    if meta_diff == hi_diff:
+    if meta_diff == hi_diff == entry_diff:
         return meta_diff
 
     return MODIFY

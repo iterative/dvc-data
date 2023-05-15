@@ -68,7 +68,11 @@ def _delete_files(
 
     if prompt and not force:
         for entry in entries:
-            cache_fs, cache_path = index.storage_map.get_cache(entry)
+            try:
+                cache_fs, cache_path = index.storage_map.get_cache(entry)
+            except ValueError:
+                continue
+
             if not cache_fs.exists(cache_path):
                 entry_path = fs.path.join(path, *entry.key)
                 msg = (
