@@ -109,18 +109,6 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         except TreeError as exc:
             raise FileNotFoundError from exc
 
-    def isdvc(self, path, recursive=False):
-        try:
-            info = self.info(path)
-        except FileNotFoundError:
-            return False
-
-        if not recursive:
-            return info.get("isout")
-
-        key = self._get_key(path)
-        return self.index.has_node(key)
-
     def info(self, path, **kwargs):
         key = self._get_key(path)
         info = self.index.info(key)
