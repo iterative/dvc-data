@@ -425,8 +425,6 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
                 "type": "directory",
                 "size": 0,
                 "isexec": False,
-                "isdvc": bool(self.longest_prefix(key)),
-                "isout": False,
                 "entry": None,
             }
 
@@ -440,8 +438,6 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
             "type": "directory" if isdir else "file",
             "size": meta.size if meta else 0,
             "isexec": meta.isexec if meta else False,
-            "isdvc": True,
-            "isout": True,
             "entry": entry,
         }
 
