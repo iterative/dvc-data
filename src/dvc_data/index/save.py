@@ -17,7 +17,11 @@ if TYPE_CHECKING:
     from .index import BaseDataIndex, DataIndexKey
 
 
-def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
+def md5(
+    index: "BaseDataIndex",
+    state: Optional["StateBase"] = None,
+    text: Optional[bool] = None,
+) -> None:
     from ..hashfile.hash import fobj_md5
 
     for _, entry in index.iteritems():
@@ -45,7 +49,7 @@ def md5(index: "BaseDataIndex", state: Optional["StateBase"] = None) -> None:
         with fs.open(path, "rb") as fobj:
             entry.hash_info = HashInfo(
                 "md5",
-                fobj_md5(fobj),
+                fobj_md5(fobj, text=text),
             )
 
         if state:

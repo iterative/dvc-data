@@ -117,6 +117,7 @@ def _hash_file(
     name: str,
     callback: "Callback" = DEFAULT_CALLBACK,
     info: Optional[dict] = None,
+    text: Optional[bool] = None,
 ) -> Tuple["str", Meta]:
     info = info or fs.info(path)
     meta = Meta.from_info(info, fs.protocol)
@@ -131,7 +132,10 @@ def _hash_file(
         return str(func(path)), meta
 
     if name == "md5":
-        return file_md5(path, fs, callback=callback, size=meta.size), meta
+        return (
+            file_md5(path, fs, callback=callback, size=meta.size, text=text),
+            meta,
+        )
     raise NotImplementedError
 
 
@@ -167,6 +171,7 @@ def hash_file(
     state: "StateBase" = None,
     callback: "Callback" = None,
     info: Optional[dict] = None,
+    text: Optional[bool] = None,
 ) -> Tuple["Meta", "HashInfo"]:
     if state:
         meta, hash_info = state.get(path, fs, info=info)
@@ -175,7 +180,9 @@ def hash_file(
 
     cb = callback or LargeFileHashingCallback(desc=path)
     with cb:
-        hash_value, meta = _hash_file(path, fs, name, callback=cb, info=info)
+        hash_value, meta = _hash_file(
+            path, fs, name, callback=cb, info=info, text=text
+        )
     hash_info = HashInfo(name, hash_value)
     if state:
         assert ".dir" not in hash_info.value

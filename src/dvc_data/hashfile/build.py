@@ -34,7 +34,14 @@ logger = logging.getLogger(__name__)
 _STAGING_MEMFS_PATH = "dvc-staging"
 
 
-def _upload_file(from_path, fs, odb, upload_odb, callback=None):
+def _upload_file(
+    from_path,
+    fs,
+    odb,
+    upload_odb,
+    callback=None,
+    text: Optional[bool] = None,
+):
     from dvc_objects.fs.callbacks import Callback
     from dvc_objects.fs.utils import tmp_fname
 
@@ -43,7 +50,7 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     path = upload_odb.fs.path
     tmp_info = path.join(upload_odb.path, tmp_fname())
     with fs.open(from_path, mode="rb") as stream:
-        stream = HashStreamFile(stream)
+        stream = HashStreamFile(stream, text=text)
         size = fs.size(from_path)
         with Callback.as_tqdm_callback(
             callback,
@@ -59,9 +66,17 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     return meta, odb.get(oid)
 
 
-def _build_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
+def _build_file(
+    path,
+    fs,
+    name,
+    odb=None,
+    upload_odb=None,
+    dry_run=False,
+    text: Optional[bool] = None,
+):
     state = odb.state if odb else None
-    meta, hash_info = hash_file(path, fs, name, state=state)
+    meta, hash_info = hash_file(path, fs, name, state=state, text=text)
     if upload_odb and not dry_run:
         assert odb and name == "md5"
         return _upload_file(path, fs, odb, upload_odb)
@@ -84,6 +99,7 @@ def _build_tree(
     odb=None,
     ignore: "Ignore" = None,
     no_progress_bar=False,
+    text: Optional[bool] = None,
     **kwargs,
 ):
     from .db import add_update_tree
@@ -143,7 +159,12 @@ def _build_tree(
 
                 pbar.update()
                 meta, obj = _build_file(
-                    f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
+                    f"{root}{fs.sep}{fname}",
+                    fs,
+                    name,
+                    odb=odb,
+                    text=text,
+                    **kwargs,
                 )
                 key = (*rel_key, fname)
                 tree.add(key, meta, obj.hash_info)
@@ -223,6 +244,7 @@ def build(
     name: str,
     upload: bool = False,
     dry_run: bool = False,
+    text: Optional[bool] = None,
     **kwargs,
 ) -> Tuple["HashFileDB", "Meta", "HashFile"]:
     """Stage (prepare) objects from the given path for addition to an ODB.
@@ -254,6 +276,7 @@ def build(
             odb=staging,
             upload_odb=odb if upload else None,
             dry_run=dry_run,
+            text=text,
             **kwargs,
         )
         logger.debug("built tree '%s'", obj)
@@ -267,6 +290,7 @@ def build(
             odb=staging,
             upload_odb=odb if upload else None,
             dry_run=dry_run,
+            text=text,
         )
 
     return staging, meta, obj
