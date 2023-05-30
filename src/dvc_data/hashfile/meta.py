@@ -14,6 +14,7 @@ class Meta:
     PARAM_ETAG: ClassVar[str] = "etag"
     PARAM_CHECKSUM: ClassVar[str] = "checksum"
     PARAM_MD5: ClassVar[str] = "md5"
+    PARAM_MD5RAW: ClassVar[str] = "md5raw"
     PARAM_INODE: ClassVar[str] = "inode"
     PARAM_MTIME: ClassVar[str] = "mtime"
     PARAM_REMOTE: ClassVar[str] = "remote"
@@ -28,6 +29,7 @@ class Meta:
     etag: Optional[str] = None
     checksum: Optional[str] = None
     md5: Optional[str] = None
+    md5raw: Optional[str] = None
     inode: Optional[int] = None
     mtime: Optional[float] = None
 
@@ -67,6 +69,7 @@ class Meta:
             etag=etag,
             checksum=checksum,
             md5=info.get("md5"),
+            md5raw=info.get("md5raw"),
             inode=info.get("ino"),
             mtime=info.get("mtime"),
             remote=info.get("remote"),
@@ -106,6 +109,9 @@ class Meta:
 
         if self.md5:
             ret[self.PARAM_MD5] = self.md5
+
+        if self.md5raw:
+            ret[self.PARAM_MD5RAW] = self.md5raw
 
         if self.remote:
             ret[self.PARAM_REMOTE] = self.remote

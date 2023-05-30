@@ -257,7 +257,7 @@ def build(
             **kwargs,
         )
         logger.debug("built tree '%s'", obj)
-        if name != "md5":
+        if name not in ("md5", "md5raw"):
             obj = _build_external_tree_info(odb, obj, name)
     else:
         meta, obj = _build_file(
