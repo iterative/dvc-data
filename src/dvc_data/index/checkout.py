@@ -163,7 +163,10 @@ def _create_files(  # noqa: C901
 
         if state:
             for (entry, _, dest_path) in args:
-                state.save(dest_path, fs, entry.hash_info)
+                try:
+                    state.save(dest_path, fs, entry.hash_info)
+                except FileNotFoundError:
+                    continue
 
         if update_meta:
             if callback == DEFAULT_CALLBACK:
