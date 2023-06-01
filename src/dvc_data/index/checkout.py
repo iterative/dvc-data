@@ -26,9 +26,9 @@ from .index import FileStorage, ObjectStorage
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
+    from ..hashfile.state import StateBase
     from .diff import Change
     from .index import BaseDataIndex, DataIndexEntry, Storage
-
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +98,7 @@ def _create_files(  # noqa: C901
     jobs: Optional[int] = None,
     storage: str = "cache",
     onerror=None,
+    state: Optional["StateBase"] = None,
 ):
     by_storage: Dict[
         "Storage", List[Tuple["DataIndexEntry", str, str]]
@@ -159,6 +160,11 @@ def _create_files(  # noqa: C901
             links=links,
             on_error=onerror,
         )
+
+        if state:
+            for (entry, _, dest_path) in args:
+                state.save(dest_path, fs, entry.hash_info)
+
         if update_meta:
             if callback == DEFAULT_CALLBACK:
                 cb = callback
@@ -226,6 +232,7 @@ def checkout(  # noqa: C901
     relink: bool = False,
     force: bool = False,
     allow_missing: bool = False,
+    state: Optional["StateBase"] = None,
     **kwargs,
 ) -> Dict[str, List["Change"]]:
 
@@ -338,6 +345,7 @@ def checkout(  # noqa: C901
         storage=storage,
         callback=callback,
         update_meta=update_meta,
+        state=state,
     )
 
     _chmod_files(files_chmod, path, fs)
