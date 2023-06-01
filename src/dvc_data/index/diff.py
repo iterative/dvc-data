@@ -143,7 +143,7 @@ def _get_items(
     unknown = False
 
     try:
-        if index is not None and not (shallow and entry):
+        if index is not None and not (shallow and entry and entry.hash_info):
             items = dict(index.ls(key, detail=True))
     except KeyError:
         pass
