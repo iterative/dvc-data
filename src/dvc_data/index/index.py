@@ -466,6 +466,9 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
 
 
 def _load_from_object_storage(trie, root_entry, storage):
+    if not root_entry.hash_info or not root_entry.hash_info.isdir:
+        raise FileNotFoundError
+
     obj = Tree.load(storage.odb, root_entry.hash_info, hash_name="md5")
 
     dirs = set()
@@ -527,11 +530,7 @@ def _load_from_storage(trie, entry, storage_info):
             continue
 
         try:
-            if (
-                isinstance(storage, ObjectStorage)
-                and entry.hash_info
-                and entry.hash_info.isdir
-            ):
+            if isinstance(storage, ObjectStorage):
                 _load_from_object_storage(trie, entry, storage)
             else:
                 _load_from_file_storage(trie, entry, storage)
