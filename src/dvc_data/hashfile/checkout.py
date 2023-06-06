@@ -162,6 +162,10 @@ class Link:
             to_fs.remove(to_path)  # broken symlink
 
         parent = to_fs.path.parent(to_path)
+
+        if to_fs.isfile(parent):
+            to_fs.remove(parent)  # file converted to directory
+
         to_fs.makedirs(parent)
         try:
             transfer(
