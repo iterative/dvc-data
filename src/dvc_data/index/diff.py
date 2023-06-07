@@ -115,6 +115,9 @@ def _diff_entry(
     if hash_only:
         return hi_diff
 
+    if entry_diff != UNCHANGED:
+        return entry_diff
+
     # If both meta's are None, return hi_diff
     if meta_diff == UNCHANGED and old_meta is None:
         return hi_diff
