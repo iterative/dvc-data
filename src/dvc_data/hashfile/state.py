@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from dvc_objects.fs import LocalFileSystem
 from dvc_objects.fs.system import inode as get_inode
@@ -72,6 +72,8 @@ def _checksum(info):
 
 
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
+    HASH_VERSION = 1
+
     def __init__(self, root_dir=None, tmp_dir=None, ignore: "Ignore" = None):
         from .cache import Cache
 
@@ -106,6 +108,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         info = info or fs.info(path)
         entry = {
+            "version": self.HASH_VERSION,
             "checksum": _checksum(info),
             "size": info["size"],
             "hash_info": hash_info.to_dict(),
@@ -147,7 +150,14 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if entry["checksum"] != actual:
             return None, None
 
-        return Meta(size=entry["size"]), HashInfo.from_dict(entry["hash_info"])
+        version: Optional[int] = entry.get("version")
+        if version is not None and version > self.HASH_VERSION:
+            return None, None
+        meta = Meta(size=entry["size"])
+        hash_info = HashInfo.from_dict(entry["hash_info"])
+        if version is None and hash_info.name == "md5":
+            hash_info.name = "md5-dos2unix"
+        return meta, hash_info
 
     def save_link(self, path, fs):
         """Adds the specified path to the list of links created by dvc. This
