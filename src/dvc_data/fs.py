@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 import typing
@@ -48,7 +49,9 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         info = self.info(path)
         if info["type"] == "directory":
-            raise IsADirectoryError
+            raise IsADirectoryError(
+                errno.EISDIR, os.strerror(errno.EISDIR), path
+            )
 
         entry = info["entry"]
 
@@ -66,7 +69,9 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 if fs.exists(fs_path):
                     return typ, storage, fs, fs_path
 
-        raise FileNotFoundError
+        raise FileNotFoundError(
+            errno.ENOENT, "No storage files available", path
+        )
 
     def open(  # type: ignore
         self, path: str, mode="r", encoding=None, **kwargs
@@ -107,7 +112,9 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 entries.append(info)
             return entries
         except TreeError as exc:
-            raise FileNotFoundError from exc
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            ) from exc
 
     def info(self, path, **kwargs):
         key = self._get_key(path)
