@@ -10,7 +10,7 @@ from collections import deque
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
-from typing import List, Optional, cast
+from typing import List, cast
 
 import click
 import typer  # pylint: disable=import-error
@@ -120,7 +120,6 @@ def hash_file(
     file: Path = file_type,
     name: HashEnum = typer.Option("md5", "-n", "--name"),
     progress: bool = typer.Option(False, "--progress", "-p"),
-    text: Optional[bool] = typer.Option(None, "--text/--binary", "-t/-b"),
 ):
     path = relpath(file)
     hash_name = name.value
@@ -133,10 +132,12 @@ def hash_file(
     with callback:
         if path == "-":
             fobj = callback.wrap_attr(sys.stdin.buffer)
-            hash_value = _fobj_md5(fobj, text=text, name=hash_name)
+            hash_value = _fobj_md5(fobj, name=hash_name)
         else:
             hash_value = _file_md5(
-                path, name=hash_name, callback=callback, text=text
+                path,
+                name=hash_name,
+                callback=callback,
             )
     print(hash_name, hash_value, sep=": ")
 

@@ -168,7 +168,7 @@ def _make_staging_url(
 ):
     from dvc_objects.fs import Schemes
 
-    url = f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}"
+    url = f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}-{odb.hash_name}"
 
     if path is not None:
         if odb.fs.protocol == Schemes.LOCAL:
@@ -206,7 +206,7 @@ def _build_external_tree_info(odb, tree, name):
     oid = tree.hash_info.value
     odb.add(tree.path, tree.fs, oid)
     raw = odb.get(oid)
-    _, hash_info = hash_file(raw.path, raw.fs, name, state=odb.state)
+    _, hash_info = hash_file(raw.path, raw.fs, odb.hash_name, state=odb.state)
     tree.path = raw.path
     tree.fs = raw.fs
     tree.hash_info.name = hash_info.name
