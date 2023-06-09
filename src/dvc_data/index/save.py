@@ -81,9 +81,15 @@ def _save_dir_entry(
     odb: Optional["HashFileDB"] = None,
 ) -> None:
     from ..hashfile.db import add_update_tree
+    from .index import StorageKeyError
 
     entry = index[key]
-    cache = odb or index.storage_map.get_cache_odb(entry)
+
+    try:
+        cache = odb or index.storage_map.get_cache_odb(entry)
+    except StorageKeyError:
+        return
+
     assert cache
     meta, tree = build_tree(index, key)
     tree = add_update_tree(cache, tree)
