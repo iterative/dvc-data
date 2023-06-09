@@ -107,6 +107,10 @@ class DataIndexTrie(JSONTrie):
         self._cache.pop(key, None)
         super().__delitem__(key)
 
+    def delete_node(self, key):
+        self._cache.pop(key, None)
+        super().delete_node(key)
+
 
 class Storage(ABC):
     def __init__(self, key: "DataIndexKey"):
@@ -391,6 +395,10 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
         pass
 
     @abstractmethod
+    def delete_node(self, key: DataIndexKey) -> None:
+        pass
+
+    @abstractmethod
     def longest_prefix(
         self, key: DataIndexKey
     ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
@@ -628,6 +636,9 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
 
     def has_node(self, key: DataIndexKey) -> bool:
         return self._trie.has_node(key)
+
+    def delete_node(self, key: DataIndexKey) -> None:
+        return self._trie.delete_node(key)
 
     def shortest_prefix(self, *args, **kwargs):
         return self._trie.shortest_prefix(*args, **kwargs)

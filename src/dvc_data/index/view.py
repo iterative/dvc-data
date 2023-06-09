@@ -137,6 +137,11 @@ class DataIndexView(BaseDataIndex):
     def has_node(self, key: DataIndexKey) -> bool:
         return self.filter_fn(key) and self._index.has_node(key)
 
+    def delete_node(self, key: DataIndexKey) -> None:
+        if not self.filter_fn(key):
+            raise KeyError
+        self._index.delete_node(key)
+
     def longest_prefix(
         self, key: DataIndexKey
     ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
