@@ -23,7 +23,11 @@ def dos2unix(data: bytes) -> bytes:
     return data.replace(b"\r\n", b"\n")
 
 
-algorithms_available = hashlib.algorithms_available | {"blake3"}
+algorithms_available = hashlib.algorithms_available | {
+    "blake3",
+    "md5-dos2unix",
+}
+DEFAULT_ALGORITHM = "md5"
 
 
 def get_hasher(name: str) -> "hashlib._Hash":
@@ -31,6 +35,8 @@ def get_hasher(name: str) -> "hashlib._Hash":
         from blake3 import blake3
 
         return blake3(max_threads=blake3.AUTO)
+    if name == "md5-dos2unix":
+        name = "md5"
 
     try:
         return getattr(hashlib, name)()
@@ -42,13 +48,12 @@ class HashStreamFile(io.IOBase):
     def __init__(
         self,
         fobj: BinaryIO,
-        hash_name: str = "md5",
-        text: Optional[bool] = None,
+        hash_name: str = DEFAULT_ALGORITHM,
     ) -> None:
         self.fobj = fobj
         self.total_read = 0
+        hash_name = hash_name.lower()
         self.hasher = get_hasher(hash_name)
-        self.is_text: Optional[bool] = text
         super().__init__()
 
     def readable(self) -> bool:
@@ -59,13 +64,8 @@ class HashStreamFile(io.IOBase):
 
     def read(self, n=-1) -> bytes:
         chunk = self.fobj.read(n)
-        if self.is_text is None and chunk:
-            # do we need to buffer till the DEFAULT_CHUNK_SIZE?
-            self.is_text = istextblock(chunk[:DEFAULT_CHUNK_SIZE])
-
-        data = dos2unix(chunk) if self.is_text else chunk
-        self.hasher.update(data)
-        self.total_read += len(data)
+        self.hasher.update(chunk)
+        self.total_read += len(chunk)
         return chunk
 
     @property
@@ -77,17 +77,34 @@ class HashStreamFile(io.IOBase):
         return self.hasher.name
 
 
+class Dos2UnixHashStreamFile(HashStreamFile):
+    def read(self, n=-1) -> bytes:
+        # ideally, we want the heuristics to be applied in a similar way,
+        # regardless of the size of the first chunk,
+        # for which we may need to buffer till DEFAULT_CHUNK_SIZE.
+        assert n >= DEFAULT_CHUNK_SIZE
+        chunk = self.fobj.read(n)
+        is_text = istextblock(chunk[:DEFAULT_CHUNK_SIZE]) if chunk else False
+
+        data = dos2unix(chunk) if is_text else chunk
+        self.hasher.update(data)
+        self.total_read += len(data)
+        return chunk
+
+
+def get_hash_stream(
+    fobj: BinaryIO, name: str = DEFAULT_ALGORITHM
+) -> HashStreamFile:
+    cls = Dos2UnixHashStreamFile if name == "md5-dos2unix" else HashStreamFile
+    return cls(fobj, hash_name=name)
+
+
 def fobj_md5(
     fobj: BinaryIO,
     chunk_size: int = 2**20,
-    text: Optional[bool] = None,
-    name="md5",
+    name: str = DEFAULT_ALGORITHM,
 ) -> str:
-    # ideally, we want the heuristics to be applied in a similar way,
-    # regardless of the size of the first chunk,
-    # for which we may need to buffer till DEFAULT_CHUNK_SIZE.
-    assert chunk_size >= DEFAULT_CHUNK_SIZE
-    stream = HashStreamFile(fobj, hash_name=name, text=text)
+    stream = get_hash_stream(fobj, name=name)
     while True:
         data = stream.read(chunk_size)
         if not data:
@@ -99,8 +116,7 @@ def file_md5(
     fname: "AnyFSPath",
     fs: "FileSystem" = localfs,
     callback: "Callback" = DEFAULT_CALLBACK,
-    text: Optional[bool] = None,
-    name: str = "md5",
+    name: str = DEFAULT_ALGORITHM,
     size: Optional[int] = None,
 ) -> str:
     if size is None:
@@ -108,7 +124,7 @@ def file_md5(
 
     callback.set_size(size)
     with fs.open(fname, "rb") as fobj:
-        return fobj_md5(callback.wrap_attr(fobj), text=text, name=name)
+        return fobj_md5(callback.wrap_attr(fobj), name=name)
 
 
 def _hash_file(
@@ -130,8 +146,11 @@ def _hash_file(
         func = getattr(fs, name)
         return str(func(path)), meta
 
-    if name == "md5":
-        return file_md5(path, fs, callback=callback, size=meta.size), meta
+    if name in algorithms_available:
+        return (
+            file_md5(path, fs, callback=callback, size=meta.size, name=name),
+            meta,
+        )
     raise NotImplementedError
 
 
@@ -170,7 +189,7 @@ def hash_file(
 ) -> Tuple["Meta", "HashInfo"]:
     if state:
         meta, hash_info = state.get(path, fs, info=info)
-        if hash_info:
+        if hash_info and hash_info.name == name:
             return meta, hash_info
 
     cb = callback or LargeFileHashingCallback(desc=path)

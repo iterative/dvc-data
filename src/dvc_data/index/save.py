@@ -21,6 +21,7 @@ def md5(
     index: "BaseDataIndex",
     state: Optional["StateBase"] = None,
     storage: str = "data",
+    name: str = "md5",
 ) -> None:
     from ..hashfile.hash import fobj_md5
 
@@ -28,7 +29,7 @@ def md5(
         if entry.meta and entry.meta.isdir:
             continue
 
-        if entry.hash_info and entry.hash_info.name == "md5":
+        if entry.hash_info and entry.hash_info.name in ("md5", "md5-dos2unix"):
             continue
 
         fs, path = index.storage_map.get_storage(entry, storage)
@@ -48,8 +49,8 @@ def md5(
 
         with fs.open(path, "rb") as fobj:
             entry.hash_info = HashInfo(
-                "md5",
-                fobj_md5(fobj),
+                name,
+                fobj_md5(fobj, name=name),
             )
 
         if state:

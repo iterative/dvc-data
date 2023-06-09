@@ -76,6 +76,32 @@ def test_list(lst, trie_dict):
 
 
 @pytest.mark.parametrize(
+    "lst, trie_dict",
+    [
+        ([], {}),
+        (
+            [
+                {"md5": "def", "relpath": "zzz"},
+                {"md5": "123", "relpath": "foo"},
+                {"md5": "abc", "relpath": "aaa"},
+                {"md5": "456", "relpath": "bar"},
+            ],
+            {
+                ("zzz",): (Meta(md5="def"), HashInfo("md5-dos2unix", "def")),
+                ("foo",): (Meta(md5="123"), HashInfo("md5-dos2unix", "123")),
+                ("bar",): (Meta(md5="456"), HashInfo("md5-dos2unix", "456")),
+                ("aaa",): (Meta(md5="abc"), HashInfo("md5-dos2unix", "abc")),
+            },
+        ),
+    ],
+)
+def test_list_dos2unix(lst, trie_dict):
+    tree = Tree.from_list(lst, hash_name="md5-dos2unix")
+    assert tree.as_dict() == trie_dict
+    assert tree.as_list() == sorted(lst, key=itemgetter("relpath"))
+
+
+@pytest.mark.parametrize(
     "trie_dict, nfiles",
     [
         ({}, 0),

@@ -1,7 +1,7 @@
 import json
 import logging
 import posixpath
-from typing import TYPE_CHECKING, Dict, Final, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Final, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 from funcy import cached_property
@@ -131,12 +131,19 @@ class Tree(HashFile):
     def as_list(self, with_meta: bool = False):
         from operator import itemgetter
 
+        def _hi_to_dict(hi: Optional["HashInfo"]) -> Dict[str, Any]:
+            if not hi:
+                return {}
+            if hi.name == "md5-dos2unix":
+                return {"md5": hi.value}
+            return hi.to_dict()
+
         # Sorting the list by path to ensure reproducibility
         return sorted(
             (
                 {
                     **(meta.to_dict() if with_meta else {}),
-                    **(hi.to_dict() if hi else {}),
+                    **_hi_to_dict(hi),
                     self.PARAM_RELPATH: posixpath.sep.join(parts),
                 }
                 for parts, meta, hi in self  # noqa: B301
@@ -163,7 +170,8 @@ class Tree(HashFile):
             parts = tuple(relpath.split(posixpath.sep))
             meta = Meta.from_dict(entry)
             if hash_name:
-                hash_info = HashInfo(hash_name, getattr(meta, hash_name))
+                meta_name = "md5" if hash_name == "md5-dos2unix" else hash_name
+                hash_info = HashInfo(hash_name, getattr(meta, meta_name))
             else:
                 hash_info = HashInfo.from_dict(entry)
             tree.add(parts, meta, hash_info)
@@ -192,6 +200,8 @@ class Tree(HashFile):
             )
             raise ObjectFormatError(f"{obj} is corrupted")
 
+        if hash_name is None and odb.hash_name == "md5-dos2unix":
+            hash_name = "md5-dos2unix"
         tree = cls.from_list(raw, hash_name=hash_name)
         tree.path = obj.path
         tree.fs = obj.fs

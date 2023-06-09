@@ -4,7 +4,7 @@ import pytest
 from dvc_objects.fs import LocalFileSystem
 
 from dvc_data.hashfile.hash import HashStreamFile, file_md5
-from dvc_data.hashfile.istextfile import DEFAULT_CHUNK_SIZE, istextfile
+from dvc_data.hashfile.istextfile import DEFAULT_CHUNK_SIZE
 
 
 def test_hashed_stream_reader(tmp_path):
@@ -24,7 +24,6 @@ def test_hashed_stream_reader(tmp_path):
         assert stream_reader.tell() == 3
 
     hex_digest = file_md5(fspath(foo), LocalFileSystem())
-    assert stream_reader.is_text
     assert hex_digest == stream_reader.hash_value
 
 
@@ -47,7 +46,6 @@ def test_hashed_stream_reader_as_chunks(tmp_path):
         assert stream_reader.tell() == actual_size == total_read
 
     hex_digest = file_md5(fspath(foo), LocalFileSystem())
-    assert not stream_reader.is_text
     assert hex_digest == stream_reader.hash_value
 
 
@@ -70,5 +68,4 @@ def test_hashed_stream_reader_compatibility(tmp_path, contents):
     local_fs = LocalFileSystem()
     hex_digest = file_md5(fspath(data), local_fs)
 
-    assert stream_reader.is_text is istextfile(fspath(data), local_fs)
     assert stream_reader.hash_value == hex_digest
