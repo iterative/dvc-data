@@ -197,7 +197,10 @@ def _create_files(  # noqa: C901
 
 def _delete_dirs(entries, path, fs):
     for entry in entries:
-        fs.rmdir(fs.path.join(path, *entry.key))
+        try:
+            fs.rmdir(fs.path.join(path, *entry.key))
+        except OSError:
+            pass
 
 
 def _create_dirs(entries, path, fs):
