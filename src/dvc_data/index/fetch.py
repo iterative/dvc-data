@@ -42,12 +42,7 @@ def _log_missing(status: "CompareStatusResult"):
         )
 
 
-def fetch(  # noqa: C901
-    idxs,
-    callback: "Callback" = DEFAULT_CALLBACK,
-    jobs: Optional[int] = None,
-    **kwargs,
-):
+def _collect(idxs, callback: "Callback" = DEFAULT_CALLBACK):
     by_fs: Dict[Tuple[str, str], DataIndex] = defaultdict(DataIndex)
 
     for idx in idxs:
@@ -86,6 +81,7 @@ def fetch(  # noqa: C901
 
             try:
                 for _, entry in idx.iteritems(prefix):
+                    callback.relative_update()
                     try:
                         storage_key = remote.get_key(entry)
                     except ValueError:
@@ -98,6 +94,23 @@ def fetch(  # noqa: C901
                     )
             except KeyError:
                 pass
+
+    return by_fs
+
+
+def fetch(  # noqa: C901
+    idxs,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    jobs: Optional[int] = None,
+    **kwargs,
+):
+    if callback == DEFAULT_CALLBACK:
+        cb = callback
+    else:
+        cb = callback.as_tqdm_callback(desc="Collecting", unit="entry")
+
+    with cb:
+        by_fs = _collect(idxs, callback=cb)
 
     fetched, failed = 0, 0
     for (fs_protocol, _), fs_index in by_fs.items():
