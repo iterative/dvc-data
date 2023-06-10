@@ -567,9 +567,11 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         return ret
 
     def view(self, key):
+        import copy
+
         ret = DataIndex()
         ret._trie = self._trie.view(key)  # pylint: disable=protected-access
-        ret.storage_map = self.storage_map
+        ret.storage_map = copy.deepcopy(self.storage_map)
         return ret
 
     def commit(self):

@@ -1,10 +1,10 @@
 import logging
-from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
 from dvc_data.hashfile.db import get_index
+from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer
 
 from .build import build
@@ -42,8 +42,66 @@ def _log_missing(status: "CompareStatusResult"):
         )
 
 
-def _collect(idxs, callback: "Callback" = DEFAULT_CALLBACK):
-    by_fs: Dict[Tuple[str, str], DataIndex] = defaultdict(DataIndex)
+def _collect_from_index(
+    cache,
+    cache_prefix,
+    index,
+    prefix,
+    remote,
+    callback: "Callback" = DEFAULT_CALLBACK,
+):
+    parents = set()
+    entries = {}
+
+    try:
+        for _, entry in index.iteritems(prefix):
+            callback.relative_update()
+            try:
+                storage_key = remote.get_key(entry)
+            except ValueError:
+                continue
+
+            for key_len in range(1, len(storage_key)):
+                parents.add(storage_key[:key_len])
+
+            # NOTE: avoiding modifying cache right away, because you might
+            # run into a locked database if idx and cache are using the same
+            # table.
+            entries[storage_key] = DataIndexEntry(
+                key=storage_key,
+                meta=entry.meta,
+                hash_info=entry.hash_info,
+                loaded=True,
+            )
+
+    except KeyError:
+        return
+
+    for key, entry in entries.items():
+        cache[(*cache_prefix, *key)] = entry
+
+    for key in parents:
+        cache[(*cache_prefix, *key)] = DataIndexEntry(
+            key=key,
+            meta=Meta(isdir=True),
+            loaded=True,
+        )
+
+
+def _collect(  # noqa: C901
+    idxs,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    cache_index=None,
+    cache_key=None,
+):
+    from fsspec.utils import tokenize
+
+    by_fs: Dict[Tuple[str, str], DataIndex] = {}
+    skip = set()
+
+    if cache_index is None:
+        cache_index = DataIndex()
+        cache_key = ()
 
     for idx in idxs:
         for prefix, storage_info in idx.storage_map.items():
@@ -53,7 +111,26 @@ def _collect(idxs, callback: "Callback" = DEFAULT_CALLBACK):
                 continue
 
             # FIXME should use fsid instead of protocol
-            fs_index = by_fs[(remote.fs.protocol, remote.path)]
+            key = (remote.fs.protocol, tokenize(remote.path))
+            if key not in by_fs:
+                if cache_index.has_node((*cache_key, *key)):
+                    skip.add(key)
+
+            if key not in skip:
+                _collect_from_index(
+                    cache_index,
+                    (*cache_key, *key),
+                    idx,
+                    prefix,
+                    remote,
+                    callback=callback,
+                )
+                cache_index.commit()
+
+            if key not in by_fs:
+                by_fs[key] = cache_index.view((*cache_key, *key))
+
+            fs_index = by_fs[key]
 
             if () not in fs_index.storage_map:
                 fs_cache: "Storage"
@@ -79,29 +156,15 @@ def _collect(idxs, callback: "Callback" = DEFAULT_CALLBACK):
                     cache=fs_cache, remote=fs_remote
                 )
 
-            try:
-                for _, entry in idx.iteritems(prefix):
-                    callback.relative_update()
-                    try:
-                        storage_key = remote.get_key(entry)
-                    except ValueError:
-                        continue
-
-                    fs_index[storage_key] = DataIndexEntry(
-                        key=storage_key,
-                        meta=entry.meta,
-                        hash_info=entry.hash_info,
-                    )
-            except KeyError:
-                pass
-
     return by_fs
 
 
-def fetch(  # noqa: C901
+def fetch(
     idxs,
     callback: "Callback" = DEFAULT_CALLBACK,
     jobs: Optional[int] = None,
+    cache_index=None,
+    cache_key=None,
     **kwargs,
 ):
     if callback == DEFAULT_CALLBACK:
@@ -110,7 +173,12 @@ def fetch(  # noqa: C901
         cb = callback.as_tqdm_callback(desc="Collecting", unit="entry")
 
     with cb:
-        by_fs = _collect(idxs, callback=cb)
+        by_fs = _collect(
+            idxs,
+            callback=cb,
+            cache_index=cache_index,
+            cache_key=cache_key,
+        )
 
     fetched, failed = 0, 0
     for (fs_protocol, _), fs_index in by_fs.items():
@@ -135,7 +203,7 @@ def fetch(  # noqa: C901
                     cache.odb,
                     [
                         entry.hash_info
-                        for entry in fs_index.values()
+                        for _, entry in fs_index.iteritems()
                         if entry.hash_info
                     ],
                     jobs=jobs,
