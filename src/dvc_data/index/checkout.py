@@ -9,6 +9,7 @@ from typing import (
     Dict,
     Iterator,
     List,
+    NamedTuple,
     Optional,
     Tuple,
 )
@@ -20,7 +21,8 @@ from dvc_objects.fs.utils import exists as batch_exists
 
 from ..hashfile.checkout import CheckoutError
 from ..hashfile.meta import Meta
-from .diff import ADD, DELETE, MODIFY, UNCHANGED, diff
+from .diff import ADD, DELETE, MODIFY, UNCHANGED
+from .diff import diff as idiff
 from .index import FileStorage, ObjectStorage
 
 if TYPE_CHECKING:
@@ -226,61 +228,55 @@ def _chmod_files(entries, path, fs):
             )
 
 
-def checkout(  # noqa: C901
-    index: "BaseDataIndex",
-    path: str,
-    fs: "FileSystem",
-    old: Optional["BaseDataIndex"] = None,
+class _DiffResult(NamedTuple):
+    changes: Dict[str, list]
+    files_delete: list
+    dirs_delete: list
+    files_create: list
+    dirs_create: list
+    files_chmod: list
+
+
+def _diff(  # noqa: C901
+    old,
+    new,
+    relink: bool = False,
     delete: bool = False,
     callback: "Callback" = DEFAULT_CALLBACK,
-    latest_only: bool = True,
-    update_meta: bool = True,
-    jobs: Optional[int] = None,
-    storage: str = "cache",
-    prompt: Optional[Callable] = None,
-    relink: bool = False,
-    force: bool = False,
-    allow_missing: bool = False,
-    state: Optional["StateBase"] = None,
-    **kwargs,
-) -> Dict[str, List["Change"]]:
-
-    failed = []
-
-    changes = defaultdict(list)
-    files_delete = []
-    dirs_delete = []
-    files_create = []
-    dirs_create = []
-    files_chmod = []
+):
+    ret = _DiffResult(defaultdict(list), [], [], [], [], [])
 
     def _add_file_create(entry):
         if entry.meta and entry.meta.isexec:
-            files_chmod.append(entry)
+            ret.files_chmod.append(entry)
 
-        files_create.append(entry)
+        ret.files_create.append(entry)
 
     def _add_create(entry):
         if entry.meta and entry.meta.isdir:
-            dirs_create.append(entry)
+            ret.dirs_create.append(entry)
             return
 
         _add_file_create(entry)
 
     def _add_delete(entry):
         if entry.meta and entry.meta.isdir:
-            dirs_delete.append(entry)
+            ret.dirs_delete.append(entry)
             return
 
-        files_delete.append(entry)
+        ret.files_delete.append(entry)
 
     def meta_cmp_key(meta):
         if meta is None:
             return meta
         return (meta.isdir, meta.isexec)
 
-    for change in diff(
-        old, index, with_unchanged=relink, meta_cmp_key=meta_cmp_key
+    for change in idiff(
+        old,
+        new,
+        with_unchanged=relink,
+        meta_cmp_key=meta_cmp_key,
+        callback=callback,
     ):
         if change.typ == ADD:
             _add_create(change.new)
@@ -293,7 +289,7 @@ def checkout(  # noqa: C901
             assert relink
 
             if not change.old.meta or not change.old.meta.isdir:
-                files_delete.append(change.old)
+                ret.files_delete.append(change.old)
 
             if not change.new.meta or not change.new.meta.isdir:
                 _add_file_create(change.new)
@@ -318,13 +314,45 @@ def checkout(  # noqa: C901
                 _add_create(change.new)
 
             elif old_isexec != new_isexec and not new_isdir:
-                files_chmod.append(change.new)
+                ret.files_chmod.append(change.new)
             else:
                 continue
         else:
             raise AssertionError()
 
-        changes[change.typ].append(change)
+        ret.changes[change.typ].append(change)
+
+    return ret
+
+
+def checkout(
+    index: "BaseDataIndex",
+    path: str,
+    fs: "FileSystem",
+    old: Optional["BaseDataIndex"] = None,
+    delete: bool = False,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    latest_only: bool = True,
+    update_meta: bool = True,
+    jobs: Optional[int] = None,
+    storage: str = "cache",
+    prompt: Optional[Callable] = None,
+    relink: bool = False,
+    force: bool = False,
+    allow_missing: bool = False,
+    state: Optional["StateBase"] = None,
+    **kwargs,
+) -> Dict[str, List["Change"]]:
+
+    failed = []
+
+    if callback == DEFAULT_CALLBACK:
+        cb = callback
+    else:
+        cb = Callback.as_tqdm_callback(desc="Comparing indexes", unit="entry")
+
+    with cb:
+        diff = _diff(old, index, relink=relink, delete=delete, callback=cb)
 
     if fs.version_aware and not latest_only:
         if callback == DEFAULT_CALLBACK:
@@ -333,19 +361,23 @@ def checkout(  # noqa: C901
             desc = f"Checking status of existing versions in '{path}'"
             cb = Callback.as_tqdm_callback(desc=desc, unit="file")
         with cb:
-            files_create = list(
-                _prune_existing_versions(files_create, fs, path, callback=cb)
+            diff.files_create = list(
+                _prune_existing_versions(
+                    diff.files_create, fs, path, callback=cb
+                )
             )
 
-    _delete_files(files_delete, index, path, fs, prompt=prompt, force=force)
-    _delete_dirs(dirs_delete, path, fs)
-    _create_dirs(dirs_create, path, fs)
+    _delete_files(
+        diff.files_delete, index, path, fs, prompt=prompt, force=force
+    )
+    _delete_dirs(diff.dirs_delete, path, fs)
+    _create_dirs(diff.dirs_create, path, fs)
 
     def onerror(_src_path, dest_path, _exc):
         failed.append(dest_path)
 
     _create_files(
-        files_create,
+        diff.files_create,
         index,
         path,
         fs,
@@ -357,12 +389,12 @@ def checkout(  # noqa: C901
         state=state,
     )
 
-    _chmod_files(files_chmod, path, fs)
+    _chmod_files(diff.files_chmod, path, fs)
 
     if failed and not allow_missing:
         raise CheckoutError(failed)
 
-    return changes
+    return diff.changes
 
 
 def _prune_existing_versions(
