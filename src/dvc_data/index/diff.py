@@ -2,6 +2,7 @@ from collections import deque
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
 
 from attrs import define
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
 
 if TYPE_CHECKING:
     from .hashfile.meta import Meta
@@ -166,6 +167,7 @@ def _diff(
     meta_only: Optional[bool] = False,
     meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
     shallow: Optional[bool] = False,
+    callback: Callback = DEFAULT_CALLBACK,
 ):
     old_root_items = {}
     new_root_items = {}
@@ -185,7 +187,7 @@ def _diff(
     todo = deque([(old_root_items, new_root_items, False)])
     while todo:
         old_items, new_items, unknown = todo.popleft()
-        for key in old_items.keys() | new_items.keys():
+        for key in callback.wrap(old_items.keys() | new_items.keys()):
             old_info = old_items.get(key) or {}
             new_info = new_items.get(key) or {}
 
@@ -292,6 +294,7 @@ def diff(
     meta_only: Optional[bool] = False,
     meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
     shallow: Optional[bool] = False,
+    callback: Callback = DEFAULT_CALLBACK,
 ):
     changes = _diff(
         old,
@@ -302,6 +305,7 @@ def diff(
         meta_only=meta_only,
         meta_cmp_key=meta_cmp_key,
         shallow=shallow,
+        callback=callback,
     )
 
     if with_renames and old is not None and new is not None:
