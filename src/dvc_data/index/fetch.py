@@ -226,6 +226,7 @@ def fetch(
                     fs_index,
                     cache.path,
                     cache.fs,
+                    update_meta=False,
                     storage="remote",
                     old=old,
                     jobs=jobs,
