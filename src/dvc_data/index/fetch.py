@@ -188,7 +188,7 @@ def _fetch(
                 fetched += len(result.transferred)
                 failed += len(result.failed)
             elif isinstance(cache, ObjectStorage):
-                md5(fs_index, storage="remote")
+                md5(fs_index, storage="remote", check_meta=False)
                 fetched += save(
                     fs_index, storage="remote", jobs=jobs, callback=cb
                 )
