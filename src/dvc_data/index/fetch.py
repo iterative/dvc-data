@@ -66,6 +66,7 @@ def _collect_from_index(
                 key=storage_key,
                 meta=entry.meta,
                 hash_info=entry.hash_info,
+                loaded=entry.loaded,
             )
 
     except KeyError:
