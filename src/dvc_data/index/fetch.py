@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
 from dvc_data.hashfile.db import get_index
-from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer
 
 from .build import build
@@ -50,7 +49,6 @@ def _collect_from_index(
     remote,
     callback: "Callback" = DEFAULT_CALLBACK,
 ):
-    parents = set()
     entries = {}
 
     try:
@@ -61,9 +59,6 @@ def _collect_from_index(
             except ValueError:
                 continue
 
-            for key_len in range(1, len(storage_key)):
-                parents.add(storage_key[:key_len])
-
             # NOTE: avoiding modifying cache right away, because you might
             # run into a locked database if idx and cache are using the same
             # table.
@@ -71,7 +66,6 @@ def _collect_from_index(
                 key=storage_key,
                 meta=entry.meta,
                 hash_info=entry.hash_info,
-                loaded=True,
             )
 
     except KeyError:
@@ -79,13 +73,6 @@ def _collect_from_index(
 
     for key, entry in entries.items():
         cache[(*cache_prefix, *key)] = entry
-
-    for key in parents:
-        cache[(*cache_prefix, *key)] = DataIndexEntry(
-            key=key,
-            meta=Meta(isdir=True),
-            loaded=True,
-        )
 
 
 def _collect(  # noqa: C901
@@ -96,7 +83,7 @@ def _collect(  # noqa: C901
 ):
     from fsspec.utils import tokenize
 
-    by_fs: Dict[Tuple[str, str], DataIndex] = {}
+    storage_by_fs: Dict[Tuple[str, str], StorageInfo] = {}
     skip = set()
 
     if cache_index is None:
@@ -112,7 +99,7 @@ def _collect(  # noqa: C901
 
             # FIXME should use fsid instead of protocol
             key = (remote.fs.protocol, tokenize(remote.path))
-            if key not in by_fs:
+            if key not in storage_by_fs:
                 if cache_index.has_node((*cache_key, *key)):
                     skip.add(key)
 
@@ -127,12 +114,7 @@ def _collect(  # noqa: C901
                 )
                 cache_index.commit()
 
-            if key not in by_fs:
-                by_fs[key] = cache_index.view((*cache_key, *key))
-
-            fs_index = by_fs[key]
-
-            if () not in fs_index.storage_map:
+            if key not in storage_by_fs:
                 fs_cache: "Storage"
                 fs_remote: "Storage"
 
@@ -152,9 +134,14 @@ def _collect(  # noqa: C901
                         path=remote.path,
                     )
 
-                fs_index.storage_map[()] = StorageInfo(
+                storage_by_fs[key] = StorageInfo(
                     cache=fs_cache, remote=fs_remote
                 )
+
+    by_fs: Dict[Tuple[str, str], DataIndex] = {}
+    for key, storage in storage_by_fs.items():
+        by_fs[key] = cache_index.view((*cache_key, *key))
+        by_fs[key].storage_map[()] = storage
 
     return by_fs
 
