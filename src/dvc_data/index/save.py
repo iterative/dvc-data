@@ -22,10 +22,14 @@ def md5(
     state: Optional["StateBase"] = None,
     storage: str = "data",
     name: str = "md5",
+    check_meta: bool = True,
 ) -> None:
     from ..hashfile.hash import fobj_md5
+    from .index import DataIndexEntry
 
-    for _, entry in index.iteritems():
+    entries = {}
+
+    for key, entry in index.iteritems():
         if entry.meta and entry.meta.isdir:
             continue
 
@@ -34,27 +38,40 @@ def md5(
 
         fs, path = index.storage_map.get_storage(entry, storage)
 
-        try:
-            meta = Meta.from_info(fs.info(path), fs.protocol)
-        except FileNotFoundError:
-            continue
+        if check_meta:
+            try:
+                meta = Meta.from_info(fs.info(path), fs.protocol)
+            except FileNotFoundError:
+                continue
 
-        if entry.meta != meta:
-            continue
+            if entry.meta != meta:
+                continue
 
         if state:
-            _, entry.hash_info = state.get(path, fs)
-            if entry.hash_info:
+            _, hash_info = state.get(path, fs)
+            if hash_info:
+                entries[key] = DataIndexEntry(
+                    key=entry.key,
+                    meta=entry.meta,
+                    hash_info=hash_info,
+                )
                 continue
 
         with fs.open(path, "rb") as fobj:
-            entry.hash_info = HashInfo(
-                name,
-                fobj_md5(fobj, name=name),
+            entries[key] = DataIndexEntry(
+                key=entry.key,
+                meta=entry.meta,
+                hash_info=HashInfo(
+                    name,
+                    fobj_md5(fobj, name=name),
+                ),
             )
 
         if state:
-            state.save(path, fs, entry.hash_info)
+            state.save(path, fs, entries[key].hash_info)
+
+    for key, entry in entries.items():
+        index[key] = entry
 
 
 def build_tree(
