@@ -146,27 +146,11 @@ def _collect(  # noqa: C901
     return by_fs
 
 
-def fetch(
-    idxs,
+def _fetch(
+    by_fs,
     callback: "Callback" = DEFAULT_CALLBACK,
     jobs: Optional[int] = None,
-    cache_index=None,
-    cache_key=None,
-    **kwargs,
 ):
-    if callback == DEFAULT_CALLBACK:
-        cb = callback
-    else:
-        cb = callback.as_tqdm_callback(desc="Collecting", unit="entry")
-
-    with cb:
-        by_fs = _collect(
-            idxs,
-            callback=cb,
-            cache_index=cache_index,
-            cache_key=cache_key,
-        )
-
     fetched, failed = 0, 0
     for (fs_protocol, _), fs_index in by_fs.items():
         cache = fs_index.storage_map[()].cache
@@ -222,3 +206,31 @@ def fetch(
                 fetched += len(checkout_stats.get("added", []))
 
     return fetched, failed
+
+
+def fetch(
+    idxs,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    jobs: Optional[int] = None,
+    cache_index=None,
+    cache_key=None,
+    **kwargs,
+):
+    if callback == DEFAULT_CALLBACK:
+        cb = callback
+    else:
+        cb = callback.as_tqdm_callback(desc="Collecting", unit="entry")
+
+    with cb:
+        by_fs = _collect(
+            idxs,
+            callback=cb,
+            cache_index=cache_index,
+            cache_key=cache_key,
+        )
+
+    try:
+        return _fetch(by_fs, jobs=jobs, callback=callback)
+    finally:
+        for fs_index in by_fs.values():
+            fs_index.close()
