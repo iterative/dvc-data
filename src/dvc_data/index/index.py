@@ -406,7 +406,7 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
 
     def _get_meta(self, key, entry):
         if entry.hash_info:
-            return Meta(isdir=entry.hash_info.isdir)
+            return Meta()
 
         info = self.storage_map.get(key)
         if not info:
@@ -614,10 +614,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         if entry.loaded:
             return
 
-        if not (
-            (entry.meta and entry.meta.isdir)
-            or (entry.hash_info and entry.hash_info.isdir)
-        ):
+        if not entry.meta or not entry.meta.isdir:
             return
 
         try:

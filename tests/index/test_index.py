@@ -345,6 +345,7 @@ def test_view(odb):
     expected_key = ("dir", "subdir", "bar")
     expected_entry = DataIndexEntry(
         key=expected_key,
+        meta=Meta(isdir=True),
         hash_info=HashInfo(
             name="md5",
             value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
