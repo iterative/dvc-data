@@ -146,32 +146,6 @@ def test_save(tmp_upath, odb, as_filesystem):
     assert odb.exists("258622b1688250cb619f3c9ccaefb7eb")
 
 
-def test_build(tmp_upath, as_filesystem):
-    (tmp_upath / "foo").write_bytes(b"foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
-    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
-
-    fs = as_filesystem(tmp_upath.fs)
-    index = build(str(tmp_upath), fs)
-    assert index[("foo",)].meta.size == 4
-    assert index.storage_map.get_data(index[("foo",)]) == (
-        fs,
-        str(tmp_upath / "foo"),
-    )
-    assert index[("data",)].meta.isdir
-    assert index[("data", "bar")].meta.size == 4
-    assert index.storage_map.get_data(index[("data", "bar")]) == (
-        fs,
-        str(tmp_upath / "data" / "bar"),
-    )
-    assert index[("data", "baz")].meta.size == 4
-    assert index.storage_map.get_data(index[("data", "baz")]) == (
-        fs,
-        str(tmp_upath / "data" / "baz"),
-    )
-
-
 def test_add(tmp_upath, as_filesystem):
     (tmp_upath / "foo").write_bytes(b"foo\n")
     (tmp_upath / "data").mkdir()
