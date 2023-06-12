@@ -21,10 +21,7 @@ def build_entry(
     hash_name: str = DEFAULT_ALGORITHM,
 ):
     if info is None:
-        try:
-            info = fs.info(path)
-        except FileNotFoundError:
-            return DataIndexEntry()
+        info = fs.info(path)
 
     if compute_hash and info["type"] != "directory":
         meta, hash_info = hash_file(
@@ -62,13 +59,16 @@ def build_entries(
             root_key = fs.path.relparts(root, path)
 
         for name in chain(dirs, files):
-            entry = build_entry(
-                fs.path.join(root, name),
-                fs,
-                compute_hash=compute_hash,
-                state=state,
-                hash_name=hash_name,
-            )
+            try:
+                entry = build_entry(
+                    fs.path.join(root, name),
+                    fs,
+                    compute_hash=compute_hash,
+                    state=state,
+                    hash_name=hash_name,
+                )
+            except FileNotFoundError:
+                entry = DataIndexEntry()
             entry.key = (*root_key, name)
             yield entry
 
