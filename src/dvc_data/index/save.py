@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
+from ..hashfile.hash import DEFAULT_ALGORITHM
 from ..hashfile.hash_info import HashInfo
 from ..hashfile.meta import Meta
 from ..hashfile.tree import Tree
@@ -21,7 +22,7 @@ def md5(
     index: "BaseDataIndex",
     state: Optional["StateBase"] = None,
     storage: str = "data",
-    name: str = "md5",
+    name: str = DEFAULT_ALGORITHM,
     check_meta: bool = True,
 ) -> None:
     from ..hashfile.hash import fobj_md5
@@ -77,6 +78,7 @@ def md5(
 def build_tree(
     index: "BaseDataIndex",
     prefix: "DataIndexKey",
+    name: str = DEFAULT_ALGORITHM,
 ) -> Tuple["Meta", Tree]:
     tree_meta = Meta(size=0, nfiles=0, isdir=True)
     assert tree_meta.size is not None and tree_meta.nfiles is not None
@@ -88,7 +90,7 @@ def build_tree(
         tree.add(tree_key, entry.meta, entry.hash_info)
         tree_meta.size += (entry.meta.size if entry.meta else 0) or 0
         tree_meta.nfiles += 1
-    tree.digest()
+    tree.digest(name=name)
     return tree_meta, tree
 
 

@@ -1,7 +1,7 @@
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional
 
-from ..hashfile.hash import hash_file
+from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from ..hashfile.meta import Meta
 from .index import DataIndex, DataIndexEntry, FileStorage
 
@@ -18,6 +18,7 @@ def build_entry(
     info: Optional[Dict[str, Any]] = None,
     compute_hash: Optional[bool] = False,
     state: Optional["StateBase"] = None,
+    hash_name: str = DEFAULT_ALGORITHM,
 ):
     if info is None:
         try:
@@ -26,7 +27,9 @@ def build_entry(
             return DataIndexEntry()
 
     if compute_hash and info["type"] != "directory":
-        meta, hash_info = hash_file(path, fs, "md5", state=state, info=info)
+        meta, hash_info = hash_file(
+            path, fs, hash_name, state=state, info=info
+        )
     else:
         meta, hash_info = Meta.from_info(info, fs.protocol), None
 
@@ -43,6 +46,7 @@ def build_entries(
     ignore: Optional["Ignore"] = None,
     compute_hash: Optional[bool] = False,
     state: Optional["StateBase"] = None,
+    hash_name: str = DEFAULT_ALGORITHM,
 ) -> Iterable[DataIndexEntry]:
     # NOTE: can't use detail=True with walk, because that will make it error
     # out on broken symlinks.
@@ -63,6 +67,7 @@ def build_entries(
                 fs,
                 compute_hash=compute_hash,
                 state=state,
+                hash_name=hash_name,
             )
             entry.key = (*root_key, name)
             yield entry
