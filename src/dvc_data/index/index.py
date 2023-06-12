@@ -1,7 +1,6 @@
 import errno
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from functools import cached_property
 from typing import (
     TYPE_CHECKING,
@@ -15,6 +14,7 @@ from typing import (
     cast,
 )
 
+import attrs
 from dvc_objects.errors import ObjectFormatError
 from sqltrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
 from sqltrie import JSONTrie, PyGTrie, SQLiteTrie
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 DataIndexKey = Tuple[str, ...]
 
 
-@dataclass(unsafe_hash=True)
+@attrs.define(hash=True)
 class DataIndexEntry:
     key: Optional[DataIndexKey] = None
     meta: Optional["Meta"] = None
@@ -252,7 +252,7 @@ class FileStorage(Storage):
             self.index.commit()
 
 
-@dataclass
+@attrs.define
 class StorageInfo:
     """Describes where the data contents could be found"""
 
