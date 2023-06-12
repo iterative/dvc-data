@@ -59,6 +59,12 @@ def _collect_from_index(
             except ValueError:
                 continue
 
+            loaded = False
+            if entry.meta and entry.meta.isdir:
+                # NOTE: at this point it might not be loaded yet, so we can't
+                # rely on entry.loaded
+                loaded = True
+
             # NOTE: avoiding modifying cache right away, because you might
             # run into a locked database if idx and cache are using the same
             # table.
@@ -66,7 +72,7 @@ def _collect_from_index(
                 key=storage_key,
                 meta=entry.meta,
                 hash_info=entry.hash_info,
-                loaded=entry.loaded,
+                loaded=loaded,
             )
 
     except KeyError:
