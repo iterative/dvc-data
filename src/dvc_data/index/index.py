@@ -221,13 +221,7 @@ class FileStorage(Storage):
 
     def get_key(self, entry: "DataIndexEntry") -> "DataIndexKey":
         assert entry.key
-        key: "DataIndexKey" = entry.key[len(self.key) :]
-        if self.fs.version_aware and entry.meta and entry.meta.version_id:
-            key = (
-                *key[:-1],
-                self.fs.path.version_path(key[-1], entry.meta.version_id),
-            )
-        return key
+        return entry.key[len(self.key) :]
 
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         assert entry.key is not None

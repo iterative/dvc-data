@@ -361,10 +361,17 @@ def checkout(
             desc = f"Checking status of existing versions in '{path}'"
             cb = Callback.as_tqdm_callback(desc=desc, unit="file")
         with cb:
-            diff.files_create = list(
-                _prune_existing_versions(
-                    diff.files_create, fs, path, callback=cb
-                )
+            diff = _DiffResult(
+                diff.changes,
+                diff.files_delete,
+                diff.dirs_delete,
+                list(
+                    _prune_existing_versions(
+                        diff.files_create, fs, path, callback=cb
+                    )
+                ),
+                diff.dirs_create,
+                diff.files_chmod,
             )
 
     _delete_files(
