@@ -478,7 +478,9 @@ def _load_from_object_storage(trie, root_entry, storage):
     if not root_entry.hash_info or not root_entry.hash_info.isdir:
         raise FileNotFoundError
 
-    obj = Tree.load(storage.odb, root_entry.hash_info, hash_name="md5")
+    obj = Tree.load(
+        storage.odb, root_entry.hash_info, hash_name=storage.odb.hash_name
+    )
 
     dirs = set()
     for ikey, (meta, hash_info) in obj.iteritems():
