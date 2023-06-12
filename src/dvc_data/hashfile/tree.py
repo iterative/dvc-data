@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Final, Iterable, Optional, Tuple
 from dvc_objects.errors import ObjectFormatError
 from funcy import cached_property
 
-from ..hashfile.hash import hash_file
+from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from ..hashfile.meta import Meta
 from ..hashfile.obj import HashFile
 
@@ -75,14 +75,14 @@ class Tree(HashFile):
     ) -> Optional[Tuple[Optional["Meta"], Optional["HashInfo"]]]:
         return self._dict.get(key, default)
 
-    def digest(self, with_meta: bool = False):
+    def digest(self, with_meta: bool = False, name: str = DEFAULT_ALGORITHM):
         from dvc_objects.fs import MemoryFileSystem
         from dvc_objects.fs.utils import tmp_fname
 
         memfs = MemoryFileSystem()
         path = "memory://{}".format(tmp_fname(""))
         memfs.pipe_file(path, self.as_bytes())
-        _, self.hash_info = hash_file(path, memfs, "md5")
+        _, self.hash_info = hash_file(path, memfs, name)
         assert self.hash_info.value
         self.fs = memfs
         if with_meta:
