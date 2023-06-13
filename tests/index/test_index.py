@@ -11,7 +11,6 @@ from dvc_data.index import (
     ObjectStorage,
     add,
     build,
-    fetch,
     md5,
     read_db,
     read_json,
@@ -185,6 +184,8 @@ def test_add(tmp_upath, as_filesystem):
 
 
 def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
+    from dvc_data.index.fetch import collect, fetch
+
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
@@ -209,7 +210,8 @@ def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
     index.storage_map.add_remote(ObjectStorage((), odb))
 
     (tmp_upath / "fetched").mkdir()
-    fetch([index])  # , str(tmp_upath / "fetched"))
+    data = collect([index])
+    fetch(data)
     diff = checkout.compare(None, index)
     checkout.apply(
         diff,

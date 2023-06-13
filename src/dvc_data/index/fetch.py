@@ -82,7 +82,7 @@ def _collect_from_index(
         cache[(*cache_prefix, *key)] = entry
 
 
-def _collect(  # noqa: C901
+def collect(  # noqa: C901
     idxs,
     callback: "Callback" = DEFAULT_CALLBACK,
     cache_index=None,
@@ -153,13 +153,13 @@ def _collect(  # noqa: C901
     return by_fs
 
 
-def _fetch(
-    by_fs,
+def fetch(
+    data,
     callback: "Callback" = DEFAULT_CALLBACK,
     jobs: Optional[int] = None,
 ):
     fetched, failed = 0, 0
-    for (fs_protocol, _), fs_index in by_fs.items():
+    for (fs_protocol, _), fs_index in data.items():
         cache = fs_index.storage_map[()].cache
         remote = fs_index.storage_map[()].remote
 
@@ -213,31 +213,3 @@ def _fetch(
                 fetched += len(checkout_stats.get("added", []))
 
     return fetched, failed
-
-
-def fetch(
-    idxs,
-    callback: "Callback" = DEFAULT_CALLBACK,
-    jobs: Optional[int] = None,
-    cache_index=None,
-    cache_key=None,
-    **kwargs,
-):
-    if callback == DEFAULT_CALLBACK:
-        cb = callback
-    else:
-        cb = callback.as_tqdm_callback(desc="Collecting", unit="entry")
-
-    with cb:
-        by_fs = _collect(
-            idxs,
-            callback=cb,
-            cache_index=cache_index,
-            cache_key=cache_key,
-        )
-
-    try:
-        return _fetch(by_fs, jobs=jobs, callback=callback)
-    finally:
-        for fs_index in by_fs.values():
-            fs_index.close()
