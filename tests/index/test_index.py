@@ -1,5 +1,6 @@
 import pytest
 
+import dvc_data.index.checkout as checkout
 from dvc_data.fs import DataFileSystem
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
@@ -10,7 +11,6 @@ from dvc_data.index import (
     ObjectStorage,
     add,
     build,
-    checkout,
     fetch,
     md5,
     read_db,
@@ -210,8 +210,9 @@ def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
 
     (tmp_upath / "fetched").mkdir()
     fetch([index])  # , str(tmp_upath / "fetched"))
-    checkout(
-        index,
+    diff = checkout.compare(None, index)
+    checkout.apply(
+        diff,
         str(tmp_upath / "checkout"),
         as_filesystem(tmp_upath.fs),
         storage="cache",

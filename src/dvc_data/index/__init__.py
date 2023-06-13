@@ -1,6 +1,5 @@
 from .add import add  # noqa: F401, pylint: disable=unused-import
 from .build import build  # noqa: F401, pylint: disable=unused-import
-from .checkout import checkout  # noqa: F401, pylint: disable=unused-import
 from .diff import diff  # noqa: F401, pylint: disable=unused-import
 from .fetch import fetch  # noqa: F401, pylint: disable=unused-import
 from .index import *  # noqa: F401,F403, pylint: disable=unused-import
