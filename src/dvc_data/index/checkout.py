@@ -245,6 +245,7 @@ def compare(  # noqa: C901
     relink: bool = False,
     delete: bool = False,
     callback: "Callback" = DEFAULT_CALLBACK,
+    **kwargs,
 ):
     ret = Diff(
         old=old,
@@ -288,6 +289,7 @@ def compare(  # noqa: C901
         with_unchanged=relink,
         meta_cmp_key=meta_cmp_key,
         callback=callback,
+        **kwargs,
     ):
         if change.typ == ADD:
             _add_create(change.new)
