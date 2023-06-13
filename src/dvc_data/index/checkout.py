@@ -228,7 +228,9 @@ def _chmod_files(entries, path, fs):
             )
 
 
-class _DiffResult(NamedTuple):
+class Diff(NamedTuple):
+    old: "BaseDataIndex"
+    new: "BaseDataIndex"
     changes: Dict[str, list]
     files_delete: list
     dirs_delete: list
@@ -237,14 +239,23 @@ class _DiffResult(NamedTuple):
     files_chmod: list
 
 
-def _diff(  # noqa: C901
+def compare(  # noqa: C901
     old,
     new,
     relink: bool = False,
     delete: bool = False,
     callback: "Callback" = DEFAULT_CALLBACK,
 ):
-    ret = _DiffResult(defaultdict(list), [], [], [], [], [])
+    ret = Diff(
+        old=old,
+        new=new,
+        changes=defaultdict(list),
+        files_delete=[],
+        dirs_delete=[],
+        files_create=[],
+        dirs_create=[],
+        files_chmod=[],
+    )
 
     def _add_file_create(entry):
         if entry.meta and entry.meta.isexec:
@@ -325,34 +336,22 @@ def _diff(  # noqa: C901
     return ret
 
 
-def checkout(
-    index: "BaseDataIndex",
+def apply(
+    diff: "Diff",
     path: str,
     fs: "FileSystem",
-    old: Optional["BaseDataIndex"] = None,
-    delete: bool = False,
     callback: "Callback" = DEFAULT_CALLBACK,
     latest_only: bool = True,
     update_meta: bool = True,
     jobs: Optional[int] = None,
     storage: str = "cache",
     prompt: Optional[Callable] = None,
-    relink: bool = False,
     force: bool = False,
     allow_missing: bool = False,
     state: Optional["StateBase"] = None,
-    **kwargs,
 ) -> Dict[str, List["Change"]]:
 
     failed = []
-
-    if callback == DEFAULT_CALLBACK:
-        cb = callback
-    else:
-        cb = Callback.as_tqdm_callback(desc="Comparing indexes", unit="entry")
-
-    with cb:
-        diff = _diff(old, index, relink=relink, delete=delete, callback=cb)
 
     if fs.version_aware and not latest_only:
         if callback == DEFAULT_CALLBACK:
@@ -361,21 +360,23 @@ def checkout(
             desc = f"Checking status of existing versions in '{path}'"
             cb = Callback.as_tqdm_callback(desc=desc, unit="file")
         with cb:
-            diff = _DiffResult(
-                diff.changes,
-                diff.files_delete,
-                diff.dirs_delete,
-                list(
+            diff = Diff(
+                old=diff.old,
+                new=diff.new,
+                changes=diff.changes,
+                files_delete=diff.files_delete,
+                dirs_delete=diff.dirs_delete,
+                files_create=list(
                     _prune_existing_versions(
                         diff.files_create, fs, path, callback=cb
                     )
                 ),
-                diff.dirs_create,
-                diff.files_chmod,
+                dirs_create=diff.dirs_create,
+                files_chmod=diff.files_chmod,
             )
 
     _delete_files(
-        diff.files_delete, index, path, fs, prompt=prompt, force=force
+        diff.files_delete, diff.new, path, fs, prompt=prompt, force=force
     )
     _delete_dirs(diff.dirs_delete, path, fs)
     _create_dirs(diff.dirs_create, path, fs)
@@ -385,7 +386,7 @@ def checkout(
 
     _create_files(
         diff.files_create,
-        index,
+        diff.new,
         path,
         fs,
         onerror=onerror,

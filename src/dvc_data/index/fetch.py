@@ -7,7 +7,7 @@ from dvc_data.hashfile.db import get_index
 from dvc_data.hashfile.transfer import transfer
 
 from .build import build
-from .checkout import checkout
+from .checkout import apply, compare
 from .index import (
     DataIndex,
     DataIndexEntry,
@@ -200,13 +200,13 @@ def _fetch(
                 )
             else:
                 old = build(cache.path, cache.fs)
-                checkout_stats = checkout(
-                    fs_index,
+                diff = compare(old, fs_index)
+                checkout_stats = apply(
+                    diff,
                     cache.path,
                     cache.fs,
                     update_meta=False,
                     storage="remote",
-                    old=old,
                     jobs=jobs,
                     callback=cb,
                 )

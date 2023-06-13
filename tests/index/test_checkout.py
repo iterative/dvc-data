@@ -1,6 +1,7 @@
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
-from dvc_data.index import DataIndex, DataIndexEntry, ObjectStorage, checkout
+from dvc_data.index import DataIndex, DataIndexEntry, ObjectStorage
+from dvc_data.index.checkout import apply, compare
 
 
 def test_checkout(tmp_upath, odb, as_filesystem):
@@ -24,7 +25,8 @@ def test_checkout(tmp_upath, odb, as_filesystem):
         }
     )
     index.storage_map.add_cache(ObjectStorage((), odb))
-    checkout(index, str(tmp_upath), as_filesystem(tmp_upath.fs))
+    diff = compare(None, index)
+    apply(diff, str(tmp_upath), as_filesystem(tmp_upath.fs))
     assert (tmp_upath / "foo").read_text() == "foo\n"
     assert (tmp_upath / "data").is_dir()
     assert (tmp_upath / "data" / "bar").read_text() == "bar\n"
@@ -52,5 +54,6 @@ def test_checkout_file(tmp_upath, odb, as_filesystem):
         }
     )
     index.storage_map.add_cache(ObjectStorage((), odb))
-    checkout(index, str(tmp_upath / "foo"), as_filesystem(tmp_upath.fs))
+    diff = compare(None, index)
+    apply(diff, str(tmp_upath / "foo"), as_filesystem(tmp_upath.fs))
     assert (tmp_upath / "foo").read_text() == "foo\n"
