@@ -19,7 +19,6 @@ from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.local import LocalFileSystem
 from dvc_objects.fs.utils import exists as batch_exists
 
-from ..hashfile.checkout import CheckoutError
 from ..hashfile.meta import Meta
 from .diff import ADD, DELETE, MODIFY, UNCHANGED
 from .diff import diff as idiff
@@ -349,11 +348,9 @@ def apply(
     storage: str = "cache",
     prompt: Optional[Callable] = None,
     force: bool = False,
-    allow_missing: bool = False,
+    onerror: Optional[Callable] = None,
     state: Optional["StateBase"] = None,
 ) -> Dict[str, List["Change"]]:
-
-    failed = []
 
     if fs.version_aware and not latest_only:
         if callback == DEFAULT_CALLBACK:
@@ -383,9 +380,6 @@ def apply(
     _delete_dirs(diff.dirs_delete, path, fs)
     _create_dirs(diff.dirs_create, path, fs)
 
-    def onerror(_src_path, dest_path, _exc):
-        failed.append(dest_path)
-
     _create_files(
         diff.files_create,
         diff.new,
@@ -400,9 +394,6 @@ def apply(
     )
 
     _chmod_files(diff.files_chmod, path, fs)
-
-    if failed and not allow_missing:
-        raise CheckoutError(failed)
 
     return diff.changes
 
