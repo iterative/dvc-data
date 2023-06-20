@@ -58,33 +58,11 @@ def test_versioning(
 
 def _delete_files(
     entries: List["DataIndexEntry"],
-    index: "BaseDataIndex",
     path: str,
     fs: "FileSystem",
-    prompt: Optional[Callable] = None,
-    force: bool = False,
 ):
     if not entries:
         return
-
-    if prompt and not force:
-        for entry in entries:
-            try:
-                cache_fs, cache_path = index.storage_map.get_cache(entry)
-            except ValueError:
-                continue
-
-            if not cache_fs.exists(cache_path):
-                entry_path = fs.path.join(path, *entry.key)
-                msg = (
-                    f"file/directory '{entry_path}' is going to be "
-                    "removed. Are you sure you want to proceed?"
-                )
-
-                if not prompt(msg):
-                    from dvc_data.hashfile.checkout import PromptError
-
-                    raise PromptError(entry_path)
 
     fs.remove([fs.path.join(path, *entry.key) for entry in entries])
 
@@ -337,8 +315,6 @@ def apply(
     update_meta: bool = True,
     jobs: Optional[int] = None,
     storage: str = "cache",
-    prompt: Optional[Callable] = None,
-    force: bool = False,
     onerror: Optional[Callable] = None,
     state: Optional["StateBase"] = None,
 ) -> Dict[str, List["Change"]]:
@@ -366,7 +342,9 @@ def apply(
             )
 
     _delete_files(
-        diff.files_delete, diff.new, path, fs, prompt=prompt, force=force
+        diff.files_delete,
+        path,
+        fs,
     )
     _delete_dirs(diff.dirs_delete, path, fs)
     _create_dirs(diff.dirs_create, path, fs)
