@@ -201,6 +201,9 @@ def fetch(
             else:
                 old = build(cache.path, cache.fs)
                 diff = compare(old, fs_index)
+                cache.fs.makedirs(
+                    cache.fs.path.parent(cache.path), exist_ok=True
+                )
                 checkout_stats = apply(
                     diff,
                     cache.path,
