@@ -104,14 +104,8 @@ def _create_files(  # noqa: C901
     by_storage: Dict[
         "Storage", List[Tuple["DataIndexEntry", str, str]]
     ] = defaultdict(list)
-    parents = set()
     for entry in entries:
         dest_path = fs.path.join(path, *entry.key)
-        if entry.meta and entry.meta.isdir:
-            parents.add(dest_path)
-            continue
-        parents.add(fs.path.parent(dest_path))
-
         storage_info = index.storage_map[entry.key]
         storage_obj = getattr(storage_info, storage)
 
@@ -126,9 +120,6 @@ def _create_files(  # noqa: C901
             continue
 
         by_storage[storage_obj].append((entry, src_path, dest_path))
-
-    for parent in parents:
-        fs.makedirs(parent, exist_ok=True)
 
     if fs.version_aware and by_storage:
         storage_obj, items = next(iter(by_storage.items()))
