@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
     from ..hashfile.state import StateBase
-    from .diff import Change
     from .index import BaseDataIndex, DataIndexEntry, Storage
 
 logger = logging.getLogger(__name__)
@@ -317,7 +316,7 @@ def apply(
     storage: str = "cache",
     onerror: Optional[Callable] = None,
     state: Optional["StateBase"] = None,
-) -> Dict[str, List["Change"]]:
+) -> None:
 
     if fs.version_aware and not latest_only:
         if callback == DEFAULT_CALLBACK:
@@ -363,8 +362,6 @@ def apply(
     )
 
     _chmod_files(diff.files_chmod, path, fs)
-
-    return diff.changes
 
 
 def _prune_existing_versions(

@@ -204,7 +204,7 @@ def fetch(
                 cache.fs.makedirs(
                     cache.fs.path.parent(cache.path), exist_ok=True
                 )
-                checkout_stats = apply(
+                apply(
                     diff,
                     cache.path,
                     cache.fs,
@@ -213,6 +213,6 @@ def fetch(
                     jobs=jobs,
                     callback=cb,
                 )
-                fetched += len(checkout_stats.get("added", []))
+                fetched += len(diff.changes.get("added", []))
 
     return fetched, failed
