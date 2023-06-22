@@ -1,3 +1,4 @@
+import copy
 import errno
 import logging
 import os
@@ -136,19 +137,25 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             os.makedirs(lpath, exist_ok=True)
             return None
 
-        if isinstance(storage, ObjectStorage) and isinstance(
-            fs, LocalFileSystem
+        if (
+            isinstance(storage, ObjectStorage)
+            and isinstance(fs, LocalFileSystem)
+            and storage.odb.cache_types
         ):
-            transfer(
-                fs,
-                path,
-                fs,
-                os.fspath(lpath),
-                callback=callback,
-                links=storage.odb.cache_types,
-            )
-        else:
-            fs.get_file(path, lpath, callback=callback, **kwargs)
+            try:
+                transfer(
+                    fs,
+                    path,
+                    fs,
+                    os.fspath(lpath),
+                    callback=callback,
+                    links=copy.copy(storage.odb.cache_types),
+                )
+                return
+            except OSError:
+                pass
+
+        fs.get_file(path, lpath, callback=callback, **kwargs)
 
     def checksum(self, path):
         info = self.info(path)
