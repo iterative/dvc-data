@@ -65,6 +65,15 @@ def _collect_from_index(
                 # rely on entry.loaded
                 loaded = True
 
+            if (
+                isinstance(remote, FileStorage)
+                and remote.fs.version_aware
+                and entry.meta
+                and not entry.meta.isdir
+                and entry.meta.version_id is None
+            ):
+                entry.meta.md5 = None
+                entry.hash_info = None
             # NOTE: avoiding modifying cache right away, because you might
             # run into a locked database if idx and cache are using the same
             # table.
