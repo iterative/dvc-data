@@ -65,6 +65,8 @@ def _collect_from_index(
                 # rely on entry.loaded
                 loaded = True
 
+            meta = entry.meta
+            hash_info = entry.hash_info
             if (
                 isinstance(remote, FileStorage)
                 and remote.fs.version_aware
@@ -72,15 +74,15 @@ def _collect_from_index(
                 and not entry.meta.isdir
                 and entry.meta.version_id is None
             ):
-                entry.meta.md5 = None
-                entry.hash_info = None
+                meta.md5 = None
+                hash_info = None
             # NOTE: avoiding modifying cache right away, because you might
             # run into a locked database if idx and cache are using the same
             # table.
             entries[storage_key] = DataIndexEntry(
                 key=storage_key,
-                meta=entry.meta,
-                hash_info=entry.hash_info,
+                meta=meta,
+                hash_info=hash_info,
                 loaded=loaded,
             )
 
