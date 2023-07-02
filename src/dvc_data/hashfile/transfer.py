@@ -90,7 +90,7 @@ def _do_transfer(
         all_file_ids -= entry_ids
 
         logger.trace(
-            f"transfer dir: {dir_hash} with {len(bound_file_ids)} files"
+            "transfer dir: %s with %d files", dir_hash, len(bound_file_ids)
         )
 
         dir_fails = _add(src, dest, bound_file_ids, **kwargs)
