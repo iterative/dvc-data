@@ -89,7 +89,7 @@ def _do_transfer(
         bound_file_ids = all_file_ids & entry_ids
         all_file_ids -= entry_ids
 
-        logger.trace(
+        logger.debug(
             "transfer dir: %s with %d files", dir_hash, len(bound_file_ids)
         )
 
@@ -151,7 +151,6 @@ def _add(
     hash_infos: Iterable["HashInfo"],
     **kwargs,
 ) -> Set["HashInfo"]:
-
     failed: Set["HashInfo"] = set()
     if not hash_infos:
         return failed
