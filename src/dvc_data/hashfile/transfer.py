@@ -151,6 +151,7 @@ def _add(
     hash_infos: Iterable["HashInfo"],
     **kwargs,
 ) -> Set["HashInfo"]:
+
     failed: Set["HashInfo"] = set()
     if not hash_infos:
         return failed
