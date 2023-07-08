@@ -237,6 +237,60 @@ def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
     }
 
 
+def test_push(tmp_upath, make_odb, odb, as_filesystem):
+    from dvc_data.index.collect import collect
+    from dvc_data.index.push import push
+
+    index = DataIndex(
+        {
+            ("foo",): DataIndexEntry(
+                key=("foo",),
+                meta=Meta(),
+                hash_info=HashInfo(
+                    name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
+                ),
+            ),
+            ("data",): DataIndexEntry(
+                key=("data",),
+                meta=Meta(isdir=True),
+                hash_info=HashInfo(
+                    name="md5",
+                    value="1f69c66028c35037e8bf67e5bc4ceb6a.dir",
+                ),
+            ),
+        }
+    )
+    remote_odb = make_odb()
+    index.storage_map.add_cache(ObjectStorage((), odb))
+    index.storage_map.add_remote(ObjectStorage((), remote_odb))
+
+    data = collect([index], "remote")
+    push(data)
+    odb.clear()
+    assert not list(odb.all())
+    assert list(remote_odb.all())
+
+    diff = checkout.compare(None, index)
+    checkout.apply(
+        diff,
+        str(tmp_upath / "checkout"),
+        as_filesystem(tmp_upath.fs),
+        storage="remote",
+    )
+    assert (tmp_upath / "checkout" / "foo").read_text() == "foo\n"
+    assert (tmp_upath / "checkout" / "data").is_dir()
+    assert (tmp_upath / "checkout" / "data" / "bar").read_text() == "bar\n"
+    assert (tmp_upath / "checkout" / "data" / "baz").read_text() == "baz\n"
+    assert set((tmp_upath / "checkout").iterdir()) == {
+        (tmp_upath / "checkout" / "foo"),
+        (tmp_upath / "checkout" / "data"),
+    }
+    assert set((tmp_upath / "checkout" / "data").iterdir()) == {
+        (tmp_upath / "checkout" / "data" / "bar"),
+        (tmp_upath / "checkout" / "data" / "baz"),
+    }
+
+
 @pytest.mark.parametrize(
     "write, read",
     [
