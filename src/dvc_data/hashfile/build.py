@@ -3,7 +3,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
-from dvc_objects._tqdm import Tqdm
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
 
 from .db.reference import ReferenceHashFileDB
 from .hash import hash_file
@@ -35,7 +35,6 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 
 
 def _upload_file(from_path, fs, odb, upload_odb, callback=None):
-    from dvc_objects.fs.callbacks import Callback
     from dvc_objects.fs.utils import tmp_fname
 
     from .hash import HashStreamFile
@@ -83,7 +82,7 @@ def _build_tree(
     name,
     odb=None,
     ignore: "Ignore" = None,
-    no_progress_bar=False,
+    callback: "Callback" = DEFAULT_CALLBACK,
     **kwargs,
 ):
     from .db import add_update_tree
@@ -112,43 +111,32 @@ def _build_tree(
 
     tree = Tree()
 
-    try:
-        relpath = fs.path.relpath(path)
-    except ValueError:
-        # NOTE: relpath might not exist
-        relpath = path
+    for root, _, fnames in walk_iter:
+        if DefaultIgnoreFile in fnames:
+            raise IgnoreInCollectedDirError(
+                DefaultIgnoreFile, fs.path.join(root, DefaultIgnoreFile)
+            )
 
-    with Tqdm(
-        unit="obj",
-        desc=f"Building data objects from {relpath}",
-        disable=no_progress_bar,
-    ) as pbar:
-        for root, _, fnames in walk_iter:
-            if DefaultIgnoreFile in fnames:
-                raise IgnoreInCollectedDirError(
-                    DefaultIgnoreFile, fs.path.join(root, DefaultIgnoreFile)
-                )
+        # NOTE: we know for sure that root starts with path, so we can use
+        # faster string manipulation instead of a more robust relparts()
+        rel_key: Tuple[Optional[Any], ...] = ()
+        if root != path:
+            rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
 
-            # NOTE: we know for sure that root starts with path, so we can use
-            # faster string manipulation instead of a more robust relparts()
-            rel_key: Tuple[Optional[Any], ...] = ()
-            if root != path:
-                rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
+        for fname in fnames:
+            if fname == "":
+                # NOTE: might happen with s3/gs/azure/etc, where empty
+                # objects like `dir/` might be used to create an empty dir
+                continue
 
-            for fname in fnames:
-                if fname == "":
-                    # NOTE: might happen with s3/gs/azure/etc, where empty
-                    # objects like `dir/` might be used to create an empty dir
-                    continue
-
-                pbar.update()
-                meta, obj = _build_file(
-                    f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
-                )
-                key = (*rel_key, fname)
-                tree.add(key, meta, obj.hash_info)
-                tree_meta.size += meta.size or 0
-                tree_meta.nfiles += 1
+            callback.update()
+            meta, obj = _build_file(
+                f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
+            )
+            key = (*rel_key, fname)
+            tree.add(key, meta, obj.hash_info)
+            tree_meta.size += meta.size or 0
+            tree_meta.nfiles += 1
 
     if not tree_meta.nfiles:
         # This will raise FileNotFoundError if it is a
