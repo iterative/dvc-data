@@ -129,7 +129,7 @@ def _build_tree(
                 # objects like `dir/` might be used to create an empty dir
                 continue
 
-            callback.update()
+            callback.relative_update(1)
             meta, obj = _build_file(
                 f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
             )
