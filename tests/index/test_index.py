@@ -210,7 +210,7 @@ def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
     index.storage_map.add_remote(ObjectStorage((), odb))
 
     (tmp_upath / "fetched").mkdir()
-    data = collect([index])
+    data = collect([index], "remote")
     fetch(data)
     diff = checkout.compare(None, index)
     checkout.apply(
