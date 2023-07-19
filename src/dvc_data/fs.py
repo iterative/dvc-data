@@ -95,11 +95,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         try:
             info = self.index.info(root_key)
             if info["type"] != "directory":
-                if detail:
-                    info["name"] = path
-                    return [info]
-                else:
-                    return [path]
+                raise NotADirectoryError(path)
 
             if not detail:
                 return [
