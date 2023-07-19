@@ -50,10 +50,14 @@ def test_fs(tmp_upath, odb, as_filesystem):
     fs = DataFileSystem(index)
     assert fs.exists("foo")
     assert fs.cat("foo") == b"foo\n"
+    with pytest.raises(NotADirectoryError):
+        fs.ls("foo")
     assert fs.ls("/", detail=False) == ["/foo", "/data"]
     assert fs.ls("/", detail=True) == [fs.info("/foo"), fs.info("/data")]
     assert fs.cat("/data/bar") == b"bar\n"
     assert fs.cat("/data/baz") == b"baz\n"
+    with pytest.raises(NotADirectoryError):
+        fs.ls("/data/bar")
     assert fs.ls("/data", detail=False) == ["/data/bar", "/data/baz"]
     assert fs.ls("/data", detail=True) == [
         fs.info("/data/bar"),
