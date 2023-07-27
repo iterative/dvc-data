@@ -108,7 +108,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 info["name"] = self.path.join(path, key[-1])
                 entries.append(info)
             return entries
-        except TreeError as exc:
+        except (KeyError, TreeError) as exc:
             raise FileNotFoundError(
                 errno.ENOENT, os.strerror(errno.ENOENT), path
             ) from exc
