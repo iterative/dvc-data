@@ -115,7 +115,16 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     def info(self, path, **kwargs):
         key = self._get_key(path)
-        info = self.index.info(key)
+
+        try:
+            info = self.index.info(key)
+        except KeyError as exc:
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                path,
+            ) from exc
+
         info["name"] = path
         return info
 
