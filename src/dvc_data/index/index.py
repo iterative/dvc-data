@@ -462,8 +462,6 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
             entry = self[key]
         except ShortKeyError:
             entry = None
-        except KeyError as exc:
-            raise FileNotFoundError from exc
 
         return self._info_from_entry(key, entry)
 
