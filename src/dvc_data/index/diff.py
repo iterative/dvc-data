@@ -9,8 +9,7 @@ if TYPE_CHECKING:
     from .hashfile.hash_info import HashInfo
     from .index import BaseDataIndex, DataIndexKey
 
-from ..hashfile.tree import TreeError
-from .index import DataIndexEntry
+from .index import DataIndexDirError, DataIndexEntry
 
 ADD = "add"
 MODIFY = "modify"
@@ -151,7 +150,7 @@ def _get_items(
             items = dict(index.ls(key, detail=True))
     except KeyError:
         pass
-    except TreeError:
+    except DataIndexDirError:
         unknown = with_unknown
 
     return items, unknown

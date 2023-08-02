@@ -1,4 +1,5 @@
 import errno
+import logging
 import os
 from abc import ABC, abstractmethod
 from functools import cached_property
@@ -15,19 +16,20 @@ from typing import (
 )
 
 import attrs
-from dvc_objects.errors import ObjectFormatError
 from sqltrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
 from sqltrie import JSONTrie, PyGTrie, SQLiteTrie
 
 from ..hashfile.hash_info import HashInfo
 from ..hashfile.meta import Meta
-from ..hashfile.tree import Tree, TreeError
+from ..hashfile.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
     from ..hashfile.db import HashFileDB
 
+
+logger = logging.getLogger(__name__)
 
 DataIndexKey = Tuple[str, ...]
 
@@ -523,7 +525,13 @@ class DataIndexError(Exception):
     pass
 
 
+class DataIndexDirError(DataIndexError):
+    pass
+
+
 def _load_from_storage(trie, entry, storage_info):
+    last_exc = None
+
     for storage in [
         storage_info.data,
         storage_info.cache,
@@ -537,11 +545,20 @@ def _load_from_storage(trie, entry, storage_info):
                 _load_from_object_storage(trie, entry, storage)
             else:
                 _load_from_file_storage(trie, entry, storage)
-            return
-        except (FileNotFoundError, ObjectFormatError):
-            pass
+            return True
+        except Exception as exc:  # pylint: disable=W0703
+            # NOTE: this might be some random fs exception, e.g. auth error
+            last_exc = exc
+            logger.exception(
+                "failed to load %s from storage %s (%s)",
+                entry.key,
+                storage.fs.protocol,
+                storage.path,
+            )
 
-    raise DataIndexError
+    raise DataIndexDirError(
+        f"failed to load directory {entry.key}"
+    ) from last_exc
 
 
 class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
@@ -551,6 +568,11 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         self._trie = PyGTrie()
 
         self.storage_map = StorageMapping()
+
+        def _onerror(_, exc):
+            raise exc
+
+        self.onerror = _onerror
 
         self.update(*args, **kwargs)
 
@@ -615,8 +637,8 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
 
         try:
             _load_from_storage(self._trie, entry, self.storage_map[key])
-        except DataIndexError:
-            return
+        except DataIndexDirError as exc:
+            self.onerror(entry, exc)
 
         entry.loaded = True
         del self._trie[key]
@@ -670,8 +692,6 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         entry = self.get(prefix)
         if entry and entry.meta and entry.meta.isdir and not entry.loaded:
             self._load(prefix, entry)
-            if not entry.loaded:
-                raise TreeError
 
     def ls(self, root_key: DataIndexKey, detail=True):
         self._ensure_loaded(root_key)

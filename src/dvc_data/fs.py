@@ -89,7 +89,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return fs.open(fspath, mode=mode, encoding=encoding)
 
     def ls(self, path, detail=True, **kwargs):
-        from .index import TreeError
+        from .index import DataIndexDirError
 
         root_key = self._get_key(path)
         try:
@@ -108,7 +108,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 info["name"] = self.path.join(path, key[-1])
                 entries.append(info)
             return entries
-        except (KeyError, TreeError) as exc:
+        except (KeyError, DataIndexDirError) as exc:
             raise FileNotFoundError(
                 errno.ENOENT, os.strerror(errno.ENOENT), path
             ) from exc
