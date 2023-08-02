@@ -1,5 +1,4 @@
 import errno
-import logging
 import os
 from abc import ABC, abstractmethod
 from functools import cached_property
@@ -28,9 +27,6 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
     from ..hashfile.db import HashFileDB
-
-
-logger = logging.getLogger(__name__)
 
 
 DataIndexKey = Tuple[str, ...]
@@ -544,9 +540,6 @@ def _load_from_storage(trie, entry, storage_info):
             return
         except (FileNotFoundError, ObjectFormatError):
             pass
-        except Exception:  # pylint: disable=W0703
-            # NOTE: this might be some random fs exception, e.g. auth error
-            logger.exception("failed to load %s", entry.key)
 
     raise DataIndexError
 
