@@ -9,15 +9,17 @@ if TYPE_CHECKING:
     from ._ignore import Ignore
 
 
+def to_nanoseconds(ts: float) -> int:
+    return round(ts * 1e9)
+
+
 def get_mtime_and_size(
     path: "AnyFSPath", fs: "FileSystem", ignore: "Ignore" = None
 ) -> Tuple[str, int]:
-    import nanotime
-
     if not fs.isdir(path):
         base_stat = fs.info(path)
         size = base_stat["size"]
-        mtime = str(int(nanotime.timestamp(base_stat["mtime"])))
+        mtime = str(to_nanoseconds(base_stat["mtime"]))
         return mtime, size
 
     size = 0
