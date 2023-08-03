@@ -200,8 +200,8 @@ def transfer(
 
     logger.debug(
         "Preparing to transfer data from '%s' to '%s'",
-        src.path,
-        dest.path,
+        src.fs.unstrip_protocol(src.path),
+        dest.fs.unstrip_protocol(dest.path),
     )
     if src == dest:
         return TransferResult(set(), set())
@@ -223,9 +223,6 @@ def transfer(
 
     if not status.new:
         return TransferResult(set(), set())
-
-    if callback != DEFAULT_CALLBACK:
-        callback = callback.as_tqdm_callback(unit="file", desc="Transferring")
 
     callback.set_size(len(status.new))
     jobs = jobs or dest.fs.jobs
