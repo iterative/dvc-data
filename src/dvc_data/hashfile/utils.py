@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 def to_nanoseconds(ts: float) -> int:
-    return round(ts * 1e9)
+    return round(ts * 1_000_000_000)
 
 
 def get_mtime_and_size(
