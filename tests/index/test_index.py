@@ -6,6 +6,7 @@ from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 from dvc_data.index import (
     DataIndex,
+    DataIndexDirError,
     DataIndexEntry,
     FileStorage,
     ObjectStorage,
@@ -163,10 +164,10 @@ def test_fs_broken(tmp_upath, odb, as_filesystem):
 
     assert fs.exists("/broken")
     assert fs.isdir("/broken")
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(DataIndexDirError):
         fs.ls("/broken", detail=False)
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(DataIndexDirError):
         fs.ls("/broken", detail=True)
 
     def onerror(_entry, _exc):
