@@ -549,11 +549,12 @@ def _load_from_storage(trie, entry, storage_info):
         except Exception as exc:  # pylint: disable=W0703
             # NOTE: this might be some random fs exception, e.g. auth error
             last_exc = exc
-            logger.exception(
+            logger.debug(
                 "failed to load %s from storage %s (%s)",
                 entry.key,
                 storage.fs.protocol,
                 storage.path,
+                exc_info=True,
             )
 
     raise DataIndexDirError(
