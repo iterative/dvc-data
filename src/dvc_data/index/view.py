@@ -17,6 +17,14 @@ class DataIndexView(BaseDataIndex):
         self.filter_fn = filter_fn
 
     @property
+    def onerror(self):
+        return self._index.onerror
+
+    @onerror.setter
+    def onerror(self, onerror):
+        self._index.onerror = onerror
+
+    @property
     def storage_map(self) -> "StorageMapping":  # type: ignore[override]
         return self._index.storage_map
 
