@@ -640,6 +640,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
             _load_from_storage(self._trie, entry, self.storage_map[key])
         except DataIndexDirError as exc:
             self.onerror(entry, exc)
+            return
 
         entry.loaded = True
         del self._trie[key]
