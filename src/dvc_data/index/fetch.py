@@ -53,6 +53,16 @@ def fetch(
         else:
             cb = callback
 
+        try:
+            # NOTE: make sure there are no auth errors
+            data.fs.exists(data.path)
+        except Exception:  # pylint: disable=W0703
+            failed += len(fs_index)
+            logger.exception(
+                f"failed to connect to {data.fs.protocol} ({data.path})"
+            )
+            continue
+
         with cb:
             if isinstance(cache, ObjectStorage) and isinstance(
                 data, ObjectStorage
