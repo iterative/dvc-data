@@ -151,6 +151,8 @@ def _get_items(
     except KeyError:
         pass
     except DataIndexDirError:
+        if not with_unknown:
+            raise
         unknown = with_unknown
 
     return items, unknown
