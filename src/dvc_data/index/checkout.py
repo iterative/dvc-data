@@ -28,7 +28,8 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
     from ..hashfile.state import StateBase
-    from .index import BaseDataIndex, DataIndexEntry, Storage
+    from .diff import Change
+    from .index import BaseDataIndex, DataIndexEntry, DataIndexKey, Storage
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +199,7 @@ def _chmod_files(entries, path, fs):
 class Diff(NamedTuple):
     old: "BaseDataIndex"
     new: "BaseDataIndex"
-    changes: Dict[str, list]
+    changes: Dict["DataIndexKey", "Change"]
     files_delete: list
     dirs_delete: list
     files_create: list
@@ -206,7 +207,7 @@ class Diff(NamedTuple):
     files_chmod: list
 
 
-def compare(  # noqa: C901
+def _compare(  # noqa: C901
     old,
     new,
     relink: bool = False,
@@ -217,7 +218,7 @@ def compare(  # noqa: C901
     ret = Diff(
         old=old,
         new=new,
-        changes=defaultdict(list),
+        changes={},
         files_delete=[],
         dirs_delete=[],
         files_create=[],
@@ -300,7 +301,38 @@ def compare(  # noqa: C901
         else:
             raise AssertionError()
 
-        ret.changes[change.typ].append(change)
+        ret.changes[change.key] = change
+
+    return ret
+
+
+def compare(  # noqa: C901
+    old,
+    new,
+    relink: bool = False,
+    delete: bool = False,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    **kwargs,
+):
+    failed_dirs = set()
+    onerror = new.onerror
+
+    def _onerror(entry, exc):
+        failed_dirs.add(entry)
+        onerror(entry, exc)
+
+    new.onerror = _onerror
+
+    try:
+        ret = _compare(
+            old, new, relink=relink, delete=delete, callback=callback, **kwargs
+        )
+    finally:
+        new.onerror = onerror
+
+    for entry in failed_dirs:
+        ret.dirs_create.remove(entry)
+        del ret.changes[entry.key]
 
     return ret
 
