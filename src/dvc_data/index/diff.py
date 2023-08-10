@@ -38,7 +38,7 @@ class Change:
             entry = self.old or self.new
 
         assert entry
-        assert entry.key
+        assert entry.key is not None
         return entry.key
 
     def __bool__(self):
