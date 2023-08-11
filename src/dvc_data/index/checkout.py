@@ -209,6 +209,7 @@ class Diff:
     files_create: list = field(default=Factory(list))
     dirs_create: list = field(default=Factory(list))
     files_chmod: list = field(default=Factory(list))
+    dirs_failed: list = field(default=Factory(list))
 
 
 def _compare(  # noqa: C901
@@ -329,7 +330,13 @@ def compare(  # noqa: C901
         ret.dirs_create.remove(entry)
         del ret.changes[entry.key]
 
+    ret.dirs_failed = failed_dirs
+
     return ret
+
+
+def _onerror_noop(*args, **kwargs):
+    pass
 
 
 def apply(
@@ -356,6 +363,12 @@ def apply(
                     diff.files_create, fs, path, callback=cb
                 )
             )
+
+    if onerror is None:
+        onerror = _onerror_noop
+
+    for entry in diff.dirs_failed:
+        onerror(None, fs.path.join(path, *entry.key), None)
 
     _delete_files(
         diff.files_delete,
