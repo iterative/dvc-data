@@ -9,11 +9,11 @@ from typing import (
     Dict,
     Iterator,
     List,
-    NamedTuple,
     Optional,
     Tuple,
 )
 
+from attrs import Factory, define, field
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
 from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.local import LocalFileSystem
@@ -69,7 +69,7 @@ def _delete_files(
 
 def _create_files(  # noqa: C901
     entries,
-    index: "BaseDataIndex",
+    index: Optional["BaseDataIndex"],
     path: str,
     fs: "FileSystem",
     callback: "Callback" = DEFAULT_CALLBACK,
@@ -79,6 +79,9 @@ def _create_files(  # noqa: C901
     onerror=None,
     state: Optional["StateBase"] = None,
 ):
+    if index is None:
+        return
+
     by_storage: Dict[
         "Storage", List[Tuple["DataIndexEntry", str, str]]
     ] = defaultdict(list)
@@ -196,15 +199,16 @@ def _chmod_files(entries, path, fs):
             )
 
 
-class Diff(NamedTuple):
-    old: "BaseDataIndex"
-    new: "BaseDataIndex"
-    changes: Dict["DataIndexKey", "Change"]
-    files_delete: list
-    dirs_delete: list
-    files_create: list
-    dirs_create: list
-    files_chmod: list
+@define
+class Diff:
+    old: Optional["BaseDataIndex"] = field(default=None)
+    new: Optional["BaseDataIndex"] = field(default=None)
+    changes: Dict["DataIndexKey", "Change"] = field(default=Factory(dict))
+    files_delete: list = field(default=Factory(list))
+    dirs_delete: list = field(default=Factory(list))
+    files_create: list = field(default=Factory(list))
+    dirs_create: list = field(default=Factory(list))
+    files_chmod: list = field(default=Factory(list))
 
 
 def _compare(  # noqa: C901
@@ -215,16 +219,7 @@ def _compare(  # noqa: C901
     callback: "Callback" = DEFAULT_CALLBACK,
     **kwargs,
 ):
-    ret = Diff(
-        old=old,
-        new=new,
-        changes={},
-        files_delete=[],
-        dirs_delete=[],
-        files_create=[],
-        dirs_create=[],
-        files_chmod=[],
-    )
+    ret = Diff(old=old, new=new)
 
     def _add_file_create(entry):
         if entry.meta and entry.meta.isexec:
@@ -349,7 +344,6 @@ def apply(
     onerror: Optional[Callable] = None,
     state: Optional["StateBase"] = None,
 ) -> None:
-
     if fs.version_aware and not latest_only:
         if callback == DEFAULT_CALLBACK:
             cb = callback
@@ -357,19 +351,10 @@ def apply(
             desc = f"Checking status of existing versions in '{path}'"
             cb = Callback.as_tqdm_callback(desc=desc, unit="file")
         with cb:
-            diff = Diff(
-                old=diff.old,
-                new=diff.new,
-                changes=diff.changes,
-                files_delete=diff.files_delete,
-                dirs_delete=diff.dirs_delete,
-                files_create=list(
-                    _prune_existing_versions(
-                        diff.files_create, fs, path, callback=cb
-                    )
-                ),
-                dirs_create=diff.dirs_create,
-                files_chmod=diff.files_chmod,
+            diff.files_create = list(
+                _prune_existing_versions(
+                    diff.files_create, fs, path, callback=cb
+                )
             )
 
     _delete_files(
