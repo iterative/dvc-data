@@ -68,20 +68,30 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             if data:
                 fs, fs_path = data
                 if fs.exists(fs_path):
-                    return typ, storage, fs, fs_path
+                    return typ, storage, info.cache, fs, fs_path
 
         raise FileNotFoundError(
             errno.ENOENT, "No storage files available", path
         )
 
     def open(  # type: ignore
-        self, path: str, mode="r", encoding=None, **kwargs
+        self, path: str, mode="r", encoding=None, cache=False, **kwargs
     ):  # pylint: disable=arguments-renamed, arguments-differ
-        cache_odb = kwargs.pop("cache_odb", None)
-        typ, _, fs, fspath = self._get_fs_path(path, **kwargs)
+        from dvc_objects.fs.local import LocalFileSystem
 
-        if cache_odb and typ == "remote":
+        from dvc_data.index import ObjectStorage
+
+        typ, _, cache_storage, fs, fspath = self._get_fs_path(path, **kwargs)
+
+        if (
+            cache
+            and typ == "remote"
+            and isinstance(cache_storage, ObjectStorage)
+            and not isinstance(fs, LocalFileSystem)
+        ):
             from dvc_data.hashfile.build import _upload_file
+
+            cache_odb = cache_storage.odb
 
             _, obj = _upload_file(fspath, fs, cache_odb, cache_odb)
             fs, fspath = cache_odb.fs, obj.path
@@ -89,7 +99,6 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return fs.open(fspath, mode=mode, encoding=encoding)
 
     def ls(self, path, detail=True, **kwargs):
-
         root_key = self._get_key(path)
         try:
             info = self.index.info(root_key)
@@ -136,7 +145,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         from dvc_data.index import ObjectStorage
 
         try:
-            _, storage, fs, path = self._get_fs_path(rpath)
+            _, storage, _, fs, path = self._get_fs_path(rpath)
         except IsADirectoryError:
             os.makedirs(lpath, exist_ok=True)
             return None
