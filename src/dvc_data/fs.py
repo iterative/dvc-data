@@ -9,7 +9,8 @@ from fsspec import AbstractFileSystem
 from funcy import cached_property
 
 if typing.TYPE_CHECKING:
-    from dvc_objects.fs.base import AnyFSPath
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
+    from dvc_objects.index import ObjectStorage
 
 logger = logging.getLogger(__name__)
 
@@ -74,27 +75,30 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             errno.ENOENT, "No storage files available", path
         )
 
+    def _cache_remote_file(
+        self,
+        cache_storage: "ObjectStorage",
+        fs: "FileSystem",
+        path: "AnyFSPath",
+    ):
+        from dvc_objects.fs.local import LocalFileSystem
+
+        if isinstance(fs, LocalFileSystem):
+            return fs, path
+
+        from dvc_data.hashfile.build import _upload_file
+
+        cache_odb = cache_storage.odb
+        _, obj = _upload_file(path, fs, cache_odb, cache_odb)
+        return cache_odb.fs, obj.path
+
     def open(  # type: ignore
         self, path: str, mode="r", encoding=None, cache=False, **kwargs
     ):  # pylint: disable=arguments-renamed, arguments-differ
-        from dvc_objects.fs.local import LocalFileSystem
-
-        from dvc_data.index import ObjectStorage
-
         typ, _, cache_storage, fs, fspath = self._get_fs_path(path, **kwargs)
 
-        if (
-            cache
-            and typ == "remote"
-            and isinstance(cache_storage, ObjectStorage)
-            and not isinstance(fs, LocalFileSystem)
-        ):
-            from dvc_data.hashfile.build import _upload_file
-
-            cache_odb = cache_storage.odb
-
-            _, obj = _upload_file(fspath, fs, cache_odb, cache_odb)
-            fs, fspath = cache_odb.fs, obj.path
+        if cache and typ == "remote" and cache_storage:
+            fs, fspath = self._cache_remote_file(cache_storage, fs, fspath)
 
         return fs.open(fspath, mode=mode, encoding=encoding)
 
@@ -145,10 +149,14 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         from dvc_data.index import ObjectStorage
 
         try:
-            _, storage, _, fs, path = self._get_fs_path(rpath)
+            typ, storage, cache_storage, fs, path = self._get_fs_path(rpath)
         except IsADirectoryError:
             os.makedirs(lpath, exist_ok=True)
             return None
+
+        cache = kwargs.pop("cache", False)
+        if cache and typ == "remote" and cache_storage:
+            fs, path = self._cache_remote_file(cache_storage, fs, path)
 
         if (
             isinstance(storage, ObjectStorage)
