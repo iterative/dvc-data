@@ -327,8 +327,11 @@ def compare(  # noqa: C901
         new.onerror = onerror
 
     for entry in failed_dirs:
-        ret.dirs_create.remove(entry)
-        del ret.changes[entry.key]
+        try:
+            ret.dirs_create.remove(entry)
+        except ValueError:
+            pass
+        ret.changes.pop(entry.key, None)
 
     ret.dirs_failed = failed_dirs
 
