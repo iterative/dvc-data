@@ -88,7 +88,7 @@ def test_diff_meta_only():
         Change(UNCHANGED, old_entry, new_entry),
     ]
 
-    new_entry.meta = Meta("def")
+    new_entry.meta = Meta(etag="def")
     assert list(diff(old, new, meta_only=True, with_unchanged=True)) == [
         Change(MODIFY, old_entry, new_entry),
     ]

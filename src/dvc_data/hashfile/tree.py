@@ -4,7 +4,8 @@ import posixpath
 from typing import TYPE_CHECKING, Any, Dict, Final, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
-from funcy import cached_property
+
+from dvc_data.objects import cached_property
 
 from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from ..hashfile.meta import Meta
@@ -47,10 +48,13 @@ class Tree(HashFile):
     PARAM_RELPATH: Final = "relpath"
 
     def __init__(self):  # pylint: disable=super-init-not-called
-        self.fs = None
-        self.path = None
-        self.hash_info = None
-        self.oid = None
+        # this should really be part of a TreeBuilder.
+        # HashFile does not support these properties as none values, so we may be losing
+        # type-safety with this.
+        self.fs = None  # type: ignore[assignment]
+        self.path = None  # type: ignore[assignment]
+        self.hash_info = None  # type: ignore[assignment]
+        self.oid = None  # type: ignore[assignment]
         self._dict: Dict[
             Tuple[str, ...], Tuple[Optional["Meta"], Optional["HashInfo"]]
         ] = {}
@@ -334,11 +338,15 @@ def merge(odb, ancestor_info, our_info, their_info, allowed=None):
 
     if ancestor_info:
         ancestor = load(odb, ancestor_info)
+        assert isinstance(ancestor, Tree)
     else:
         ancestor = Tree()
 
     our = load(odb, our_info)
+    assert isinstance(our, Tree)
+
     their = load(odb, their_info)
+    assert isinstance(their, Tree)
 
     merged_dict = _merge(
         ancestor.as_dict(), our.as_dict(), their.as_dict(), allowed=allowed

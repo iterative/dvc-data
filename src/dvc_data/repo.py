@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 from dvc_objects.fs import localfs
 from dvc_objects.fs.base import FileSystem
@@ -11,7 +12,7 @@ class NotARepo(Exception):
 
 
 class Repo:
-    def __init__(self, root: str = "", fs: FileSystem = None) -> None:
+    def __init__(self, root: str = "", fs: Optional[FileSystem] = None) -> None:
         fs = fs or localfs
         root = root or fs.path.getcwd()
         control_dir: str = os.getenv("DVC_DIR") or fs.path.join(root, ".dvc")
@@ -31,9 +32,9 @@ class Repo:
     def discover(
         cls,
         start: str = ".",
-        fs: FileSystem = None,
+        fs: Optional[FileSystem] = None,
     ) -> "Repo":
-        remaining = True
+        remaining = start
         fs = fs or localfs
         path = start = fs.path.abspath(start)
         while remaining:

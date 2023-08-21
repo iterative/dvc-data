@@ -56,13 +56,26 @@ show_error_codes = true
 show_error_context = true
 show_traceback = true
 pretty = true
-check_untyped_defs = false
+check_untyped_defs = true
 # Warnings
 warn_no_return = true
 warn_redundant_casts = true
 warn_unreachable = true
-ignore_missing_imports = true
+strict_equality = true
+no_implicit_optional = true
+warn_unused_configs = true
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = [
+    "blake3",
+    "fsspec.*",
+    "funcy",
+    "diskcache",
+    "pygtrie",
+    "dictdiffer",
+]
 
 [tool.pylint.master]
 extension-pkg-whitelist = ["blake3"]

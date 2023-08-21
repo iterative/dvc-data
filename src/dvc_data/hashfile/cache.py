@@ -1,7 +1,7 @@
 import os
 import pickle  # nosec B403
 from functools import wraps
-from typing import Any
+from typing import Any, Optional
 
 import diskcache
 from diskcache import Disk as disk
@@ -49,10 +49,10 @@ class Cache(diskcache.Cache):
 
     def __init__(
         self,
-        directory: str = None,
+        directory: Optional[str] = None,
         timeout: int = 60,
         disk: disk = Disk,  # pylint: disable=redefined-outer-name
-        type: str = None,
+        type: Optional[str] = None,
         **settings: Any,
     ) -> None:
         settings.setdefault("disk_pickle_protocol", 4)

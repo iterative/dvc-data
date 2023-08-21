@@ -1,7 +1,7 @@
 import hashlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
 
@@ -11,10 +11,13 @@ from .meta import Meta
 from .obj import HashFile
 
 if TYPE_CHECKING:
+    from typing import BinaryIO
+
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
     from ._ignore import Ignore
     from .db import HashFileDB
+    from .tree import Tree
 
 
 DefaultIgnoreFile = ".dvcignore"
@@ -34,7 +37,13 @@ logger = logging.getLogger(__name__)
 _STAGING_MEMFS_PATH = "dvc-staging"
 
 
-def _upload_file(from_path, fs, odb, upload_odb, callback=None):
+def _upload_file(
+    from_path: "AnyFSPath",
+    fs: "FileSystem",
+    odb: "HashFileDB",
+    upload_odb: "HashFileDB",
+    callback: Optional[Callback] = None,
+) -> Tuple[Meta, HashFile]:
     from dvc_objects.fs.utils import tmp_fname
 
     from .hash import HashStreamFile
@@ -42,7 +51,7 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
     path = upload_odb.fs.path
     tmp_info = path.join(upload_odb.path, tmp_fname())
     with fs.open(from_path, mode="rb") as stream:
-        stream = HashStreamFile(stream)
+        hashed_stream = HashStreamFile(stream)
         size = fs.size(from_path)
         with Callback.as_tqdm_callback(
             callback,
@@ -50,9 +59,10 @@ def _upload_file(from_path, fs, odb, upload_odb, callback=None):
             bytes=True,
             size=size,
         ) as cb:
-            upload_odb.fs.put_file(stream, tmp_info, size=size, callback=cb)
+            fileobj = cast("BinaryIO", HashStreamFile)
+            upload_odb.fs.put_file(fileobj, tmp_info, size=size, callback=cb)
 
-    oid = stream.hash_value
+    oid = hashed_stream.hash_value
     odb.add(tmp_info, upload_odb.fs, oid)
     meta = Meta(size=size)
     return meta, odb.get(oid)
@@ -81,7 +91,7 @@ def _build_tree(
     fs_info,
     name,
     odb=None,
-    ignore: "Ignore" = None,
+    ignore: Optional["Ignore"] = None,
     callback: "Callback" = DEFAULT_CALLBACK,
     **kwargs,
 ):
@@ -182,21 +192,30 @@ def _get_staging(odb: "HashFileDB") -> "ReferenceHashFileDB":
     return ReferenceHashFileDB(fs, path, state=state, hash_name=odb.hash_name)
 
 
-def _build_external_tree_info(odb, tree, name):
+def _build_external_tree_info(odb: "HashFileDB", tree: "Tree", name: str) -> "Tree":
     # NOTE: used only for external outputs. Initial reasoning was to be
     # able to validate .dir files right in the workspace (e.g. check s3
     # etag), but could be dropped for manual validation with regular md5,
     # that would be universal for all clouds.
     assert odb and name != "md5"
 
+    assert tree.fs
+    assert tree.path
+    assert tree.hash_info
+    assert tree.hash_info.value
+
     oid = tree.hash_info.value
     odb.add(tree.path, tree.fs, oid)
     raw = odb.get(oid)
     _, hash_info = hash_file(raw.path, raw.fs, odb.hash_name, state=odb.state)
+
+    assert hash_info.value
+
     tree.path = raw.path
     tree.fs = raw.fs
     tree.hash_info.name = hash_info.name
     tree.hash_info.value = hash_info.value
+
     if not tree.hash_info.value.endswith(".dir"):
         tree.hash_info.value += ".dir"
     return tree

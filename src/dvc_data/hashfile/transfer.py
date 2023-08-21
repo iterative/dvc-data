@@ -180,7 +180,7 @@ def transfer(
     jobs: Optional[int] = None,
     verify: bool = False,
     hardlink: bool = False,
-    validate_status: Callable[["CompareStatusResult"], None] = None,
+    validate_status: Optional[Callable[["CompareStatusResult"], None]] = None,
     src_index: Optional["ObjectDBIndexBase"] = None,
     dest_index: Optional["ObjectDBIndexBase"] = None,
     cache_odb: Optional["HashFileDB"] = None,

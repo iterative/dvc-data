@@ -614,8 +614,8 @@ def checkout(
 
 
 cmd = typer.main.get_command(app)
-wrapper = click.version_option()  # type: ignore[var-annotated]
-main = wrapper(cmd)  # type: ignore[arg-type]
+wrapper = click.version_option()
+main = wrapper(cmd)
 main.add_command(update_tree, "update-tree")  # type: ignore[attr-defined]
 
 

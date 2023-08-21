@@ -94,7 +94,10 @@ class DataIndexTrie(JSONTrie):
             pass
         if value is None:
             return None
-        entry = DataIndexEntry.from_dict(super()._load(key, value))
+
+        d = super()._load(key, value)
+        assert isinstance(d, dict)
+        entry = DataIndexEntry.from_dict(d)
         entry.key = key
         return entry
 
