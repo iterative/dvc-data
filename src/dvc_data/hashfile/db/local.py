@@ -94,8 +94,7 @@ class LocalHashFileDB(HashFileDB):
 
         else:
             logger.debug(
-                "Skipping copying for '%s', since it is not "
-                "a symlink or a hardlink.",
+                "Skipping copying for '%s', since it is not a symlink or a hardlink.",
                 path,
             )
 

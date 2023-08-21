@@ -9,9 +9,7 @@ if TYPE_CHECKING:
 
 
 class Ignore(Protocol):
-    def find(
-        self, fs: "FileSystem", path: "AnyFSPath"
-    ) -> Iterator["AnyFSPath"]:
+    def find(self, fs: "FileSystem", path: "AnyFSPath") -> Iterator["AnyFSPath"]:
         ...
 
     def walk(self, fs: "FileSystem", path: "AnyFSPath", **kwargs: Any):

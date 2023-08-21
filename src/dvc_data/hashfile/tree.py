@@ -121,9 +121,7 @@ class Tree(HashFile):
         return len(self._dict)
 
     def __iter__(self):
-        yield from (
-            (key, value[0], value[1]) for key, value in self._dict.items()
-        )
+        yield from ((key, value[0], value[1]) for key, value in self._dict.items())
 
     def as_dict(self):
         return self._dict.copy()
@@ -155,9 +153,9 @@ class Tree(HashFile):
         return self._trie.copy()
 
     def as_bytes(self, with_meta: bool = False):
-        return json.dumps(
-            self.as_list(with_meta=with_meta), sort_keys=True
-        ).encode("utf-8")
+        return json.dumps(self.as_list(with_meta=with_meta), sort_keys=True).encode(
+            "utf-8"
+        )
 
     @classmethod
     def from_list(cls, lst, hash_name: Optional[str] = None):
@@ -274,9 +272,7 @@ class Tree(HashFile):
 
 def du(odb, tree):
     try:
-        return sum(
-            odb.fs.size(odb.oid_to_path(oid.value)) for _, _, oid in tree
-        )
+        return sum(odb.fs.size(odb.oid_to_path(oid.value)) for _, _, oid in tree)
     except FileNotFoundError:
         return None
 
@@ -317,7 +313,7 @@ def _merge(ancestor, our, their, allowed=None):
     except KeyError as e:
         # todo: fails if both diffs delete the same object
         raise MergeError(
-            "unable to auto-merge the following paths:" f"\nboth deleted: {e}"
+            f"unable to auto-merge the following paths:\nboth deleted: {e}"
         )
     unmergeable = list(diff(patch_ours_first, patch_theirs_first))
     if unmergeable:
@@ -325,8 +321,7 @@ def _merge(ancestor, our, their, allowed=None):
         for paths in patch(unmergeable, {}):
             unmergeable_paths.append(posixpath.join(*paths))
         raise MergeError(
-            "unable to auto-merge the following paths:\n"
-            + "\n".join(unmergeable_paths)
+            "unable to auto-merge the following paths:\n" + "\n".join(unmergeable_paths)
         )
     return patch_ours_first
 

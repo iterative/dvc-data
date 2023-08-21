@@ -82,9 +82,9 @@ def _create_files(  # noqa: C901
     if index is None:
         return
 
-    by_storage: Dict[
-        "Storage", List[Tuple["DataIndexEntry", str, str]]
-    ] = defaultdict(list)
+    by_storage: Dict["Storage", List[Tuple["DataIndexEntry", str, str]]] = defaultdict(
+        list
+    )
     for entry in entries:
         dest_path = fs.path.join(path, *entry.key)
         storage_info = index.storage_map[entry.key]
@@ -135,7 +135,7 @@ def _create_files(  # noqa: C901
         )
 
         if state:
-            for (entry, _, dest_path) in args:
+            for entry, _, dest_path in args:
                 if not entry.hash_info:
                     continue
 
@@ -359,9 +359,7 @@ def apply(
             cb = Callback.as_tqdm_callback(desc=desc, unit="file")
         with cb:
             diff.files_create = list(
-                _prune_existing_versions(
-                    diff.files_create, fs, path, callback=cb
-                )
+                _prune_existing_versions(diff.files_create, fs, path, callback=cb)
             )
 
     if onerror is None:
@@ -410,9 +408,7 @@ def _prune_existing_versions(
             yield entry
         else:
             entry_path = fs.path.join(path, *entry.key)
-            versioned_path = fs.path.version_path(
-                entry_path, entry.meta.version_id
-            )
+            versioned_path = fs.path.version_path(entry_path, entry.meta.version_id)
             query_vers[versioned_path] = entry
     for path, exists in batch_exists(
         fs, query_vers.keys(), batch_size=jobs, callback=callback

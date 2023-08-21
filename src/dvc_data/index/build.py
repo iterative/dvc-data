@@ -24,9 +24,7 @@ def build_entry(
         info = fs.info(path)
 
     if compute_hash and info["type"] != "directory":
-        meta, hash_info = hash_file(
-            path, fs, hash_name, state=state, info=info
-        )
+        meta, hash_info = hash_file(path, fs, hash_name, state=state, info=info)
     else:
         meta, hash_info = Meta.from_info(info, fs.protocol), None
 
@@ -73,9 +71,7 @@ def build_entries(
             yield entry
 
 
-def build(
-    path: str, fs: "FileSystem", ignore: Optional["Ignore"] = None
-) -> DataIndex:
+def build(path: str, fs: "FileSystem", ignore: Optional["Ignore"] = None) -> DataIndex:
     index = DataIndex()
 
     index.storage_map.add_data(FileStorage(key=(), fs=fs, path=path))

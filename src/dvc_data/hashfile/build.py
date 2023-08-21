@@ -151,9 +151,7 @@ def _build_tree(
 _url_cache: Dict[str, str] = {}
 
 
-def _make_staging_url(
-    fs: "FileSystem", odb: "HashFileDB", path: Optional[str]
-):
+def _make_staging_url(fs: "FileSystem", odb: "HashFileDB", path: Optional[str]):
     from dvc_objects.fs import Schemes
 
     url = f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}-{odb.hash_name}"

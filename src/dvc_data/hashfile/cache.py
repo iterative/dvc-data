@@ -56,9 +56,7 @@ class Cache(diskcache.Cache):
         **settings: Any,
     ) -> None:
         settings.setdefault("disk_pickle_protocol", 4)
-        super().__init__(
-            directory=directory, timeout=timeout, disk=disk, **settings
-        )
+        super().__init__(directory=directory, timeout=timeout, disk=disk, **settings)
         self.disk._type = self._type = type or os.path.basename(self.directory)
 
     def __getstate__(self):

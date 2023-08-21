@@ -218,12 +218,8 @@ def _diff(
                 or new_info.get("type") == "directory"
             ):
                 kwargs = {"shallow": shallow, "with_unknown": with_unknown}
-                old_dir_items, old_unknown = _get_items(
-                    old, key, old_entry, **kwargs
-                )
-                new_dir_items, new_unknown = _get_items(
-                    new, key, new_entry, **kwargs
-                )
+                old_dir_items, old_unknown = _get_items(old, key, old_entry, **kwargs)
+                new_dir_items, new_unknown = _get_items(new, key, new_entry, **kwargs)
                 dir_unknown = old_unknown or new_unknown
                 todo.append((old_dir_items, new_dir_items, dir_unknown))
 

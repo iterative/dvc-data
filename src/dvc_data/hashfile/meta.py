@@ -34,9 +34,7 @@ class Meta:
     remote: Optional[str] = field(default=None, eq=False)
 
     @classmethod
-    def from_info(
-        cls, info: Dict[str, Any], protocol: Optional[str] = None
-    ) -> "Meta":
+    def from_info(cls, info: Dict[str, Any], protocol: Optional[str] = None) -> "Meta":
         etag = info.get("etag")
         checksum = info.get("checksum")
 

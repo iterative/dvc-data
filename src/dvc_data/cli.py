@@ -204,10 +204,7 @@ def gentree(
     file_size = round(human_readable_to_bytes(size) / num)
 
     path.mkdir(parents=True)
-    print(
-        f"{total_dirs=}, {dirs_per_dir=}, {files_per_dir=}, "
-        f"{file_size=}, {depth=}"
-    )
+    print(f"{total_dirs=}, {dirs_per_dir=}, {files_per_dir=}, {file_size=}, {depth=}")
     random.seed(seed)
     _gentree(path, dirs_per_dir, files_per_dir, file_size, depth=depth)
 
@@ -232,9 +229,7 @@ def get_odb(**config):
         raise typer.Abort(1)
 
     if "state" not in config:
-        config.setdefault(
-            "state", State(root_dir=repo.root, tmp_dir=repo.tmp_dir)
-        )
+        config.setdefault("state", State(root_dir=repo.root, tmp_dir=repo.tmp_dir))
     return HashFileDB(repo.fs, repo.object_dir, **config)
 
 
@@ -359,9 +354,7 @@ def rm(oid: str = typer.Argument(..., allow_dash=True)):
     odb.delete(oid)
 
 
-@app.command(
-    help="Count objects and their disk consumption", no_args_is_help=False
-)
+@app.command(help="Count objects and their disk consumption", no_args_is_help=False)
 def count_objects():
     odb = get_odb()
     it = (odb.fs.size(odb.oid_to_path(oid)) for oid in odb.all())
@@ -489,9 +482,7 @@ def apply_op(odb, obj, application):
     if op in ("add", "modify"):
         new = tuple(application["to"].split("/"))
         if op == "add" and new in obj._dict:
-            raise FileExistsError(
-                errno.EEXIST, os.strerror(errno.EEXIST), path
-            )
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path)
 
         fs = LocalFileSystem()
         _, meta, new_obj = _build(odb, path, fs, "md5")
@@ -552,9 +543,7 @@ cl_path_dash = click.Path(
     help="Modify file with specified local path to a given path in the tree",
 )
 @multi_value("--move", type=(str, str), help="Move a file in the tree")
-@multi_value(
-    "--copy", type=(str, str), help="Copy path from a tree to another path"
-)
+@multi_value("--copy", type=(str, str), help="Copy path from a tree to another path")
 @multi_value("--remove", type=str, help="Remove path from a tree")
 @multi_value("--test", type=str, help="Check for the existence of the path")
 def update_tree(oid, patch_file, add, modify, move, copy, remove, test):
@@ -605,9 +594,7 @@ def checkout(
     path: Path = typer.Argument(..., resolve_path=True),
     relink: bool = False,
     force: bool = False,
-    type: List[LinkEnum] = typer.Option(  # pylint: disable=redefined-builtin
-        ["copy"]
-    ),
+    type: List[LinkEnum] = typer.Option(["copy"]),  # pylint: disable=redefined-builtin
 ):
     odb = get_odb(type=[t.value for t in type])
     oid = from_shortoid(odb, oid)

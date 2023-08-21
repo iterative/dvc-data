@@ -92,9 +92,7 @@ class Dos2UnixHashStreamFile(HashStreamFile):
         return chunk
 
 
-def get_hash_stream(
-    fobj: BinaryIO, name: str = DEFAULT_ALGORITHM
-) -> HashStreamFile:
+def get_hash_stream(fobj: BinaryIO, name: str = DEFAULT_ALGORITHM) -> HashStreamFile:
     cls = Dos2UnixHashStreamFile if name == "md5-dos2unix" else HashStreamFile
     return cls(fobj, hash_name=name)
 

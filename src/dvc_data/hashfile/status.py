@@ -43,8 +43,7 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
         missing_dirs = indexed_dirs.difference(indexed_dir_exists)
         if missing_dirs:
             logger.debug(
-                "Remote cache missing indexed .dir hashes '%s', "
-                "clearing remote index",
+                "Remote cache missing indexed .dir hashes '%s', clearing remote index",
                 ", ".join(missing_dirs),
             )
             index.clear()
@@ -132,9 +131,7 @@ def status(
     if index and hashes:
         if dir_objs:
             exists = hashes.intersection(
-                _indexed_dir_hashes(
-                    odb, index, dir_objs, name, cache_odb, jobs=jobs
-                )
+                _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=jobs)
             )
             hashes.difference_update(exists)
         if hashes:
@@ -145,9 +142,7 @@ def status(
         from ._progress import QueryingProgress
 
         with QueryingProgress(phase="Checking", name=odb.path) as pbar:
-            exists.update(
-                odb.oids_exist(hashes, jobs=jobs, progress=pbar.callback)
-            )
+            exists.update(odb.oids_exist(hashes, jobs=jobs, progress=pbar.callback))
     return StatusResult(
         {hash_infos[hash_] for hash_ in exists},
         {hash_infos[hash_] for hash_ in (hashes - exists)},
