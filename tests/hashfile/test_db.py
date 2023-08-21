@@ -8,4 +8,4 @@ def test_db(tmp_upath, as_filesystem):
     assert list(odb.all()) == []
 
     obj = odb.get("123456")
-    assert type(obj) == HashFile
+    assert isinstance(obj, HashFile)

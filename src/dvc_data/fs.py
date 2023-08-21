@@ -41,7 +41,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return ()
 
         key = self.path.relparts(path, self.root_marker)
-        if key == (".") or key == (""):
+        if key == (".",) or key == ("",):
             key = ()
 
         return key
@@ -51,9 +51,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         info = self.info(path)
         if info["type"] == "directory":
-            raise IsADirectoryError(
-                errno.EISDIR, os.strerror(errno.EISDIR), path
-            )
+            raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path)
 
         entry = info["entry"]
 
@@ -71,9 +69,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 if fs.exists(fs_path):
                     return typ, storage, info.cache, fs, fs_path
 
-        raise FileNotFoundError(
-            errno.ENOENT, "No storage files available", path
-        )
+        raise FileNotFoundError(errno.ENOENT, "No storage files available", path)
 
     def _cache_remote_file(
         self,

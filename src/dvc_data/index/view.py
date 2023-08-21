@@ -85,9 +85,7 @@ class DataIndexView(BaseDataIndex):
                 if key and value:
                     yield key, value
                     if ensure_loaded:
-                        yield from self._load_dir_keys(
-                            key, value, shallow=shallow
-                        )
+                        yield from self._load_dir_keys(key, value, shallow=shallow)
 
     def _load_dir_keys(
         self,
@@ -104,9 +102,7 @@ class DataIndexView(BaseDataIndex):
             and entry.hash_info.isdir
             and not entry.loaded
         ):
-            self._index._load(  # pylint: disable=protected-access
-                prefix, entry
-            )
+            self._index._load(prefix, entry)  # pylint: disable=protected-access
             if not shallow:
                 yield from (
                     (key, val)
@@ -119,9 +115,7 @@ class DataIndexView(BaseDataIndex):
         prefix: Optional[DataIndexKey] = None,
         shallow: Optional[bool] = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
-        return self._iteritems(
-            prefix=prefix, shallow=shallow, ensure_loaded=True
-        )
+        return self._iteritems(prefix=prefix, shallow=shallow, ensure_loaded=True)
 
     def traverse(self, node_factory: Callable, **kwargs) -> Any:
         def _node_factory(path_conv, key, children, *args):
@@ -132,9 +126,7 @@ class DataIndexView(BaseDataIndex):
         return self._index.traverse(_node_factory, **kwargs)
 
     def ls(self, root_key: DataIndexKey, detail=True):
-        self._index._ensure_loaded(  # pylint: disable=protected-access
-            root_key
-        )
+        self._index._ensure_loaded(root_key)  # pylint: disable=protected-access
 
         def _filter_fn(entry):
             key = entry[0] if detail else entry
@@ -158,8 +150,6 @@ class DataIndexView(BaseDataIndex):
         return (None, None)
 
 
-def view(
-    index: DataIndex, filter_fn: Callable[[DataIndexKey], bool]
-) -> DataIndexView:
+def view(index: DataIndex, filter_fn: Callable[[DataIndexKey], bool]) -> DataIndexView:
     """Return read-only filtered view of an index."""
     return DataIndexView(index, filter_fn=filter_fn)

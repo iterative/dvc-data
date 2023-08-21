@@ -89,15 +89,12 @@ def _do_transfer(
         bound_file_ids = all_file_ids & entry_ids
         all_file_ids -= entry_ids
 
-        logger.debug(
-            "transfer dir: %s with %d files", dir_hash, len(bound_file_ids)
-        )
+        logger.debug("transfer dir: %s with %d files", dir_hash, len(bound_file_ids))
 
         dir_fails = _add(src, dest, bound_file_ids, **kwargs)
         if dir_fails:
             logger.debug(
-                "failed to upload full contents of '%s', "
-                "aborting .dir file upload",
+                "failed to upload full contents of '%s', aborting .dir file upload",
                 dir_hash,
             )
             logger.debug(
@@ -113,8 +110,7 @@ def _do_transfer(
             # push whatever file content we have, but should not
             # push .dir file
             logger.debug(
-                "directory '%s' contains missing files,"
-                "skipping .dir file upload",
+                "directory '%s' contains missing files, skipping .dir file upload",
                 dir_hash,
             )
         else:
@@ -151,7 +147,6 @@ def _add(
     hash_infos: Iterable["HashInfo"],
     **kwargs,
 ) -> Set["HashInfo"]:
-
     failed: Set["HashInfo"] = set()
     if not hash_infos:
         return failed

@@ -3,13 +3,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
-from .index import (
-    DataIndex,
-    DataIndexEntry,
-    FileStorage,
-    ObjectStorage,
-    StorageInfo,
-)
+from .index import DataIndex, DataIndexEntry, FileStorage, ObjectStorage, StorageInfo
 
 if TYPE_CHECKING:
     from dvc_objects.fs.callbacks import Callback
@@ -129,9 +123,7 @@ def collect(  # noqa: C901
                 elif isinstance(cache, ObjectStorage):
                     fs_cache = ObjectStorage(key=(), odb=cache.odb)
                 else:
-                    fs_cache = FileStorage(
-                        key=(), fs=cache.fs, path=cache.path
-                    )
+                    fs_cache = FileStorage(key=(), fs=cache.fs, path=cache.path)
 
                 if not remote:
                     fs_remote = None

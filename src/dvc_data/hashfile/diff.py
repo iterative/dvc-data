@@ -84,9 +84,7 @@ def diff(  # noqa: C901
     def _get_keys(obj):
         if not obj:
             return []
-        return [ROOT] + (
-            [key for key, _, _ in obj] if isinstance(obj, Tree) else []
-        )
+        return [ROOT] + ([key for key, _, _ in obj] if isinstance(obj, Tree) else [])
 
     old_keys = set(_get_keys(old))
     new_keys = set(_get_keys(new))

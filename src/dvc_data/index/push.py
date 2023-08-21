@@ -38,9 +38,7 @@ def push(
             cb = callback
 
         with cb:
-            if isinstance(cache, ObjectStorage) and isinstance(
-                data, ObjectStorage
-            ):
+            if isinstance(cache, ObjectStorage) and isinstance(data, ObjectStorage):
                 result = transfer(
                     cache.odb,
                     data.odb,

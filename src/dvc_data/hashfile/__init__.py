@@ -26,9 +26,7 @@ def load(odb: "HashFileDB", hash_info: "HashInfo") -> "HashFile":
     return odb.get(cast(str, hash_info.value))
 
 
-def iterobjs(
-    obj: Union["Tree", "HashFile"]
-) -> Iterator[Union["Tree", "HashFile"]]:
+def iterobjs(obj: Union["Tree", "HashFile"]) -> Iterator[Union["Tree", "HashFile"]]:
     if isinstance(obj, Tree):
         yield from (entry_obj for _, entry_obj in obj)
     yield obj

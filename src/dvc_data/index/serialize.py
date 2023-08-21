@@ -28,10 +28,7 @@ def read_db(path: str) -> DataIndex:
 def write_json(index: DataIndex, path: str) -> None:
     with open(path, "w", encoding="utf-8") as fobj:
         json.dump(
-            {
-                "/".join(key): entry.to_dict()
-                for key, entry in index.iteritems()
-            },
+            {"/".join(key): entry.to_dict() for key, entry in index.iteritems()},
             fobj,
         )
 
@@ -39,7 +36,7 @@ def write_json(index: DataIndex, path: str) -> None:
 def read_json(path: str) -> DataIndex:
     index = DataIndex()
 
-    with open(path, "r", encoding="utf-8") as fobj:
+    with open(path, encoding="utf-8") as fobj:
         for key, value in json.load(fobj).items():
             entry = DataIndexEntry.from_dict(value)
             entry.key = tuple(key.split("/"))  # type: ignore

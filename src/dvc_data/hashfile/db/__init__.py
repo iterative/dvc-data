@@ -42,14 +42,11 @@ def get_index(odb) -> "ObjectDBIndexBase":
     cls = ObjectDBIndex if odb.tmp_dir else ObjectDBIndexNoop
     return cls(
         odb.tmp_dir,
-        hashlib.sha256(
-            odb.fs.unstrip_protocol(odb.path).encode("utf-8")
-        ).hexdigest(),
+        hashlib.sha256(odb.fs.unstrip_protocol(odb.path).encode("utf-8")).hexdigest(),
     )
 
 
 class HashFileDB(ObjectDB):
-
     DEFAULT_VERIFY = False
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None

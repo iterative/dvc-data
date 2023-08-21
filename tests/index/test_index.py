@@ -89,17 +89,13 @@ def test_fs_file_storage(tmp_upath, as_filesystem):
     assert fs.exists("foo")
     assert fs.cat("foo") == b"foo\n"
     assert sorted(fs.ls("/", detail=False)) == sorted(["/foo", "/data"])
-    assert sorted(
-        fs.ls("/", detail=True), key=lambda entry: entry["name"]
-    ) == sorted(
+    assert sorted(fs.ls("/", detail=True), key=lambda entry: entry["name"]) == sorted(
         [fs.info("/foo"), fs.info("/data")],
         key=lambda entry: entry["name"],
     )
     assert fs.cat("/data/bar") == b"bar\n"
     assert fs.cat("/data/baz") == b"baz\n"
-    assert sorted(fs.ls("/data", detail=False)) == sorted(
-        ["/data/bar", "/data/baz"]
-    )
+    assert sorted(fs.ls("/data", detail=False)) == sorted(["/data/bar", "/data/baz"])
     assert sorted(
         fs.ls("/data", detail=True), key=lambda entry: entry["name"]
     ) == sorted(

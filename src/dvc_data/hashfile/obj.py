@@ -11,9 +11,7 @@ if TYPE_CHECKING:
 class HashFile(Object):
     __slots__ = ("hash_info",)
 
-    def __init__(
-        self, path: "AnyFSPath", fs: "FileSystem", hash_info: "HashInfo"
-    ):
+    def __init__(self, path: "AnyFSPath", fs: "FileSystem", hash_info: "HashInfo"):
         assert hash_info.value
         oid = hash_info.value
         super().__init__(path, fs, oid)

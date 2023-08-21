@@ -22,14 +22,10 @@ logger = logging.getLogger(__name__)
 
 def _log_missing(status: "CompareStatusResult"):
     if status.missing:
-        missing_desc = "\n".join(
-            f"{hash_info}" for hash_info in status.missing
-        )
+        missing_desc = "\n".join(f"{hash_info}" for hash_info in status.missing)
         logger.warning(
-            (
-                "Some of the cache files do not exist neither locally "
-                "nor on remote. Missing cache files:\n%s"
-            ),
+            "Some of the cache files do not exist neither locally "
+            "nor on remote. Missing cache files:\n%s",
             missing_desc,
         )
 
@@ -58,15 +54,11 @@ def fetch(
             data.fs.exists(data.path)
         except Exception:  # pylint: disable=W0703
             failed += len(fs_index)
-            logger.exception(
-                f"failed to connect to {data.fs.protocol} ({data.path})"
-            )
+            logger.exception(f"failed to connect to {data.fs.protocol} ({data.path})")
             continue
 
         with cb:
-            if isinstance(cache, ObjectStorage) and isinstance(
-                data, ObjectStorage
-            ):
+            if isinstance(cache, ObjectStorage) and isinstance(data, ObjectStorage):
                 result = transfer(
                     data.odb,
                     cache.odb,
@@ -90,9 +82,7 @@ def fetch(
             else:
                 old = build(cache.path, cache.fs)
                 diff = compare(old, fs_index)
-                cache.fs.makedirs(
-                    cache.fs.path.parent(cache.path), exist_ok=True
-                )
+                cache.fs.makedirs(cache.fs.path.parent(cache.path), exist_ok=True)
                 apply(
                     diff,
                     cache.path,

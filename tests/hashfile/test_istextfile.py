@@ -11,8 +11,10 @@ pytestmark = pytest.mark.parametrize(
         (b"text", True),
         (b"\x00\x001", False),
         (
-            b"True\x80\x04\x95\x1a\x00\x00\x00\x00\x00\x00\x00\x8c\x08\r\n"
-            b"__main__\x94\x8c\x06Animal\x94\x93\x94)\x81\x94.",
+            (
+                b"True\x80\x04\x95\x1a\x00\x00\x00\x00\x00\x00\x00\x8c\x08\r\n"
+                b"__main__\x94\x8c\x06Animal\x94\x93\x94)\x81\x94."
+            ),
             False,
         ),
     ],

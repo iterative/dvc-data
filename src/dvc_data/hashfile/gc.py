@@ -13,9 +13,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
         used_hashes.add(hash_info.value)
         if hash_info.isdir and not shallow:
             tree = Tree.load(cache_odb, hash_info)
-            used_hashes.update(
-                entry_obj.hash_info.value for _, entry_obj in tree
-            )
+            used_hashes.update(entry_obj.hash_info.value for _, entry_obj in tree)
 
     def _is_dir_hash(_hash):
         from .hash_info import HASH_DIR_SUFFIX

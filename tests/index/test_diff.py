@@ -3,15 +3,7 @@ import pytest
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 from dvc_data.index import DataIndex, DataIndexEntry
-from dvc_data.index.diff import (
-    ADD,
-    DELETE,
-    MODIFY,
-    RENAME,
-    UNCHANGED,
-    Change,
-    diff,
-)
+from dvc_data.index.diff import ADD, DELETE, MODIFY, RENAME, UNCHANGED, Change, diff
 
 
 def test_diff():
@@ -19,9 +11,7 @@ def test_diff():
     old_foo_entry = DataIndexEntry(
         key=old_foo_key,
         meta=Meta(),
-        hash_info=HashInfo(
-            name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
-        ),
+        hash_info=HashInfo(name="md5", value="d3b07384d113edec49eaa6238ad5ff00"),
     )
     old_bar_key = ("dir", "subdir", "bar")
     old_bar_entry = DataIndexEntry(
@@ -47,9 +37,7 @@ def test_diff():
     new_foo_entry = DataIndexEntry(
         key=new_foo_key,
         meta=Meta(),
-        hash_info=HashInfo(
-            name="md5", value="d3b07384d113edec49eaa6238ad5ff00"
-        ),
+        hash_info=HashInfo(name="md5", value="d3b07384d113edec49eaa6238ad5ff00"),
     )
     new = DataIndex(
         {
@@ -150,9 +138,7 @@ def test_diff_combined(typ, left_meta, left_hi, right_meta, right_hi):
     # diff should return UNCHANGED if both meta and hash info match,
     # but MODIFY if they don't since entries still exist
     assert list(diff(old, new, with_unchanged=True)) == [
-        Change(
-            UNCHANGED if typ == UNCHANGED else MODIFY, old_entry, new_entry
-        ),
+        Change(UNCHANGED if typ == UNCHANGED else MODIFY, old_entry, new_entry),
     ]
 
     # diff should return UNCHANGED if both meta and hash info match,
@@ -160,9 +146,7 @@ def test_diff_combined(typ, left_meta, left_hi, right_meta, right_hi):
     old_entry.meta = None
     new_entry.meta = None
     assert list(diff(old, new, with_unchanged=True)) == [
-        Change(
-            UNCHANGED if typ == UNCHANGED else MODIFY, old_entry, new_entry
-        ),
+        Change(UNCHANGED if typ == UNCHANGED else MODIFY, old_entry, new_entry),
     ]
 
     # diff should return meta diff when both hash infos are None

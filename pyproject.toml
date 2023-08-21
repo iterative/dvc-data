@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 
 [tool.black]
-line-length = 79
+line-length = 88
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -25,7 +25,7 @@ exclude = '''
 [tool.isort]
 profile = "black"
 known_first_party = ["dvc_data"]
-line_length = 79
+line_length = 88
 
 [tool.pytest.ini_options]
 addopts = "-ra -Werror --benchmark-skip"
@@ -67,6 +67,9 @@ files = ["src", "tests"]
 [tool.pylint.master]
 extension-pkg-whitelist = ["blake3"]
 
+[tool.pylint.format]
+max-line-length = 88
+
 [tool.pylint.message_control]
 enable = ["c-extension-no-member", "no-else-return"]
 disable = [
@@ -85,6 +88,9 @@ ignored-classes = ["attr._make._CountingAttr"]
 [tool.pylint.variables]
 dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_"
 ignored-argument-names = "_.*|^ignored_|^unused_|args|kwargs"
+
+[tool.codespell]
+ignore-words-list = "fo"
 
 [tool.bandit]
 exclude_dirs = ["tests"]

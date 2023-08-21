@@ -151,9 +151,7 @@ def test_nfiles(trie_dict, nfiles):
 def test_items(trie_dict):
     tree = Tree()
     tree._dict = trie_dict  # pylint:disable=protected-access
-    assert list(tree) == [
-        (key, value[0], value[1]) for key, value in trie_dict.items()
-    ]
+    assert list(tree) == [(key, value[0], value[1]) for key, value in trie_dict.items()]
 
 
 @pytest.mark.parametrize(
@@ -268,46 +266,46 @@ def test_items(trie_dict):
         ),
         (
             {
-                ("foo"): HashInfo("md5", "123"),
-                ("bar"): HashInfo("md5", "456"),
+                "foo": HashInfo("md5", "123"),
+                "bar": HashInfo("md5", "456"),
             },
             {
-                ("foo"): HashInfo("md5", "789"),
-                ("bar"): HashInfo("md5", "456"),
+                "foo": HashInfo("md5", "789"),
+                "bar": HashInfo("md5", "456"),
             },
             {
-                ("foo"): HashInfo("md5", "123"),
-                ("bar"): HashInfo("md5", "101112"),
+                "foo": HashInfo("md5", "123"),
+                "bar": HashInfo("md5", "101112"),
             },
             {
-                ("foo"): HashInfo("md5", "789"),
-                ("bar"): HashInfo("md5", "101112"),
+                "foo": HashInfo("md5", "789"),
+                "bar": HashInfo("md5", "101112"),
             },
         ),
         (
             {},
             {
-                ("foo"): HashInfo("md5", "123"),
+                "foo": HashInfo("md5", "123"),
             },
             {
-                ("foo"): HashInfo("md5", "123"),
+                "foo": HashInfo("md5", "123"),
             },
             {
-                ("foo"): HashInfo("md5", "123"),
+                "foo": HashInfo("md5", "123"),
             },
         ),
         (
             {
-                ("foo"): HashInfo("md5", "123"),
+                "foo": HashInfo("md5", "123"),
             },
             {
-                ("foo"): HashInfo("md5", "456"),
+                "foo": HashInfo("md5", "456"),
             },
             {
-                ("foo"): HashInfo("md5", "456"),
+                "foo": HashInfo("md5", "456"),
             },
             {
-                ("foo"): HashInfo("md5", "456"),
+                "foo": HashInfo("md5", "456"),
             },
         ),
     ],
@@ -359,22 +357,22 @@ def test_merge(ancestor_dict, our_dict, their_dict, merged_dict):
         ),
         (
             {
-                ("foo"): HashInfo("md5", "123"),
+                "foo": HashInfo("md5", "123"),
                 ("subdir", "foo"): HashInfo("md5", "123"),
             },
             {
-                ("foo"): HashInfo("md5", "123"),
+                "foo": HashInfo("md5", "123"),
                 ("subdir", "foo"): HashInfo("md5", "456"),
             },
             {
-                ("foo"): HashInfo("md5", "123"),
+                "foo": HashInfo("md5", "123"),
             },
             "subdir/foo",
         ),
         (
             {
-                ("foo"): HashInfo("md5", "123"),
-                ("bar"): HashInfo("md5", "456"),
+                "foo": HashInfo("md5", "123"),
+                "bar": HashInfo("md5", "456"),
             },
             {},
             {},

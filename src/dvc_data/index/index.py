@@ -315,9 +315,7 @@ class StorageMapping(MutableMapping):
         info.remote = storage
         self[storage.key] = info
 
-    def get_storage_odb(
-        self, entry: "DataIndexEntry", typ: str
-    ) -> "HashFileDB":
+    def get_storage_odb(self, entry: "DataIndexEntry", typ: str) -> "HashFileDB":
         info = self[entry.key]
         storage = getattr(info, typ)
         if not storage:
@@ -472,17 +470,11 @@ def _load_from_object_storage(trie, root_entry, storage):
     if not root_entry.hash_info or not root_entry.hash_info.isdir:
         raise FileNotFoundError
 
-    obj = Tree.load(
-        storage.odb, root_entry.hash_info, hash_name=storage.odb.hash_name
-    )
+    obj = Tree.load(storage.odb, root_entry.hash_info, hash_name=storage.odb.hash_name)
 
     dirs = set()
     for ikey, (meta, hash_info) in obj.iteritems():
-        if (
-            not meta
-            and root_entry.hash_info
-            and root_entry.hash_info == hash_info
-        ):
+        if not meta and root_entry.hash_info and root_entry.hash_info == hash_info:
             meta = root_entry.meta
 
         if len(ikey) >= 2:
@@ -557,9 +549,7 @@ def _load_from_storage(trie, entry, storage_info):
                 exc_info=True,
             )
 
-    raise DataIndexDirError(
-        f"failed to load directory {entry.key}"
-    ) from last_exc
+    raise DataIndexDirError(f"failed to load directory {entry.key}") from last_exc
 
 
 class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
