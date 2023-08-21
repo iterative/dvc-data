@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Final, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 
-from dvc_data.objects import cached_property
+from dvc_data.utils import cached_property
 
 from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from ..hashfile.meta import Meta

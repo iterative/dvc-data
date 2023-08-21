@@ -10,7 +10,7 @@ from fsspec import AbstractFileSystem
 
 from dvc_data.hashfile.db import HashFileDB
 
-from .objects import cached_property
+from .utils import cached_property
 
 if typing.TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
