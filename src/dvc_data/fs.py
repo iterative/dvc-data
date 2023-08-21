@@ -3,10 +3,12 @@ import errno
 import logging
 import os
 import typing
-from typing import Any, BinaryIO, NamedTuple, Tuple
+from typing import Any, BinaryIO, NamedTuple, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from fsspec import AbstractFileSystem
+
+from dvc_data.hashfile.db import HashFileDB
 
 from .objects import cached_property
 
@@ -15,7 +17,8 @@ if typing.TYPE_CHECKING:
     from dvc_objects.fs.callbacks import Callback
     from dvc_objects.fs.path import Path
 
-    from .index import DataIndex, ObjectStorage
+    from .hashfile.hash_info import HashInfo
+    from .index import DataIndex, DataIndexEntry, ObjectStorage
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,7 @@ class FileInfo(NamedTuple):
     typ: str
     storage: "ObjectStorage"
     cache_storage: "ObjectStorage"
+    hash_info: Optional["HashInfo"]
     fs: "FileSystem"
     fs_path: "AnyFSPath"
 
@@ -62,7 +66,10 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if info["type"] == "directory":
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path)
 
-        entry = info["entry"]
+        entry: Optional["DataIndexEntry"] = info["entry"]
+
+        assert entry
+        hash_info: Optional["HashInfo"] = entry.hash_info
 
         for typ in ["cache", "remote", "data"]:
             try:
@@ -76,7 +83,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             if data:
                 fs, fs_path = data
                 if fs.exists(fs_path):
-                    return FileInfo(typ, storage, info.cache, fs, fs_path)
+                    return FileInfo(typ, storage, info.cache, hash_info, fs, fs_path)
 
         raise FileNotFoundError(errno.ENOENT, "No storage files available", path)
 
@@ -85,25 +92,28 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         cache_storage: "ObjectStorage",
         fs: "FileSystem",
         path: "AnyFSPath",
+        hash_info: Optional["HashInfo"],
     ) -> Tuple["FileSystem", "AnyFSPath"]:
         from dvc_objects.fs.local import LocalFileSystem
 
-        if isinstance(fs, LocalFileSystem):
+        odb: "HashFileDB" = cache_storage.odb
+        oid = hash_info.value if hash_info else None
+        hash_name = hash_info.name if hash_info else None
+        assert odb.hash_name
+
+        if isinstance(fs, LocalFileSystem) or not oid or odb.hash_name != hash_name:
             return fs, path
 
-        from dvc_data.hashfile.build import _upload_file
-
-        cache_odb = cache_storage.odb
-        _, obj = _upload_file(path, fs, cache_odb, cache_odb)
-        return cache_odb.fs, obj.path
+        odb.add(path, fs, oid)
+        return odb.fs, odb.oid_to_path(oid)
 
     def _open(  # pylint: disable=arguments-differ
         self, path: "AnyFSPath", **kwargs: Any
     ) -> "BinaryIO":
-        typ, _, cache_storage, fs, fspath = self._get_fs_path(path)
+        typ, _, cache_storage, hi, fs, fspath = self._get_fs_path(path)
 
         if kwargs.get("cache", False) and typ == "remote" and cache_storage:
-            fs, fspath = self._cache_remote_file(cache_storage, fs, fspath)
+            fs, fspath = self._cache_remote_file(cache_storage, fs, fspath, hi)
 
         return fs.open(fspath, mode="rb")
 
@@ -158,14 +168,14 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         from dvc_data.index import ObjectStorage
 
         try:
-            typ, storage, cache_storage, fs, path = self._get_fs_path(rpath)
+            typ, storage, cache_storage, hi, fs, path = self._get_fs_path(rpath)
         except IsADirectoryError:
             os.makedirs(lpath, exist_ok=True)
             return None
 
         cache = kwargs.pop("cache", False)
         if cache and typ == "remote" and cache_storage:
-            fs, path = self._cache_remote_file(cache_storage, fs, path)
+            fs, path = self._cache_remote_file(cache_storage, fs, path, hi)
 
         if (
             isinstance(storage, ObjectStorage)
