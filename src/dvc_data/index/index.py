@@ -2,7 +2,6 @@ import errno
 import logging
 import os
 from abc import ABC, abstractmethod
-from functools import cached_property
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -18,6 +17,8 @@ from typing import (
 import attrs
 from sqltrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
 from sqltrie import JSONTrie, PyGTrie, SQLiteTrie
+
+from dvc_data.utils import cached_property
 
 from ..hashfile.hash_info import HashInfo
 from ..hashfile.meta import Meta

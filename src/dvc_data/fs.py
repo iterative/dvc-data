@@ -8,7 +8,7 @@ from typing import Any, BinaryIO, NamedTuple, Tuple
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from fsspec import AbstractFileSystem
 
-from .objects import cached_property
+from .utils import cached_property
 
 if typing.TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
