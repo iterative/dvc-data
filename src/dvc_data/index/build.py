@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 
 from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from ..hashfile.meta import Meta
@@ -8,8 +8,9 @@ from .index import DataIndex, DataIndexEntry, FileStorage
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
+    from dvc_data.hashfile.state import StateBase
+
     from ..hashfile._ignore import Ignore
-    from ..state import StateBase
 
 
 def build_entry(
@@ -52,7 +53,7 @@ def build_entries(
 
     for root, dirs, files in walk_iter:
         if root == path:
-            root_key = ()
+            root_key: Tuple[str, ...] = ()
         else:
             root_key = fs.path.relparts(root, path)
 

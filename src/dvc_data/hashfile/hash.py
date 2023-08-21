@@ -181,8 +181,8 @@ def hash_file(
     path: "AnyFSPath",
     fs: "FileSystem",
     name: str,
-    state: "StateBase" = None,
-    callback: "Callback" = None,
+    state: Optional["StateBase"] = None,
+    callback: Optional["Callback"] = None,
     info: Optional[dict] = None,
 ) -> Tuple["Meta", "HashInfo"]:
     if state:

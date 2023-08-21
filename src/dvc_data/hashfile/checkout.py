@@ -12,7 +12,7 @@ from .diff import diff as odiff
 if TYPE_CHECKING:
     from dvc_objects.fs.callbacks import Callback
 
-    from .hashfile._ignore import Ignore
+    from ._ignore import Ignore
 
 logger = logging.getLogger(__name__)
 

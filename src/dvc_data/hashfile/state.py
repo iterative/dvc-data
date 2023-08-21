@@ -74,7 +74,7 @@ def _checksum(info):
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
     HASH_VERSION = 1
 
-    def __init__(self, root_dir=None, tmp_dir=None, ignore: "Ignore" = None):
+    def __init__(self, root_dir=None, tmp_dir=None, ignore: Optional["Ignore"] = None):
         from .cache import Cache
 
         super().__init__()

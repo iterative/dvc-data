@@ -10,6 +10,8 @@ def test_build_entry(tmp_upath, as_filesystem):
 
     entry = build_entry(str(tmp_upath / "foo"), fs)
     assert isinstance(entry, DataIndexEntry)
+
+    assert entry.meta
     assert entry.meta.size == 4
     assert entry.key is None
     assert entry.hash_info is None

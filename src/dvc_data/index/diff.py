@@ -5,8 +5,8 @@ from attrs import define
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
 
 if TYPE_CHECKING:
-    from .hashfile.meta import Meta
-    from .hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.meta import Meta
+    from dvc_data.hashfile.hash_info import HashInfo
     from .index import BaseDataIndex, DataIndexKey
 
 from .index import DataIndexDirError, DataIndexEntry
@@ -49,7 +49,7 @@ def _diff_meta(
     old: Optional["Meta"],
     new: Optional["Meta"],
     *,
-    cmp_key: Optional[Callable[["Meta"], Any]] = None,
+    cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
 ):
     if old is None and new is not None:
         return ADD
@@ -88,7 +88,7 @@ def _diff_entry(
     *,
     hash_only: Optional[bool] = False,
     meta_only: Optional[bool] = False,
-    meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
+    meta_cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
     unknown: Optional[bool] = False,
 ):
     if unknown:
@@ -164,7 +164,7 @@ def _diff(
     with_unknown: Optional[bool] = False,
     hash_only: Optional[bool] = False,
     meta_only: Optional[bool] = False,
-    meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
+    meta_cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
     shallow: Optional[bool] = False,
     callback: Callback = DEFAULT_CALLBACK,
 ):
@@ -287,7 +287,7 @@ def diff(
     with_unknown: Optional[bool] = False,
     hash_only: Optional[bool] = False,
     meta_only: Optional[bool] = False,
-    meta_cmp_key: Optional[Callable[["Meta"], Any]] = None,
+    meta_cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
     shallow: Optional[bool] = False,
     callback: Callback = DEFAULT_CALLBACK,
 ):

@@ -64,7 +64,7 @@ def _delete_files(
     if not entries:
         return
 
-    fs.remove([fs.path.join(path, *entry.key) for entry in entries])
+    fs.remove([fs.path.join(path, *(entry.key or ())) for entry in entries])
 
 
 def _create_files(  # noqa: C901
@@ -405,12 +405,14 @@ def _prune_existing_versions(
     assert fs.version_aware
     query_vers: Dict[str, "DataIndexEntry"] = {}
     jobs = jobs or fs.jobs
+
     for entry in entries:
         assert entry.meta
         if entry.meta.version_id is None:
             yield entry
         else:
-            entry_path = fs.path.join(path, *entry.key)
+            entry_path = fs.path.join(path, *(entry.key or ()))
+            assert hasattr(fs.path, "version_path")
             versioned_path = fs.path.version_path(entry_path, entry.meta.version_id)
             query_vers[versioned_path] = entry
     for path, exists in batch_exists(

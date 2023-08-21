@@ -1,7 +1,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Iterable, Set
+from typing import TYPE_CHECKING, Iterable, Iterator, Set
 
 from dvc_objects.errors import ObjectDBError
 
@@ -17,34 +17,34 @@ class ObjectDBIndexBase(ABC):
         self,
         tmp_dir: "AnyFSPath",
         name: str,
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         pass
 
     @abstractmethod
-    def __contains__(self, hash_):
+    def __contains__(self, hash_: str) -> bool:
         pass
 
-    def hashes(self):
+    def hashes(self) -> Iterator[str]:
         return iter(self)
 
     @abstractmethod
-    def dir_hashes(self):
+    def dir_hashes(self) -> Iterator[str]:
         pass
 
     @abstractmethod
-    def clear(self):
+    def clear(self) -> None:
         pass
 
     @abstractmethod
-    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
+    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]) -> None:
         pass
 
     @abstractmethod
-    def intersection(self, hashes: Set[str]):
+    def intersection(self, hashes: Set[str]) -> Iterator[str]:
         pass
 
 
@@ -55,26 +55,26 @@ class ObjectDBIndexNoop(ObjectDBIndexBase):
         self,
         tmp_dir: "AnyFSPath",
         name: str,
-    ):  # pylint: disable=super-init-not-called
+    ) -> None:  # pylint: disable=super-init-not-called
         pass
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter([])
 
-    def __contains__(self, hash_):
+    def __contains__(self, hash_: str) -> bool:
         return False
 
-    def dir_hashes(self):
-        return []
+    def dir_hashes(self) -> Iterator[str]:
+        yield from []
 
-    def clear(self):
+    def clear(self) -> None:
         pass
 
-    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
+    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]) -> None:
         pass
 
-    def intersection(self, hashes: Set[str]):
-        return []
+    def intersection(self, hashes: Set[str]) -> Iterator[str]:
+        yield from []
 
 
 class ObjectDBIndex(ObjectDBIndexBase):
@@ -87,7 +87,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
         self,
         tmp_dir: "AnyFSPath",
         name: str,
-    ):  # pylint: disable=super-init-not-called
+    ) -> None:  # pylint: disable=super-init-not-called
         from dvc_objects.fs import LocalFileSystem
 
         from ..cache import Cache, Index
@@ -98,17 +98,17 @@ class ObjectDBIndex(ObjectDBIndexBase):
         cache = Cache(self.index_dir, eviction_policy="none", type="index")
         self.index = Index.fromcache(cache)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self.index)
 
-    def __contains__(self, hash_):
+    def __contains__(self, hash_: str) -> bool:
         return hash_ in self.index
 
-    def dir_hashes(self):
+    def dir_hashes(self) -> Iterator[str]:
         """Iterate over .dir hashes stored in the index."""
         yield from (hash_ for hash_, is_dir in self.index.items() if is_dir)
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear this index (to force re-indexing later)."""
         from ..cache import Timeout
 
@@ -117,7 +117,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
         except Timeout as exc:
             raise ObjectDBError("Failed to clear ODB index") from exc
 
-    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
+    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]) -> None:
         """Update this index, adding the specified hashes."""
         from ..cache import Timeout
 
@@ -131,6 +131,6 @@ class ObjectDBIndex(ObjectDBIndexBase):
         except Timeout as exc:
             raise ObjectDBError("Failed to update ODB index") from exc
 
-    def intersection(self, hashes: Set[str]):
+    def intersection(self, hashes: Set[str]) -> Iterator[str]:
         """Iterate over values from `hashes` which exist in the index."""
         yield from hashes.intersection(self.index.keys())

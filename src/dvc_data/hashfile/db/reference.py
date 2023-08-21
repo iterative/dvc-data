@@ -34,7 +34,7 @@ class ReferenceHashFileDB(HashFileDB):
         fs: "FileSystem",
         oid: Union[str, List[str]],
         hardlink: bool = False,
-        callback: "Callback" = None,
+        callback: Optional["Callback"] = None,
         check_exists: bool = True,
         on_error: Optional[Callable[[str, BaseException], None]] = None,
         **kwargs,

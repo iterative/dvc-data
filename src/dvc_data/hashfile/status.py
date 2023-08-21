@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
+from dvc_objects.db import ObjectDB
 from dvc_objects.fs import Schemes
 
 from .hash_info import HashInfo
@@ -26,14 +27,16 @@ class CompareStatusResult(NamedTuple):
     deleted: Set["HashInfo"]
 
 
-def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
+def _indexed_dir_hashes(
+    odb: "ObjectDB", index: "ObjectDBIndexBase", dir_objs, name, cache_odb, jobs=None
+):
     # Validate our index by verifying all indexed .dir hashes
     # still exist on the remote
     from ._progress import QueryingProgress
 
     dir_hashes = set(dir_objs.keys())
     indexed_dirs = set(index.dir_hashes())
-    indexed_dir_exists = set()
+    indexed_dir_exists: Set[str] = set()
     if indexed_dirs:
         hashes = QueryingProgress(
             odb.list_oids_exists(indexed_dirs, jobs=jobs),
