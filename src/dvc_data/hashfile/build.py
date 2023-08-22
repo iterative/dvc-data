@@ -59,7 +59,7 @@ def _upload_file(
             bytes=True,
             size=size,
         ) as cb:
-            fileobj = cast("BinaryIO", HashStreamFile)
+            fileobj = cast("BinaryIO", hashed_stream)
             upload_odb.fs.put_file(fileobj, tmp_info, size=size, callback=cb)
 
     oid = hashed_stream.hash_value
