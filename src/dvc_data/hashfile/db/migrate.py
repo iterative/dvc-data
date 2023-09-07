@@ -56,7 +56,7 @@ def prepare(
         if results:
             paths, oids = zip(*results)
         else:
-            paths, oids = [], []
+            paths, oids = (), ()
     return PreparedMigration(src, dest, list(paths), list(oids))
 
 
