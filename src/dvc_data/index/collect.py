@@ -91,8 +91,13 @@ def collect(  # noqa: C901
             if not data:
                 continue
 
-            # FIXME should use fsid instead of protocol
-            key = (data.fs.protocol, tokenize(data.path))
+            try:
+                fsid = data.fs.fsid
+            except (NotImplementedError, AttributeError):
+                fsid = data.fs.protocol
+
+            key = (fsid, tokenize(data.path))
+
             if key not in storage_by_fs:
                 if cache_index.has_node((*cache_key, *key)):
                     skip.add(key)
