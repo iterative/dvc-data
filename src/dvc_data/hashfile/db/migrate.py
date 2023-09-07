@@ -52,7 +52,11 @@ def prepare(
             state=dest.state,
             callback=callback,
         )
-        paths, oids = zip(*executor.imap_unordered(func, src_paths))
+        results = list(executor.imap_unordered(func, src_paths))
+        if results:
+            paths, oids = zip(*results)
+        else:
+            paths, oids = [], []
     return PreparedMigration(src, dest, list(paths), list(oids))
 
 
