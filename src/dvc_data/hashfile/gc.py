@@ -1,4 +1,4 @@
-def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
+def gc(odb, used, jobs=None, cache_odb=None, shallow=True, dry=False):
     from dvc_objects.errors import ObjectDBPermissionError
 
     from ._progress import QueryingProgress
@@ -20,7 +20,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
 
         return _hash.endswith(HASH_DIR_SUFFIX)
 
-    removed = False
+    removed = 0
 
     dir_paths = []
     file_paths = []
@@ -38,7 +38,8 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
 
     for paths in (dir_paths, file_paths):
         if paths:
-            removed = True
-            odb.fs.remove(paths)
+            removed += len(paths)
+            if not dry:
+                odb.fs.remove(paths)
 
     return removed
