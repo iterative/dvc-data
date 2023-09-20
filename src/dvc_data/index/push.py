@@ -48,9 +48,8 @@ def push(
                         if entry.hash_info
                     ],
                     jobs=jobs,
-                    src_index=get_index(cache.odb),
+                    dest_index=get_index(data.odb),
                     cache_odb=data.odb,
-                    verify=cache.odb.verify,
                     validate_status=_log_missing,
                     callback=cb,
                 )
