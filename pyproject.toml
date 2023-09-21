@@ -75,6 +75,7 @@ module = [
     "diskcache",
     "pygtrie",
     "dictdiffer",
+    "shortuuid.*",
 ]
 
 [tool.pylint.master]
