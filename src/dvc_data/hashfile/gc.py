@@ -20,7 +20,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True, dry=False):
 
         return _hash.endswith(HASH_DIR_SUFFIX)
 
-    removed = 0
+    num_removed = 0
 
     dir_paths = []
     file_paths = []
@@ -38,8 +38,8 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True, dry=False):
 
     for paths in (dir_paths, file_paths):
         if paths:
-            removed += len(paths)
+            num_removed += len(paths)
             if not dry:
                 odb.fs.remove(paths)
 
-    return removed
+    return num_removed
