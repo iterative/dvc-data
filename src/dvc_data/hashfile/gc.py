@@ -1,4 +1,18 @@
-def gc(odb, used, jobs=None, cache_odb=None, shallow=True, dry=False):
+from typing import TYPE_CHECKING, Iterable, Optional
+
+if TYPE_CHECKING:
+    from .db import HashFileDB
+    from .hash_info import HashInfo
+
+
+def gc(
+    odb: "HashFileDB",
+    used: Iterable["HashInfo"],
+    jobs: Optional[int] = None,
+    cache_odb: Optional["HashFileDB"] = None,
+    shallow: bool = True,
+    dry: bool = False,
+):
     from dvc_objects.errors import ObjectDBPermissionError
 
     from ._progress import QueryingProgress
@@ -10,6 +24,8 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True, dry=False):
         cache_odb = odb
     used_hashes = set()
     for hash_info in used:
+        if hash_info.name != odb.hash_name:
+            continue
         used_hashes.add(hash_info.value)
         if hash_info.isdir and not shallow:
             tree = Tree.load(cache_odb, hash_info)
