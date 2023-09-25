@@ -11,6 +11,7 @@ def gc(
     jobs: Optional[int] = None,
     cache_odb: Optional["HashFileDB"] = None,
     shallow: bool = True,
+    dry: bool = False,
 ):
     from dvc_objects.errors import ObjectDBPermissionError
 
@@ -35,7 +36,7 @@ def gc(
 
         return _hash.endswith(HASH_DIR_SUFFIX)
 
-    removed = False
+    num_removed = 0
 
     dir_paths = []
     file_paths = []
@@ -53,7 +54,8 @@ def gc(
 
     for paths in (dir_paths, file_paths):
         if paths:
-            removed = True
-            odb.fs.remove(paths)
+            num_removed += len(paths)
+            if not dry:
+                odb.fs.remove(paths)
 
-    return removed
+    return num_removed
