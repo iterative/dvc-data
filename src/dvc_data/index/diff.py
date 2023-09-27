@@ -167,19 +167,22 @@ def _diff(
     meta_cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
     shallow: Optional[bool] = False,
     callback: Callback = DEFAULT_CALLBACK,
+    start: Optional["DataIndexKey"] = None,
 ):
     old_root_items = {}
     new_root_items = {}
 
+    start = start or ()
+
     if old is not None:
         try:
-            old_root_items[()] = old.info(())
+            old_root_items[start] = old.info(start)
         except FileNotFoundError:
             pass
 
     if new is not None:
         try:
-            new_root_items[()] = new.info(())
+            new_root_items[start] = new.info(start)
         except FileNotFoundError:
             pass
 
@@ -290,6 +293,7 @@ def diff(
     meta_cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
     shallow: Optional[bool] = False,
     callback: Callback = DEFAULT_CALLBACK,
+    start: Optional["DataIndexKey"] = None,
 ):
     changes = _diff(
         old,
@@ -301,6 +305,7 @@ def diff(
         meta_cmp_key=meta_cmp_key,
         shallow=shallow,
         callback=callback,
+        start=start,
     )
 
     if with_renames and old is not None and new is not None:
