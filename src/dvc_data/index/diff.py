@@ -1,5 +1,5 @@
 from collections import deque
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Deque, Iterable, Optional, Tuple
 
 from attrs import define
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
@@ -167,26 +167,29 @@ def _diff(
     meta_cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
     shallow: Optional[bool] = False,
     callback: Callback = DEFAULT_CALLBACK,
-    start: Optional["DataIndexKey"] = None,
+    roots: Optional[Iterable["DataIndexKey"]] = None,
 ):
-    old_root_items = {}
-    new_root_items = {}
+    roots = roots or [()]
+    todo: Deque[Tuple[dict, dict, bool]] = deque()
 
-    start = start or ()
+    for root in roots:
+        old_root_items = {}
+        new_root_items = {}
 
-    if old is not None:
-        try:
-            old_root_items[start] = old.info(start)
-        except FileNotFoundError:
-            pass
+        if old is not None:
+            try:
+                old_root_items[root] = old.info(root)
+            except KeyError:
+                pass
 
-    if new is not None:
-        try:
-            new_root_items[start] = new.info(start)
-        except FileNotFoundError:
-            pass
+        if new is not None:
+            try:
+                new_root_items[root] = new.info(root)
+            except KeyError:
+                pass
 
-    todo = deque([(old_root_items, new_root_items, False)])
+        todo.append((old_root_items, new_root_items, False))
+
     while todo:
         old_items, new_items, unknown = todo.popleft()
         for key in callback.wrap(old_items.keys() | new_items.keys()):
@@ -293,7 +296,7 @@ def diff(
     meta_cmp_key: Optional[Callable[[Optional["Meta"]], Any]] = None,
     shallow: Optional[bool] = False,
     callback: Callback = DEFAULT_CALLBACK,
-    start: Optional["DataIndexKey"] = None,
+    roots: Optional[Iterable["DataIndexKey"]] = None,
 ):
     changes = _diff(
         old,
@@ -305,7 +308,7 @@ def diff(
         meta_cmp_key=meta_cmp_key,
         shallow=shallow,
         callback=callback,
-        start=start,
+        roots=roots,
     )
 
     if with_renames and old is not None and new is not None:
