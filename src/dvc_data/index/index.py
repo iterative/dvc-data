@@ -43,6 +43,13 @@ class DataIndexEntry:
 
     loaded: Optional[bool] = None
 
+    @property
+    def isdir(self) -> bool:
+        if self.meta:
+            return self.meta.isdir
+
+        return False
+
     @classmethod
     def from_dict(cls, d: Dict[str, Dict]) -> "DataIndexEntry":
         ret = cls()
