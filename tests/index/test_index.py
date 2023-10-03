@@ -562,3 +562,29 @@ def test_update(tmp_upath, odb, as_filesystem):
         "md5",
         "258622b1688250cb619f3c9ccaefb7eb",
     )
+
+
+def test_open(tmp_path):
+    path = str(tmp_path / "index")
+    index = DataIndex.open(path)
+
+    assert not list(index.iteritems())
+
+    key = ("foo",)
+    entry1 = DataIndexEntry(key=key, meta=Meta(isdir=True))
+    index[key] = entry1
+    assert index[key] == entry1
+
+    entry2 = DataIndexEntry(key=key)
+    index[key] = entry2
+    assert index[key] == entry2
+
+    index.commit()
+    index.close()
+
+    index = DataIndex.open(path)
+    index[key] = entry2
+    assert index[key] == entry2
+
+    index[key] = entry1
+    assert index[key] == entry1
