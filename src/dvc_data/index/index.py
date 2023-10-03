@@ -116,6 +116,10 @@ class DataIndexTrie(JSONTrie):
             return None
         return super()._dump(key, value.to_dict())
 
+    def __setitem__(self, key, value):
+        self._cache.pop(key, None)
+        super().__setitem__(key, value)
+
     def __delitem__(self, key):
         self._cache.pop(key, None)
         super().__delitem__(key)
