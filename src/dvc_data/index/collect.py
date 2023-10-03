@@ -23,6 +23,7 @@ def _collect_from_index(
 ):
     entries = {}
 
+    dir_keys = set()
     try:
         for _, entry in index.iteritems(prefix):
             callback.relative_update()
@@ -31,11 +32,10 @@ def _collect_from_index(
             except ValueError:
                 continue
 
-            loaded = False
-            if entry.meta and entry.meta.isdir:
+            if entry.meta and entry.meta.isdir and entry.loaded is None:
                 # NOTE: at this point it might not be loaded yet, so we can't
                 # rely on entry.loaded
-                loaded = True
+                dir_keys.add((entry.key, storage_key))
 
             meta = entry.meta
             hash_info = entry.hash_info
@@ -56,11 +56,14 @@ def _collect_from_index(
                 key=storage_key,
                 meta=meta,
                 hash_info=hash_info,
-                loaded=loaded,
+                loaded=entry.loaded,
             )
 
     except KeyError:
         return
+
+    for key, storage_key in dir_keys:
+        entries[storage_key].loaded = index[key].loaded
 
     for key, entry in entries.items():
         cache[(*cache_prefix, *key)] = entry
