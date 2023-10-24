@@ -20,6 +20,7 @@ def _collect_from_index(
     prefix,
     storage,
     callback: "Callback" = DEFAULT_CALLBACK,
+    push: bool = False,
 ):
     entries = {}
 
@@ -40,7 +41,8 @@ def _collect_from_index(
             meta = entry.meta
             hash_info = entry.hash_info
             if (
-                isinstance(storage, FileStorage)
+                not push
+                and isinstance(storage, FileStorage)
                 and storage.fs.version_aware
                 and entry.meta
                 and not entry.meta.isdir
@@ -75,6 +77,7 @@ def collect(  # noqa: C901
     callback: "Callback" = DEFAULT_CALLBACK,
     cache_index=None,
     cache_key=None,
+    push: bool = False,
 ) -> List["DataIndex"]:
     from fsspec.utils import tokenize
 
@@ -113,6 +116,7 @@ def collect(  # noqa: C901
                     prefix,
                     data,
                     callback=callback,
+                    push=push,
                 )
                 cache_index.commit()
 
