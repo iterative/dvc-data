@@ -37,25 +37,13 @@ def _collect_from_index(
                 # rely on entry.loaded
                 dir_keys.add((entry.key, storage_key))
 
-            meta = entry.meta
-            hash_info = entry.hash_info
-            if (
-                isinstance(storage, FileStorage)
-                and storage.fs.version_aware
-                and entry.meta
-                and not entry.meta.isdir
-                and entry.meta.version_id is None
-            ):
-                meta.md5 = None
-                hash_info = None
-
             # NOTE: avoiding modifying cache right away, because you might
             # run into a locked database if idx and cache are using the same
             # table.
             entries[storage_key] = DataIndexEntry(
                 key=storage_key,
-                meta=meta,
-                hash_info=hash_info,
+                meta=entry.meta,
+                hash_info=entry.hash_info,
                 loaded=entry.loaded,
             )
 
