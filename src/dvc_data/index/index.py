@@ -222,10 +222,12 @@ class FileStorage(Storage):
         fs: "FileSystem",
         path: "str",
         index: Optional["DataIndex"] = None,
+        prefix: Optional["DataIndexKey"] = None,
     ):
         self._fs = fs
         self._path = path
         self.index = index
+        self.prefix = prefix if prefix is not None else key
         super().__init__(key)
 
     @property
@@ -238,11 +240,13 @@ class FileStorage(Storage):
 
     def get_key(self, entry: "DataIndexEntry") -> "DataIndexKey":
         assert entry.key
-        return entry.key[len(self.key) :]
+        assert entry.key[: len(self.prefix)] == self.prefix
+        return entry.key[len(self.prefix) :]
 
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         assert entry.key is not None
-        path = self.fs.path.join(self.path, *entry.key[len(self.key) :])
+        assert entry.key[: len(self.prefix)] == self.prefix
+        path = self.fs.path.join(self.path, *entry.key[len(self.prefix) :])
         if self.fs.version_aware and entry.meta and entry.meta.version_id:
             path = self.fs.path.version_path(path, entry.meta.version_id)
         return self.fs, path
@@ -252,7 +256,8 @@ class FileStorage(Storage):
             return super().exists(entry)
 
         assert entry.key
-        key = entry.key[len(self.key) :]
+        assert entry.key[: len(self.prefix)] == self.prefix
+        key = entry.key[len(self.prefix) :]
         if not refresh:
             return key in self.index
 
