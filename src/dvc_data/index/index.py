@@ -300,14 +300,32 @@ class StorageMapping(MutableMapping):
         del self._map[key]
 
     def __getitem__(self, key):
+        storages = []
         for prefix, storage in self._map.items():
             if len(prefix) > len(key):
                 continue
 
             if key[: len(prefix)] == prefix:
-                return storage
+                storages.append((prefix, storage))
 
-        raise StorageKeyError(key)
+        if not storages:
+            raise StorageKeyError(key)
+
+        storages = sorted(storages, key=lambda entry: len(entry[0]), reverse=True)
+        data = None
+        cache = None
+        remote = None
+        for _, storage in storages:
+            if data is None:
+                data = storage.data
+            if cache is None:
+                cache = storage.cache
+            if remote is None:
+                remote = storage.remote
+            if data and cache and remote:
+                break
+
+        return StorageInfo(data=data, cache=cache, remote=remote)
 
     def __iter__(self):
         yield from self._map.keys()
