@@ -67,6 +67,7 @@ def push(
                     storage="cache",
                     jobs=jobs,
                     callback=cb,
+                    links=["reflink", "copy"],
                 )
                 fetched += len(diff.changes.get("added", []))
 

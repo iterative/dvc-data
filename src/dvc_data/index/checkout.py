@@ -78,6 +78,7 @@ def _create_files(  # noqa: C901
     storage: str = "cache",
     onerror=None,
     state: Optional["StateBase"] = None,
+    links: Optional[List[str]] = None,
 ):
     if index is None:
         return
@@ -119,8 +120,7 @@ def _create_files(  # noqa: C901
         src_fs = storage_obj.fs
         entries, src_paths, dest_paths = zip(*args)
 
-        links = None
-        if isinstance(storage_obj, ObjectStorage):
+        if links is None and isinstance(storage_obj, ObjectStorage):
             links = storage_obj.odb.cache_types
 
         transfer(
@@ -353,6 +353,7 @@ def apply(
     storage: str = "cache",
     onerror: Optional[Callable] = None,
     state: Optional["StateBase"] = None,
+    links: Optional[List[str]] = None,
 ) -> None:
     if fs.version_aware and not latest_only:
         if callback == DEFAULT_CALLBACK:
@@ -390,6 +391,7 @@ def apply(
         callback=callback,
         update_meta=update_meta,
         state=state,
+        links=links,
     )
 
     _chmod_files(diff.files_chmod, path, fs)
