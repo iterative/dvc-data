@@ -79,6 +79,13 @@ class DataIndexEntry:
 
         return ret
 
+    @property
+    def size(self) -> Optional[int]:
+        if self.meta is None:
+            return None
+
+        return self.meta.size
+
 
 class DataIndexTrie(JSONTrie):
     def __init__(self, *args, **kwargs):
@@ -664,8 +671,12 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         if not entry.meta or not entry.meta.isdir:
             return
 
+        storage_info = self.storage_map.get(key)
+        if storage_info is None:
+            return
+
         try:
-            _load_from_storage(self._trie, entry, self.storage_map[key])
+            _load_from_storage(self._trie, entry, storage_info)
         except DataIndexDirError as exc:
             self.onerror(entry, exc)
             return

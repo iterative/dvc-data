@@ -3,6 +3,7 @@ import errno
 import logging
 import os
 import typing
+from collections import deque
 from typing import Any, BinaryIO, NamedTuple, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
@@ -204,3 +205,28 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             assert isinstance(md5, str)
             return md5
         raise NotImplementedError
+
+    def du(self, path, total=True, maxdepth=None, withdirs=False, **kwargs):
+        if maxdepth is not None:
+            raise NotImplementedError
+
+        sizes = {}
+        todo = deque([self.info(path)])
+        while todo:
+            info = todo.popleft()
+
+            sizes[info["name"]] = info["size"] or 0
+
+            if info["type"] != "directory":
+                continue
+
+            entry = info.get("entry")
+            if entry is not None and entry.size is not None:
+                continue
+
+            todo.extend(self.ls(info["name"], detail=True))
+
+        if total:
+            return sum(sizes.values())
+
+        return sizes

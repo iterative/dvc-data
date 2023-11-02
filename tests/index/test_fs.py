@@ -156,3 +156,65 @@ def test_fs_broken(tmp_upath, odb, as_filesystem):
     fs.index.onerror = onerror
     assert fs.ls("/broken", detail=False) == []
     assert fs.ls("/broken", detail=True) == []
+
+
+def test_fs_du(tmp_upath, odb, as_filesystem):
+    index = DataIndex(
+        {
+            ("file_no_meta",): DataIndexEntry(
+                key=("file_no_meta",),
+            ),
+            ("file_meta_size",): DataIndexEntry(
+                key=("file_meta_size",),
+                meta=Meta(size=4),
+            ),
+            ("file_meta_no_size",): DataIndexEntry(
+                key=("file_meta_no_size",),
+                meta=Meta(),
+            ),
+            ("prefix",): DataIndexEntry(
+                key=("prefix",),
+                meta=Meta(isdir=True),
+            ),
+            ("prefix", "dir"): DataIndexEntry(
+                key=("prefix", "dir"),
+                meta=Meta(isdir=True),
+            ),
+            ("prefix", "dir", "dir_size"): DataIndexEntry(
+                key=("prefix", "dir", "dir_size"),
+                meta=Meta(isdir=True, size=123),
+            ),
+        }
+    )
+
+    fs = DataFileSystem(index)
+
+    assert fs.du("file_no_meta") == 0
+    assert fs.du("file_meta_size") == 4
+    assert fs.du("file_meta_no_size") == 0
+    assert fs.du("prefix/dir/dir_size") == 123
+    assert fs.du("prefix/dir") == 123
+    assert fs.du("prefix") == 123
+    assert fs.du("/") == 127
+
+    assert fs.du("file_meta_size", total=False) == {
+        "file_meta_size": 4,
+    }
+    assert fs.du("prefix", total=False) == {
+        "prefix": 0,
+        "prefix/dir": 0,
+        "prefix/dir/dir_size": 123,
+    }
+    assert fs.du("prefix/dir", total=False) == {
+        "prefix/dir": 0,
+        "prefix/dir/dir_size": 123,
+    }
+    assert fs.du("/", total=False) == {
+        "/": 0,
+        "/file_meta_no_size": 0,
+        "/file_meta_size": 4,
+        "/file_no_meta": 0,
+        "/prefix": 0,
+        "/prefix/dir": 0,
+        "/prefix/dir/dir_size": 123,
+    }
