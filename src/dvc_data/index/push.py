@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, Optional
+from functools import partial
+from typing import TYPE_CHECKING, Any, Optional
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
@@ -12,10 +13,22 @@ from .fetch import _log_missing
 from .index import ObjectStorage
 
 if TYPE_CHECKING:
+    from dvc_objects.fs import FileSystem
     from dvc_objects.fs.callbacks import Callback
+
+    from dvc_data.hashfile.meta import Meta
 
 
 logger = logging.getLogger(__name__)
+
+
+# for files, if our version's checksum (etag) matches the latest remote
+# checksum, we do not need to push, even if the version IDs don't match
+def _meta_checksum(fs: "FileSystem", meta: "Meta") -> Any:
+    if not meta or meta.isdir:
+        return meta
+    assert fs.PARAM_CHECKSUM
+    return getattr(meta, fs.PARAM_CHECKSUM)
 
 
 def push(
@@ -57,12 +70,18 @@ def push(
                 failed += len(result.failed)
             else:
                 old = build(data.path, data.fs)
-                diff = compare(old, fs_index)
+                diff = compare(
+                    old,
+                    fs_index,
+                    meta_only=True,
+                    meta_cmp_key=partial(_meta_checksum, data.fs),
+                )
                 data.fs.makedirs(data.fs.path.parent(data.path), exist_ok=True)
                 apply(
                     diff,
                     data.path,
                     data.fs,
+                    latest_only=False,
                     update_meta=False,
                     storage="cache",
                     jobs=jobs,
