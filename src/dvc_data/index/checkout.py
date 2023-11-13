@@ -247,11 +247,12 @@ def _compare(  # noqa: C901
             return meta
         return (meta.isdir, meta.isexec)
 
+    kwargs.setdefault("meta_cmp_key", meta_cmp_key)
+
     for change in idiff(
         old,
         new,
         with_unchanged=relink,
-        meta_cmp_key=meta_cmp_key,
         callback=callback,
         **kwargs,
     ):
