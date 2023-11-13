@@ -7,6 +7,7 @@ from typing import (
     Callable,
     Collection,
     Dict,
+    Iterable,
     Iterator,
     List,
     Optional,
@@ -38,22 +39,21 @@ class VersioningNotSupported(Exception):
     pass
 
 
-def test_versioning(
-    src_fs: "FileSystem",
-    src_path: "AnyFSPath",
-    dest_fs: "FileSystem",
-    dest_path: "AnyFSPath",
-    callback: "Callback" = DEFAULT_CALLBACK,
-) -> Meta:
-    transfer(src_fs, src_path, dest_fs, dest_path, callback=callback)
-    info = dest_fs.info(dest_path)
-    meta = Meta.from_info(info, dest_fs.protocol)
-    if meta.version_id in (None, "null"):
-        raise VersioningNotSupported(
-            f"while uploading {dest_path!r}, "
-            "support for versioning could not be detected"
-        )
-    return meta
+def _check_versioning(paths: Iterable["AnyFSPath"], fs: "FileSystem"):
+    if not fs.version_aware:
+        return
+
+    for path in paths:
+        try:
+            info = fs.info(path)
+        except FileNotFoundError:
+            continue
+        meta = Meta.from_info(info, fs.protocol)
+        if meta.version_id in (None, "null"):
+            raise VersioningNotSupported(
+                f"while uploading {path!r}, "
+                "support for versioning could not be detected"
+            )
 
 
 def _delete_files(
@@ -103,16 +103,6 @@ def _create_files(  # noqa: C901
 
         by_storage[storage_obj].append((entry, src_path, dest_path))
 
-    if fs.version_aware and by_storage:
-        storage_obj, items = next(iter(by_storage.items()))
-        src_fs = storage_obj.fs
-        if items:
-            entry, src_path, dest_path = items.pop()
-            entry.meta = test_versioning(
-                src_fs, src_path, fs, dest_path, callback=callback
-            )
-            index.add(entry)
-
     for storage_obj, args in by_storage.items():
         if not args:
             continue
@@ -133,6 +123,8 @@ def _create_files(  # noqa: C901
             links=links,
             on_error=onerror,
         )
+
+        _check_versioning(dest_paths, fs)
 
         if state:
             for entry, _, dest_path in args:

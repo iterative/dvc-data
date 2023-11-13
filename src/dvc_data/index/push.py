@@ -31,6 +31,15 @@ def _meta_checksum(fs: "FileSystem", meta: "Meta") -> Any:
     return getattr(meta, fs.PARAM_CHECKSUM)
 
 
+def _onerror(src_path, dest_path, _exc):
+    logger.debug(
+        "failed to create '%s' from '%s'",
+        src_path,
+        dest_path,
+        exc_info=True,
+    )
+
+
 def push(
     idxs,
     callback: "Callback" = DEFAULT_CALLBACK,
@@ -87,6 +96,7 @@ def push(
                     jobs=jobs,
                     callback=cb,
                     links=["reflink", "copy"],
+                    onerror=_onerror,
                 )
                 fetched += len(diff.changes.get("added", []))
 
