@@ -4,8 +4,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
-from ..hashfile.hash import DEFAULT_ALGORITHM
-from ..hashfile.hash_info import HashInfo
+from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from ..hashfile.meta import Meta
 from ..hashfile.tree import Tree
 
@@ -25,7 +24,6 @@ def md5(
     name: str = DEFAULT_ALGORITHM,
     check_meta: bool = True,
 ) -> None:
-    from ..hashfile.hash import fobj_md5
     from .index import DataIndexEntry
 
     entries = {}
@@ -39,37 +37,23 @@ def md5(
 
         fs, path = index.storage_map.get_storage(entry, storage)
 
+        info = None
         if check_meta:
             try:
-                meta = Meta.from_info(fs.info(path), fs.protocol)
+                info = fs.info(path)
             except FileNotFoundError:
                 continue
 
+            meta = Meta.from_info(info, fs.protocol)
             if entry.meta != meta:
                 continue
 
-        if state:
-            _, hash_info = state.get(path, fs)
-            if hash_info:
-                entries[key] = DataIndexEntry(
-                    key=entry.key,
-                    meta=entry.meta,
-                    hash_info=hash_info,
-                )
-                continue
-
-        with fs.open(path, "rb") as fobj:
-            entries[key] = DataIndexEntry(
-                key=entry.key,
-                meta=entry.meta,
-                hash_info=HashInfo(
-                    name,
-                    fobj_md5(fobj, name=name),
-                ),
-            )
-
-        if state:
-            state.save(path, fs, entries[key].hash_info)
+        meta, hash_info = hash_file(path, fs, name, state=state, info=info)
+        entries[key] = DataIndexEntry(
+            key=entry.key,
+            meta=entry.meta,
+            hash_info=hash_info,
+        )
 
     for key, entry in entries.items():
         index[key] = entry
