@@ -45,9 +45,7 @@ class LocalHashFileDB(HashFileDB):
         # being ~5.5 times faster.
         return f"{self.path}{os.sep}{oid[0:2]}{os.sep}{oid[2:]}"
 
-    def oids_exist(
-        self, oids, jobs=None, progress=noop
-    ):  # pylint: disable=unused-argument
+    def oids_exist(self, oids, jobs=None, progress=noop):  # pylint: disable=unused-argument
         ret = []
         progress = partial(progress, "querying", len(oids))
 
