@@ -59,7 +59,7 @@ dev = [
 ]
 
 [project.scripts]
-dvc = "dvci_data.__main__:main"
+dvc = "dvc_data.__main__:main"
 
 [tool.setuptools.package-data]
 dvc_objects = ["py.typed"]
