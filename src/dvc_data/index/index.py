@@ -421,7 +421,7 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
     def iteritems(
         self,
         prefix: Optional[DataIndexKey] = None,
-        shallow: Optional[bool] = False,
+        shallow: bool = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         pass
 
@@ -687,8 +687,9 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         self._trie.commit()
 
     def load(self, **kwargs):
-        for key, entry in self.iteritems(shallow=True, **kwargs):
-            self._load(key, entry)
+        kwargs["shallow"] = True
+        for _ in self.iteritems(**kwargs):
+            pass
 
     def has_node(self, key: DataIndexKey) -> bool:
         return self._trie.has_node(key)
@@ -710,21 +711,17 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
     def iteritems(
         self,
         prefix: Optional[DataIndexKey] = None,
-        shallow: Optional[bool] = False,
+        shallow: bool = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
-        kwargs: Dict[str, Any] = {"shallow": shallow}
         if prefix:
-            kwargs = {"prefix": prefix}
             item = self._trie.longest_prefix(prefix)
             if item:
                 key, entry = item
                 self._load(key, entry)
 
-        # FIXME could filter by loaded and/or isdir in sql on sqltrie side
-        for key, entry in self._trie.items(**kwargs):
+        for key, entry in self._trie.items(prefix=prefix, shallow=shallow):
             self._load(key, entry)
-
-        yield from self._trie.items(**kwargs)
+            yield key, entry
 
     def iterkeys(self, *args, **kwargs):
         return self._trie.keys(*args, **kwargs)

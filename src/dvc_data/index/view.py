@@ -54,7 +54,7 @@ class DataIndexView(BaseDataIndex):
     def _iteritems(
         self,
         prefix: Optional[DataIndexKey] = None,
-        shallow: Optional[bool] = False,
+        shallow: bool = False,
         ensure_loaded: bool = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         # NOTE: iteration is implemented using traverse and not iter/iteritems
@@ -113,7 +113,7 @@ class DataIndexView(BaseDataIndex):
     def iteritems(
         self,
         prefix: Optional[DataIndexKey] = None,
-        shallow: Optional[bool] = False,
+        shallow: bool = False,
     ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
         return self._iteritems(prefix=prefix, shallow=shallow, ensure_loaded=True)
 
