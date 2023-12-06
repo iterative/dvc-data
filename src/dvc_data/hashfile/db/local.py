@@ -5,13 +5,15 @@ from functools import partial
 
 from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
-from dvc_objects.fs.system import umask
 from dvc_objects.fs.utils import copyfile, relpath, remove
 from shortuuid import uuid
 
 from . import HashFileDB
 
 logger = logging.getLogger(__name__)
+
+umask = os.umask(0)
+os.umask(umask)
 
 
 class LocalHashFileDB(HashFileDB):
