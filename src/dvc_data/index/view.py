@@ -102,7 +102,7 @@ class DataIndexView(BaseDataIndex):
             and entry.hash_info.isdir
             and not entry.loaded
         ):
-            self._index._load(prefix, entry)  # pylint: disable=protected-access
+            self._index._load(prefix, entry)
             if not shallow:
                 yield from (
                     (key, val)
@@ -126,7 +126,7 @@ class DataIndexView(BaseDataIndex):
         return self._index.traverse(_node_factory, **kwargs)
 
     def ls(self, root_key: DataIndexKey, detail=True):
-        self._index._ensure_loaded(root_key)  # pylint: disable=protected-access
+        self._index._ensure_loaded(root_key)
 
         def _filter_fn(entry):
             key = entry[0] if detail else entry

@@ -6,7 +6,8 @@ from .index import FileStorage
 if TYPE_CHECKING:
     from dvc_objects.fs import FileSystem
 
-    from ..hashfile._ignore import Ignore
+    from dvc_data.hashfile._ignore import Ignore
+
     from .index import DataIndex, DataIndexKey
 
 

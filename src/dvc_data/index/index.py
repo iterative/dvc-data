@@ -15,19 +15,22 @@ from typing import (
 )
 
 import attrs
-from sqltrie import ShortKeyError  # noqa: F401, pylint: disable=unused-import
-from sqltrie import JSONTrie, PyGTrie, SQLiteTrie
+from sqltrie import (
+    JSONTrie,
+    PyGTrie,
+    ShortKeyError,
+    SQLiteTrie,
+)
 
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.meta import Meta
+from dvc_data.hashfile.tree import Tree
 from dvc_data.utils import cached_property
-
-from ..hashfile.hash_info import HashInfo
-from ..hashfile.meta import Meta
-from ..hashfile.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
-    from ..hashfile.db import HashFileDB
+    from dvc_data.hashfile.db import HashFileDB
 
 
 logger = logging.getLogger(__name__)
@@ -97,7 +100,7 @@ class DataIndexTrie(JSONTrie):
         return SQLiteTrie()
 
     @classmethod
-    def open(cls, path):
+    def open(cls, path):  # noqa: A003
         ret = cls()
         ret._trie = SQLiteTrie.open(path)
         return ret
@@ -186,9 +189,7 @@ class ObjectStorage(Storage):
         if not entry.hash_info or not entry.hash_info.value:
             raise ValueError
 
-        return self.odb._oid_parts(  # pylint: disable=protected-access
-            entry.hash_info.value
-        )
+        return self.odb._oid_parts(entry.hash_info.value)
 
     def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
         if not entry.hash_info:
@@ -205,7 +206,7 @@ class ObjectStorage(Storage):
         if self.index is None:
             return self.odb.exists(value)
 
-        key = self.odb._oid_parts(value)  # pylint: disable=protected-access
+        key = self.odb._oid_parts(value)
         if not refresh:
             return key in self.index
 
@@ -583,7 +584,7 @@ def _load_from_storage(trie, entry, storage_info):
             else:
                 _load_from_file_storage(trie, entry, storage)
             return True
-        except Exception as exc:  # pylint: disable=W0703
+        except Exception as exc:  # noqa: BLE001
             # NOTE: this might be some random fs exception, e.g. auth error
             last_exc = exc
             logger.debug(
@@ -613,7 +614,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         self.update(*args, **kwargs)
 
     @classmethod
-    def open(cls, path):
+    def open(cls, path):  # noqa: A003
         ret = cls()
         ret._trie = DataIndexTrie.open(path)
         return ret
@@ -622,7 +623,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         import copy
 
         ret = DataIndex()
-        ret._trie = self._trie.view(key)  # pylint: disable=protected-access
+        ret._trie = self._trie.view(key)
         ret.storage_map = copy.deepcopy(self.storage_map)
         return ret
 

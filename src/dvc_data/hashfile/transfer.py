@@ -39,7 +39,6 @@ class TransferResult(NamedTuple):
 def _log_exception(oid: str, exc: BaseException):
     # NOTE: this means we ran out of file descriptors and there is no
     # reason to try to proceed, as we will hit this error anyways.
-    # pylint: disable=no-member
     if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
         raise exc
     logger.error("failed to transfer '%s'", oid, exc_info=exc)
@@ -113,11 +112,10 @@ def _do_transfer(
                 "directory '%s' contains missing files, skipping .dir file upload",
                 dir_hash,
             )
+        elif _add(src, dest, [dir_obj.hash_info], **kwargs):
+            failed_ids.add(dir_obj.hash_info)
         else:
-            if _add(src, dest, [dir_obj.hash_info], **kwargs):
-                failed_ids.add(dir_obj.hash_info)
-            else:
-                succeeded_dir_objs.append(dir_obj)
+            succeeded_dir_objs.append(dir_obj)
 
     # insert the rest
     failed_ids.update(_add(src, dest, all_file_ids, **kwargs))
@@ -135,7 +133,8 @@ def _do_transfer(
                 dir_obj.hash_info,
                 len(file_hashes),
             )
-            assert dir_obj.hash_info and dir_obj.hash_info.value
+            assert dir_obj.hash_info
+            assert dir_obj.hash_info.value
             dest_index.update([dir_obj.hash_info.value], file_hashes)
 
     return set()
@@ -173,7 +172,7 @@ def _add(
     return failed
 
 
-def transfer(
+def transfer(  # noqa: PLR0913
     src: "HashFileDB",
     dest: "HashFileDB",
     obj_ids: Iterable["HashInfo"],

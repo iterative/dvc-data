@@ -4,16 +4,17 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
-from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
-from ..hashfile.meta import Meta
-from ..hashfile.tree import Tree
+from dvc_data.hashfile.hash import DEFAULT_ALGORITHM, hash_file
+from dvc_data.hashfile.meta import Meta
+from dvc_data.hashfile.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
     from dvc_objects.fs.callbacks import Callback
 
-    from ..hashfile.db import HashFileDB
-    from ..hashfile.state import StateBase
+    from dvc_data.hashfile.db import HashFileDB
+    from dvc_data.hashfile.state import StateBase
+
     from .index import BaseDataIndex, DataIndexKey
 
 
@@ -65,7 +66,8 @@ def build_tree(
     name: str = DEFAULT_ALGORITHM,
 ) -> Tuple["Meta", Tree]:
     tree_meta = Meta(size=0, nfiles=0, isdir=True)
-    assert tree_meta.size is not None and tree_meta.nfiles is not None
+    assert tree_meta.size is not None
+    assert tree_meta.nfiles is not None
     tree = Tree()
     for key, entry in index.iteritems(prefix=prefix):
         if key == prefix or entry.meta and entry.meta.isdir:
@@ -83,7 +85,8 @@ def _save_dir_entry(
     key: "DataIndexKey",
     odb: Optional["HashFileDB"] = None,
 ) -> None:
-    from ..hashfile.db import add_update_tree
+    from dvc_data.hashfile.db import add_update_tree
+
     from .index import StorageKeyError
 
     entry = index[key]
@@ -98,7 +101,8 @@ def _save_dir_entry(
     tree = add_update_tree(cache, tree)
     entry.meta = meta
     entry.hash_info = tree.hash_info
-    assert tree.hash_info.name and tree.hash_info.value
+    assert tree.hash_info.name
+    assert tree.hash_info.value
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
 
 

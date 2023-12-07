@@ -1,6 +1,5 @@
 import pytest
 
-import dvc_data.index.checkout as checkout
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 from dvc_data.index import (
@@ -9,6 +8,7 @@ from dvc_data.index import (
     ObjectStorage,
     add,
     build,
+    checkout,
     md5,
     read_db,
     read_json,

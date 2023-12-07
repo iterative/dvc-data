@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from .hash_info import HashInfo
 
 
-def gc(
+def gc(  # noqa: C901
     odb: "HashFileDB",
     used: Iterable["HashInfo"],
     jobs: Optional[int] = None,
@@ -46,7 +46,6 @@ def gc(
         path = odb.oid_to_path(hash_)
         if _is_dir_hash(hash_):
             # backward compatibility
-            # pylint: disable=protected-access
             odb._remove_unpacked_dir(hash_)
             dir_paths.append(path)
         else:

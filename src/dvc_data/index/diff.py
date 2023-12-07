@@ -5,8 +5,9 @@ from attrs import define
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
 
 if TYPE_CHECKING:
-    from dvc_data.hashfile.meta import Meta
     from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.meta import Meta
+
     from .index import BaseDataIndex, DataIndexKey
 
 from .index import DataIndexDirError, DataIndexEntry
@@ -82,7 +83,7 @@ def _diff_hash_info(
     return UNCHANGED
 
 
-def _diff_entry(
+def _diff_entry(  # noqa: PLR0911
     old: Optional["DataIndexEntry"],
     new: Optional["DataIndexEntry"],
     *,
@@ -156,7 +157,7 @@ def _get_items(
     return items, unknown
 
 
-def _diff(
+def _diff(  # noqa: C901, PLR0912
     old: Optional["BaseDataIndex"],
     new: Optional["BaseDataIndex"],
     *,
@@ -284,7 +285,7 @@ def _detect_renames(changes: Iterable[Change]):
     yield from deleted
 
 
-def diff(
+def diff(  # noqa: PLR0913
     old: Optional["BaseDataIndex"],
     new: Optional["BaseDataIndex"],
     *,

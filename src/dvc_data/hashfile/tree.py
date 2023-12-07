@@ -5,17 +5,16 @@ from typing import TYPE_CHECKING, Any, Dict, Final, Iterable, Optional, Tuple
 
 from dvc_objects.errors import ObjectFormatError
 
+from dvc_data.hashfile.hash import DEFAULT_ALGORITHM, hash_file
+from dvc_data.hashfile.meta import Meta
+from dvc_data.hashfile.obj import HashFile
 from dvc_data.utils import cached_property
-
-from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
-from ..hashfile.meta import Meta
-from ..hashfile.obj import HashFile
 
 if TYPE_CHECKING:
     from pygtrie import Trie
 
-    from ..hashfile.db import HashFileDB
-    from ..hashfile.hash_info import HashInfo
+    from dvc_data.hashfile.db import HashFileDB
+    from dvc_data.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ def _try_load(
 class Tree(HashFile):
     PARAM_RELPATH: Final = "relpath"
 
-    def __init__(self):  # pylint: disable=super-init-not-called
+    def __init__(self):
         # this should really be part of a TreeBuilder.
         # HashFile does not support these properties as none values, so we may be losing
         # type-safety with this.
@@ -148,7 +147,7 @@ class Tree(HashFile):
                     **_hi_to_dict(hi),
                     self.PARAM_RELPATH: posixpath.sep.join(parts),
                 }
-                for parts, meta, hi in self  # noqa: B301
+                for parts, meta, hi in self
             ),
             key=itemgetter(self.PARAM_RELPATH),
         )
@@ -163,7 +162,7 @@ class Tree(HashFile):
 
     @classmethod
     def from_list(cls, lst, hash_name: Optional[str] = None):
-        from ..hashfile.hash_info import HashInfo
+        from dvc_data.hashfile.hash_info import HashInfo
 
         tree = cls()
         for _entry in lst:
@@ -212,7 +211,7 @@ class Tree(HashFile):
 
         return tree
 
-    def filter(self, prefix: Tuple[str]) -> Optional["Tree"]:
+    def filter(self, prefix: Tuple[str]) -> Optional["Tree"]:  # noqa: A003
         """Return a filtered copy of this tree that only contains entries
         inside prefix.
 
@@ -316,7 +315,7 @@ def _merge(ancestor, our, their, allowed=None):
         patch_theirs_first = patch(their_diff + our_diff, ancestor)
     except KeyError as e:
         # todo: fails if both diffs delete the same object
-        raise MergeError(
+        raise MergeError(  # noqa: B904
             f"unable to auto-merge the following paths:\nboth deleted: {e}"
         )
     unmergeable = list(diff(patch_ours_first, patch_theirs_first))

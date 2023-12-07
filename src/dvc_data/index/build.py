@@ -1,16 +1,16 @@
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 
-from ..hashfile.hash import DEFAULT_ALGORITHM, hash_file
-from ..hashfile.meta import Meta
+from dvc_data.hashfile.hash import DEFAULT_ALGORITHM, hash_file
+from dvc_data.hashfile.meta import Meta
+
 from .index import DataIndex, DataIndexEntry, FileStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
 
+    from dvc_data.hashfile._ignore import Ignore
     from dvc_data.hashfile.state import StateBase
-
-    from ..hashfile._ignore import Ignore
 
 
 def build_entry(

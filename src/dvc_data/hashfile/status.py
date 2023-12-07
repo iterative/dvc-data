@@ -1,13 +1,14 @@
 import logging
 from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
-from dvc_objects.db import ObjectDB
 from dvc_objects.fs import Schemes
 
 from .hash_info import HashInfo
 from .tree import Tree
 
 if TYPE_CHECKING:
+    from dvc_objects.db import ObjectDB
+
     from .db import HashFileDB
     from .db.index import ObjectDBIndexBase
     from .obj import HashFile
@@ -82,7 +83,7 @@ def _indexed_dir_hashes(
         yield tree.hash_info.value
 
 
-def status(
+def status(  # noqa: C901, PLR0912
     odb: "HashFileDB",
     obj_ids: Iterable["HashInfo"],
     name: Optional[str] = None,
@@ -117,7 +118,8 @@ def status(
             else:
                 tree = Tree.load(cache_odb, hash_info)
                 for _, _, oid in tree:
-                    assert oid and oid.value
+                    assert oid
+                    assert oid.value
                     hash_infos[oid.value] = oid
             if index:
                 dir_objs[hash_info.value] = tree

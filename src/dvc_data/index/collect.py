@@ -71,7 +71,7 @@ def _collect_from_index(
         cache[(*cache_prefix, *key)] = entry
 
 
-def collect(  # noqa: C901
+def collect(  # noqa: C901, PLR0912
     idxs,
     storage,
     callback: "Callback" = DEFAULT_CALLBACK,
@@ -104,9 +104,8 @@ def collect(  # noqa: C901
 
             key = (fsid, tokenize(data.path))
 
-            if key not in storage_by_fs:
-                if cache_index.has_node((*cache_key, *key)):
-                    skip.add(key)
+            if key not in storage_by_fs and cache_index.has_node((*cache_key, *key)):
+                skip.add(key)
 
             if key not in skip:
                 _collect_from_index(

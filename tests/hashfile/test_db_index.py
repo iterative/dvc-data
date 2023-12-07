@@ -6,8 +6,7 @@ from dvc_data.hashfile.db.index import ObjectDBIndex
 
 @pytest.fixture
 def index(tmp_upath):
-    index_ = ObjectDBIndex(tmp_upath, "foo")
-    yield index_
+    return ObjectDBIndex(tmp_upath, "foo")
 
 
 def test_roundtrip(tmp_upath, index):

@@ -7,7 +7,7 @@ from dvc_objects.fs.base import FileSystem
 from .index import DataIndex
 
 
-class NotARepo(Exception):
+class NotARepoError(Exception):
     pass
 
 
@@ -18,7 +18,7 @@ class Repo:
         control_dir: str = os.getenv("DVC_DIR") or fs.path.join(root, ".dvc")
 
         if not fs.isdir(control_dir):
-            raise NotARepo(f"{root} is not a data repo.")
+            raise NotARepoError(f"{root} is not a data repo.")
 
         self.fs = fs or localfs
         self.root = root
@@ -40,9 +40,9 @@ class Repo:
         while remaining:
             try:
                 return cls(path, fs)
-            except NotARepo:
+            except NotARepoError:
                 path, remaining = fs.path.split(path)
-        raise NotARepo(f"No data repository was found at {start}")
+        raise NotARepoError(f"No data repository was found at {start}")
 
     @property
     def control_dir(self):
