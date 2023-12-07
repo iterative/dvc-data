@@ -13,7 +13,7 @@ from posixpath import relpath
 from typing import List, cast
 
 import click
-import typer  # pylint: disable=import-error
+import typer
 from attrs import asdict
 from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
@@ -34,10 +34,9 @@ from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.obj import HashFile
 from dvc_data.hashfile.state import State
 from dvc_data.hashfile.transfer import transfer as _transfer
-from dvc_data.hashfile.tree import Tree
+from dvc_data.hashfile.tree import Tree, merge
 from dvc_data.hashfile.tree import du as _du
-from dvc_data.hashfile.tree import merge
-from dvc_data.repo import NotARepo, Repo
+from dvc_data.repo import NotARepoError, Repo
 
 install(show_locals=True, suppress=[typer, click])
 
@@ -224,9 +223,9 @@ def from_shortoid(odb: HashFileDB, oid: str) -> str:
 def get_odb(**config):
     try:
         repo = Repo.discover()
-    except NotARepo as exc:
+    except NotARepoError as exc:
         typer.echo(exc, err=True)
-        raise typer.Abort(1)
+        raise typer.Abort(1)  # noqa: B904
 
     if "state" not in config:
         config.setdefault("state", State(root_dir=repo.root, tmp_dir=repo.tmp_dir))
@@ -324,7 +323,7 @@ def show(oid: str = typer.Argument(..., allow_dash=True)):
     obj = load(odb, odb.get(oid).hash_info)
     if isinstance(obj, Tree):
         return _ls_tree(obj)
-    elif isinstance(obj, HashFile):
+    if isinstance(obj, HashFile):
         return _cat_object(odb, obj.oid)
     raise AssertionError(f"unknown object of type {type(obj)}")
 
@@ -429,14 +428,15 @@ def merge_tree(oid1: str, oid2: str, force: bool = False):
     oid2 = from_shortoid(odb, oid2)
     obj1 = load(odb, odb.get(oid1).hash_info)
     obj2 = load(odb, odb.get(oid2).hash_info)
-    assert isinstance(obj1, Tree) and isinstance(obj2, Tree), "not a tree obj"
+    assert isinstance(obj1, Tree)
+    assert isinstance(obj2, Tree), "not a tree obj"
 
     if not force:
         # detect conflicts
         d = _diff(obj1, obj2, odb)
         modified = [
             posixpath.join(*change.old.key)
-            for change in d.modified  # pylint: disable=not-an-iterable
+            for change in d.modified
             if change.old.key != ROOT
         ]
         if modified:
@@ -478,7 +478,6 @@ def apply_op(odb, obj, application):
     op = application["op"]
     path = application["path"]
     keys = tuple(path.split("/"))
-    # pylint: disable=protected-access
     if op in ("add", "modify"):
         new = tuple(application["to"].split("/"))
         if op == "add" and new in obj._dict:
@@ -594,7 +593,7 @@ def checkout(
     path: Path = typer.Argument(..., resolve_path=True),
     relink: bool = False,
     force: bool = False,
-    type: List[LinkEnum] = typer.Option(["copy"]),  # pylint: disable=redefined-builtin
+    type: List[LinkEnum] = typer.Option(["copy"]),  # noqa: A002
 ):
     odb = get_odb(type=[t.value for t in type])
     oid = from_shortoid(odb, oid)

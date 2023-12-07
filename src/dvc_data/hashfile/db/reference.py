@@ -1,7 +1,8 @@
 import logging
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 
-from ..obj import HashFile
+from dvc_data.hashfile.obj import HashFile
+
 from . import HashFileDB, HashInfo
 
 if TYPE_CHECKING:

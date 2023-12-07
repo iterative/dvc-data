@@ -39,7 +39,6 @@ def prepare(
 
     Objects from src will be rehashed for addition to dest.
     """
-    # pylint: disable-next=protected-access
     src_paths = [src.oid_to_path(oid) for oid in src._list_oids()]
     callback.set_size(len(src_paths))
     with ThreadPoolExecutor(

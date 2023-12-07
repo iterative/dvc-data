@@ -20,7 +20,8 @@ from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.local import LocalFileSystem
 from dvc_objects.fs.utils import exists as batch_exists
 
-from ..hashfile.meta import Meta
+from dvc_data.hashfile.meta import Meta
+
 from .diff import ADD, DELETE, MODIFY, UNCHANGED
 from .diff import diff as idiff
 from .index import FileStorage, ObjectStorage
@@ -28,14 +29,15 @@ from .index import FileStorage, ObjectStorage
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
-    from ..hashfile.state import StateBase
+    from dvc_data.hashfile.state import StateBase
+
     from .diff import Change
     from .index import BaseDataIndex, DataIndexEntry, DataIndexKey, Storage
 
 logger = logging.getLogger(__name__)
 
 
-class VersioningNotSupported(Exception):
+class VersioningNotSupported(Exception):  # noqa: N818
     pass
 
 
@@ -67,7 +69,7 @@ def _delete_files(
     fs.remove([fs.path.join(path, *(entry.key or ())) for entry in entries])
 
 
-def _create_files(  # noqa: C901
+def _create_files(  # noqa: C901, PLR0912, PLR0913
     entries,
     index: Optional["BaseDataIndex"],
     path: str,
@@ -204,7 +206,7 @@ class Diff:
     dirs_failed: list = field(default=Factory(list))
 
 
-def _compare(  # noqa: C901
+def _compare(  # noqa: C901, PLR0912
     old,
     new,
     relink: bool = False,
@@ -288,14 +290,14 @@ def _compare(  # noqa: C901
             else:
                 continue
         else:
-            raise AssertionError()
+            raise AssertionError
 
         ret.changes[change.key] = change
 
     return ret
 
 
-def compare(  # noqa: C901
+def compare(
     old,
     new,
     relink: bool = False,
@@ -335,7 +337,7 @@ def _onerror_noop(*args, **kwargs):
     pass
 
 
-def apply(
+def apply(  # noqa: PLR0913
     diff: "Diff",
     path: str,
     fs: "FileSystem",

@@ -52,7 +52,7 @@ class StateNoop(StateBase):
     def save(self, path, fs, hash_info, info=None):
         pass
 
-    def get(self, path, fs, info=None):  # pylint: disable=unused-argument
+    def get(self, path, fs, info=None):
         return None, None
 
     def save_link(self, path, fs):
@@ -71,7 +71,7 @@ def _checksum(info):
     return str(int(tokenize([info["ino"], info["mtime"], info["size"]]), 16))
 
 
-class State(StateBase):  # pylint: disable=too-many-instance-attributes
+class State(StateBase):
     HASH_VERSION = 1
 
     def __init__(self, root_dir=None, tmp_dir=None, ignore: Optional["Ignore"] = None):
@@ -116,7 +116,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         self.hashes[path] = json.dumps(entry)
 
-    def get(self, path, fs, info=None):
+    def get(self, path, fs, info=None):  # noqa: PLR0911
         """Gets the hash for the specified path info. Hash will be
         retrieved from the state database if available.
 

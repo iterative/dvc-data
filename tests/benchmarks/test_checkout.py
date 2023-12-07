@@ -1,11 +1,11 @@
 import shutil
 from os import fspath
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 from dvc_objects.fs import localfs
 from dvc_objects.fs.generic import test_links as _test_links
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from dvc_data.cli import build, gentree, get_odb
 from dvc_data.hashfile.checkout import checkout

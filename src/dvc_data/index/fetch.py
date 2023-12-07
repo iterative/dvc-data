@@ -8,7 +8,7 @@ from dvc_data.hashfile.transfer import transfer
 
 from .build import build
 from .checkout import apply, compare
-from .collect import collect  # noqa: F401, pylint: disable=unused-import
+from .collect import collect  # noqa: F401
 from .index import ObjectStorage
 from .save import md5, save
 
@@ -52,9 +52,11 @@ def fetch(
         try:
             # NOTE: make sure there are no auth errors
             data.fs.exists(data.path)
-        except Exception:  # pylint: disable=W0703
+        except Exception:
             failed += len(fs_index)
-            logger.exception(f"failed to connect to {data.fs.protocol} ({data.path})")
+            logger.exception(
+                "failed to connect to %s (%s)", data.fs.protocol, data.path
+            )
             continue
 
         with cb:

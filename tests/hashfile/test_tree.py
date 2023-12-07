@@ -127,7 +127,7 @@ def test_list_dos2unix(lst, trie_dict):
 )
 def test_nfiles(trie_dict, nfiles):
     tree = Tree()
-    tree._dict = trie_dict  # pylint:disable=protected-access
+    tree._dict = trie_dict
     assert len(tree) == nfiles
 
 
@@ -150,7 +150,7 @@ def test_nfiles(trie_dict, nfiles):
 )
 def test_items(trie_dict):
     tree = Tree()
-    tree._dict = trie_dict  # pylint:disable=protected-access
+    tree._dict = trie_dict
     assert list(tree) == [(key, value[0], value[1]) for key, value in trie_dict.items()]
 
 

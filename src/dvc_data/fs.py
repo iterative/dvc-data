@@ -9,14 +9,14 @@ from typing import Any, BinaryIO, NamedTuple, Optional, Tuple
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from fsspec import AbstractFileSystem
 
-from dvc_data.hashfile.db import HashFileDB
-
 from .utils import cached_property
 
 if typing.TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
     from dvc_objects.fs.callbacks import Callback
     from dvc_objects.fs.path import Path
+
+    from dvc_data.hashfile.db import HashFileDB
 
     from .hashfile.hash_info import HashInfo
     from .index import DataIndex, DataIndexEntry, ObjectStorage
@@ -33,7 +33,7 @@ class FileInfo(NamedTuple):
     fs_path: "AnyFSPath"
 
 
-class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
+class DataFileSystem(AbstractFileSystem):
     root_marker = "/"
 
     def __init__(self, index: "DataIndex", **kwargs: Any):
@@ -55,7 +55,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return ()
 
         key = self.path.relparts(path, self.root_marker)
-        if key == (".",) or key == ("",):
+        if key in ((".",), ("",)):
             key = ()
 
         return key
@@ -108,9 +108,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         odb.add(path, fs, oid)
         return odb.fs, odb.oid_to_path(oid)
 
-    def _open(  # pylint: disable=arguments-differ
-        self, path: "AnyFSPath", **kwargs: Any
-    ) -> "BinaryIO":
+    def _open(self, path: "AnyFSPath", **kwargs: Any) -> "BinaryIO":
         typ, _, cache_storage, hi, fs, fspath = self._get_fs_path(path)
 
         if kwargs.get("cache", False) and typ == "remote" and cache_storage:
@@ -156,7 +154,7 @@ class DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         info["name"] = path
         return info
 
-    def get_file(  # pylint: disable=arguments-differ
+    def get_file(
         self,
         rpath: "AnyFSPath",
         lpath: "AnyFSPath",

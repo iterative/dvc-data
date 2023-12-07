@@ -14,7 +14,7 @@ def tree():
         ]
     )
     tree.digest()
-    yield tree
+    return tree
 
 
 @pytest.fixture

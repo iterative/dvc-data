@@ -44,6 +44,6 @@ def test_pickle_backwards_compat(tmp_path, proto_a, proto_b):
         directory=fspath(tmp_path / "test"),
         disk_pickle_protocol=proto_b,
     ) as cache:
-        assert ("value1", "value2") == cache["key"]
+        assert cache["key"] == ("value1", "value2")
         set_value(cache, "key", ("value3", "value4"))
-        assert ("value3", "value4") == cache["key"]
+        assert cache["key"] == ("value3", "value4")

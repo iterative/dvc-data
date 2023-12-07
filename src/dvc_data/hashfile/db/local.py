@@ -2,6 +2,7 @@ import logging
 import os
 import stat
 from functools import partial
+from typing import ClassVar, List
 
 from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
@@ -17,7 +18,7 @@ os.umask(umask)
 
 
 class LocalHashFileDB(HashFileDB):
-    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
+    DEFAULT_CACHE_TYPES: ClassVar[List[str]] = ["reflink", "copy"]
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
@@ -47,7 +48,7 @@ class LocalHashFileDB(HashFileDB):
         # being ~5.5 times faster.
         return f"{self.path}{os.sep}{oid[0:2]}{os.sep}{oid[2:]}"
 
-    def oids_exist(self, oids, jobs=None, progress=noop):  # pylint: disable=unused-argument
+    def oids_exist(self, oids, jobs=None, progress=noop):
         ret = []
         progress = partial(progress, "querying", len(oids))
 

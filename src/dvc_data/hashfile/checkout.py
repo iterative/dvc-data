@@ -143,7 +143,7 @@ def _diff(
     if relink:
         diff.modified.extend(diff.unchanged)
     else:
-        for change in diff.unchanged:  # pylint: disable=not-an-iterable
+        for change in diff.unchanged:
             if not change.new.in_cache and not (
                 change.new.oid and change.new.oid.isdir
             ):
@@ -232,7 +232,7 @@ def _checkout(
         raise CheckoutError(failed)
 
 
-def checkout(
+def checkout(  # noqa: PLR0913
     path,
     fs,
     obj,

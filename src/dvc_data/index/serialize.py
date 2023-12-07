@@ -1,6 +1,7 @@
 import json
 
-from ..hashfile.cache import Cache
+from dvc_data.hashfile.cache import Cache
+
 from .index import DataIndex, DataIndexEntry
 
 

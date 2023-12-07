@@ -170,8 +170,8 @@ class LargeFileHashingCallback(TqdmCallback):
         if self.size and self.size > self.LARGE_FILE_SIZE:
             if not self._logged:
                 logger.info(
-                    f"Computing md5 for a large file '{self.fname}'. "
-                    "This is only done once."
+                    "Computing md5 for a large file %r. This is only done once.",
+                    self.fname,
                 )
                 self._logged = True
             super().call()

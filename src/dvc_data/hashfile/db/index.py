@@ -55,7 +55,7 @@ class ObjectDBIndexNoop(ObjectDBIndexBase):
         self,
         tmp_dir: "AnyFSPath",
         name: str,
-    ) -> None:  # pylint: disable=super-init-not-called
+    ) -> None:
         pass
 
     def __iter__(self) -> Iterator[str]:
@@ -87,10 +87,10 @@ class ObjectDBIndex(ObjectDBIndexBase):
         self,
         tmp_dir: "AnyFSPath",
         name: str,
-    ) -> None:  # pylint: disable=super-init-not-called
+    ) -> None:
         from dvc_objects.fs import LocalFileSystem
 
-        from ..cache import Cache, Index
+        from dvc_data.hashfile.cache import Cache, Index
 
         self.index_dir = os.path.join(tmp_dir, self.INDEX_DIR, name)
         self.fs = LocalFileSystem()
@@ -110,7 +110,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
 
     def clear(self) -> None:
         """Clear this index (to force re-indexing later)."""
-        from ..cache import Timeout
+        from dvc_data.hashfile.cache import Timeout
 
         try:
             self.index.clear()
@@ -119,7 +119,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
 
     def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]) -> None:
         """Update this index, adding the specified hashes."""
-        from ..cache import Timeout
+        from dvc_data.hashfile.cache import Timeout
 
         try:
             with self.index.transact():

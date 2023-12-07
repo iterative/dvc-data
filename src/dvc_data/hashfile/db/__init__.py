@@ -3,20 +3,21 @@ import logging
 import os
 from contextlib import suppress
 from copy import copy
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Union
 
 from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
-from ..hash_info import HashInfo
-from ..obj import HashFile
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.obj import HashFile
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
     from dvc_objects.fs.callbacks import Callback
 
-    from ..tree import Tree
+    from dvc_data.hashfile.tree import Tree
+
     from .index import ObjectDBIndexBase
 
 
@@ -48,11 +49,11 @@ def get_index(odb) -> "ObjectDBIndexBase":
 
 class HashFileDB(ObjectDB):
     DEFAULT_VERIFY = False
-    DEFAULT_CACHE_TYPES = ["copy"]
+    DEFAULT_CACHE_TYPES: ClassVar[List[str]] = ["copy"]
     CACHE_MODE: Optional[int] = None
 
     def __init__(self, fs: "FileSystem", path: str, **config):
-        from ..state import StateNoop
+        from dvc_data.hashfile.state import StateNoop
 
         super().__init__(fs, path)
         self.state = config.get("state", StateNoop())
@@ -133,16 +134,16 @@ class HashFileDB(ObjectDB):
                 pass
         return transferred
 
-    def protect(self, path):  # pylint: disable=unused-argument
+    def protect(self, path):
         pass
 
-    def is_protected(self, path):  # pylint: disable=unused-argument
+    def is_protected(self, path):
         return False
 
-    def unprotect(self, path):  # pylint: disable=unused-argument
+    def unprotect(self, path):
         pass
 
-    def set_exec(self, path):  # pylint: disable=unused-argument
+    def set_exec(self, path):
         pass
 
     def check(
@@ -163,7 +164,7 @@ class HashFileDB(ObjectDB):
 
         - Remove the file from cache if it doesn't match the actual hash
         """
-        from ..hash import hash_file
+        from dvc_data.hashfile.hash import hash_file
 
         obj = self.get(oid)
         if self.is_protected(obj.path):

@@ -72,7 +72,8 @@ def _build_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
     state = odb.state if odb else None
     meta, hash_info = hash_file(path, fs, name, state=state)
     if upload_odb and not dry_run:
-        assert odb and name == "md5"
+        assert odb
+        assert name == "md5"
         return _upload_file(path, fs, odb, upload_odb)
 
     oid = hash_info.value
@@ -197,7 +198,8 @@ def _build_external_tree_info(odb: "HashFileDB", tree: "Tree", name: str) -> "Tr
     # able to validate .dir files right in the workspace (e.g. check s3
     # etag), but could be dropped for manual validation with regular md5,
     # that would be universal for all clouds.
-    assert odb and name != "md5"
+    assert odb
+    assert name != "md5"
 
     assert tree.fs
     assert tree.path
