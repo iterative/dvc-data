@@ -17,7 +17,10 @@ permissions: {}
 
 jobs:
   benchmark:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-latest]
     env:
       PYTEST_BENCHMARK_STORAGE: file://${{ github.workspace }}/.benchmarks
     steps:
@@ -38,7 +41,7 @@ jobs:
         path: pr
 
     - name: Upgrade pip and nox
-      run: python -m pip install --upgrade pip nox
+      run: python -m pip install --upgrade pip nox pytest-benchmark
 
     - name: Benchmark on base branch
       working-directory: base
@@ -52,7 +55,6 @@ jobs:
         --benchmark-compare=0001
         --benchmark-compare-fail=mean:10%
 
-    - run: pip install pytest-benchmark
     - name: Compare benchmark
       if: always()
       run: pytest-benchmark compare --group-by name
