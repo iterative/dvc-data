@@ -48,7 +48,7 @@ tests = [
     "pytest-sugar",
     "pytest-cov>=4.1.0",
     "pytest-mock",
-    "pytest-benchmark",
+    "pytest-benchmark>=4",
     "mypy==1.7.1",
     "pytest-servers[s3]==0.1.3",
 ]
