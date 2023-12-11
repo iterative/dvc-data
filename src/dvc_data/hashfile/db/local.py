@@ -80,7 +80,7 @@ class LocalHashFileDB(HashFileDB):
         )
         self.fs.remove(path)
 
-    def _unprotect_file(self, path):
+    def _unprotect_file(self, path, callback=DEFAULT_CALLBACK):
         if self.fs.is_symlink(path) or self.fs.is_hardlink(path):
             logger.debug("Unprotecting '%s'", path)
             tmp = os.path.join(os.path.dirname(path), "." + uuid())
@@ -90,7 +90,7 @@ class LocalHashFileDB(HashFileDB):
             # would get only the part of file. So, at first, the file should be
             # copied with the temporary name, and then original file should be
             # replaced by new.
-            copyfile(path, tmp)
+            copyfile(path, tmp, callback=callback)
             remove(path)
             os.rename(tmp, path)
 
@@ -108,7 +108,8 @@ class LocalHashFileDB(HashFileDB):
 
         files = self.fs.find(path) if os.path.isdir(path) else [path]
         for fname in callback.wrap(files):
-            self._unprotect_file(fname)
+            with callback.branch(path, path, {}) as cb:
+                self._unprotect_file(fname, callback=cb)
 
     def protect(self, path):
         try:
