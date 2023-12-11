@@ -6,7 +6,8 @@ from typing import ClassVar, List
 
 from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
-from dvc_objects.fs.utils import copyfile, relpath, remove
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from dvc_objects.fs.utils import copyfile, remove
 from shortuuid import uuid
 
 from . import HashFileDB
@@ -89,7 +90,7 @@ class LocalHashFileDB(HashFileDB):
             # would get only the part of file. So, at first, the file should be
             # copied with the temporary name, and then original file should be
             # replaced by new.
-            copyfile(path, tmp, name=f"Unprotecting '{relpath(path)}'")
+            copyfile(path, tmp)
             remove(path)
             os.rename(tmp, path)
 
@@ -101,18 +102,13 @@ class LocalHashFileDB(HashFileDB):
 
         os.chmod(path, self._file_mode)
 
-    def _unprotect_dir(self, path):
-        for fname in self.fs.find(path):
-            self._unprotect_file(fname)
-
-    def unprotect(self, path):
+    def unprotect(self, path, callback=DEFAULT_CALLBACK):
         if not os.path.exists(path):
             raise ObjectDBError(f"can't unprotect non-existing data '{path}'")
 
-        if os.path.isdir(path):
-            self._unprotect_dir(path)
-        else:
-            self._unprotect_file(path)
+        files = self.fs.find(path) if os.path.isdir(path) else [path]
+        for fname in callback.wrap(files):
+            self._unprotect_file(fname)
 
     def protect(self, path):
         try:
