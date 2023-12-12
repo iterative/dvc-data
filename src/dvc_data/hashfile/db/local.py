@@ -108,7 +108,7 @@ class LocalHashFileDB(HashFileDB):
 
         files = self.fs.find(path) if os.path.isdir(path) else [path]
         for fname in callback.wrap(files):
-            with callback.branch(path, path, {}) as cb:
+            with callback.branch(fname, fname, {}) as cb:
                 self._unprotect_file(fname, callback=cb)
 
     def protect(self, path):
