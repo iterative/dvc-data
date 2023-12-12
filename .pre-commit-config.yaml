@@ -13,14 +13,17 @@ repos:
         args: ['--assume-in-merge']
       - id: check-toml
       - id: check-yaml
-      - id: debug-statements
       - id: end-of-file-fixer
       - id: mixed-line-ending
         args: ['--fix=lf']
       - id: sort-simple-yaml
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
+<<<<<<<
     rev: 'v0.1.7'
+=======
+    rev: 'v0.1.6'
+>>>>>>>
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -30,8 +33,11 @@ repos:
     hooks:
       - id: codespell
         additional_dependencies: ["tomli"]
+<<<<<<<
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.15.0
     hooks:
       - id: pyupgrade
         args: [--py38-plus]
+=======
+>>>>>>>
