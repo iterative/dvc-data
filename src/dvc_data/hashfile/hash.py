@@ -35,7 +35,7 @@ def get_hasher(name: str) -> "hashlib._Hash":
     if name == "blake3":
         from blake3 import blake3
 
-        return blake3(max_threads=blake3.AUTO)
+        return blake3(max_threads=blake3.AUTO)  # type: ignore[return-value]
     if name == "md5-dos2unix":
         name = "md5"
 

@@ -112,7 +112,6 @@ files = ["src", "tests"]
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = [
-    "blake3",
     "fsspec.*",
     "funcy",
     "diskcache",
