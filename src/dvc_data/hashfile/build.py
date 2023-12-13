@@ -3,7 +3,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
 
 from .db.reference import ReferenceHashFileDB
 from .hash import hash_file
@@ -53,12 +53,12 @@ def _upload_file(
     with fs.open(from_path, mode="rb") as stream:
         hashed_stream = HashStreamFile(stream)
         size = fs.size(from_path)
-        with Callback.as_tqdm_callback(
-            callback,
+        cb = callback or TqdmCallback(
             desc=path.name(from_path),
             bytes=True,
             size=size,
-        ) as cb:
+        )
+        with cb:
             fileobj = cast("BinaryIO", hashed_stream)
             upload_odb.fs.put_file(fileobj, tmp_info, size=size, callback=cb)
 

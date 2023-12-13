@@ -2,7 +2,7 @@ import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, Optional, Set
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, TqdmCallback
 
 from dvc_data.hashfile.db import get_index
 from dvc_data.hashfile.transfer import transfer
@@ -55,7 +55,7 @@ def push(
         cache = fs_index.storage_map[()].cache
 
         if callback != DEFAULT_CALLBACK:
-            cb = callback.as_tqdm_callback(
+            cb = TqdmCallback(
                 unit="file",
                 total=len(fs_index),
                 desc=f"Pushing to {data.fs.protocol}",
