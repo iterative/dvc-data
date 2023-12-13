@@ -10,7 +10,7 @@ from collections import deque
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
-from typing import List, cast
+from typing import TYPE_CHECKING, List, cast
 
 import click
 import typer
@@ -18,7 +18,6 @@ from attrs import asdict
 from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import LocalFileSystem, MemoryFileSystem
-from dvc_objects.fs.callbacks import Callback
 from rich.traceback import install
 
 from dvc_data.hashfile import load
@@ -37,6 +36,9 @@ from dvc_data.hashfile.transfer import transfer as _transfer
 from dvc_data.hashfile.tree import Tree, merge
 from dvc_data.hashfile.tree import du as _du
 from dvc_data.repo import NotARepoError, Repo
+
+if TYPE_CHECKING:
+    from dvc_objects.fs.callbacks import Callback
 
 install(show_locals=True, suppress=[typer, click])
 
@@ -118,26 +120,13 @@ app = Application(
 def hash_file(
     file: Path = file_type,
     name: HashEnum = typer.Option("md5", "-n", "--name"),
-    progress: bool = typer.Option(False, "--progress", "-p"),
 ):
     path = relpath(file)
     hash_name = name.value
-    callback = Callback.as_callback()
-    if progress:
-        callback = Callback.as_tqdm_callback(
-            desc=f"hashing {path} with {hash_name}", bytes=True
-        )
-
-    with callback:
-        if path == "-":
-            fobj = callback.wrap_attr(sys.stdin.buffer)
-            hash_value = _fobj_md5(fobj, name=hash_name)
-        else:
-            hash_value = _file_md5(
-                path,
-                name=hash_name,
-                callback=callback,
-            )
+    if path == "-":
+        hash_value = _fobj_md5(sys.stdin.buffer, name=hash_name)
+    else:
+        hash_value = _file_md5(path, name=hash_name)
     print(hash_name, hash_value, sep=": ")
 
 

@@ -15,7 +15,7 @@ from typing import (
 )
 
 from attrs import Factory, define, field
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, TqdmCallback
 from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.local import LocalFileSystem
 from dvc_objects.fs.utils import exists as batch_exists
@@ -28,6 +28,7 @@ from .index import FileStorage, ObjectStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
+    from dvc_objects.fs.callbacks import Callback
 
     from dvc_data.hashfile.state import StateBase
 
@@ -143,7 +144,7 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
                 cb = callback
             else:
                 desc = f"Updating meta for new files in '{path}'"
-                cb = Callback.as_tqdm_callback(desc=desc, unit="file")
+                cb = TqdmCallback(desc=desc, unit="file")
             with cb:
                 infos = fs.info(list(dest_paths), callback=cb, batch_size=jobs)
                 for entry, info in zip(entries, infos):
@@ -355,7 +356,7 @@ def apply(  # noqa: PLR0913
             cb = callback
         else:
             desc = f"Checking status of existing versions in '{path}'"
-            cb = Callback.as_tqdm_callback(desc=desc, unit="file")
+            cb = TqdmCallback(desc=desc, unit="file")
         with cb:
             diff.files_create = list(
                 _prune_existing_versions(diff.files_create, fs, path, callback=cb)

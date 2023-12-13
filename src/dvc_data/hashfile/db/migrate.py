@@ -77,12 +77,12 @@ def _hash_task(
 
 
 def _wrap_hash_file(callback: "Callback", fn: Callable):
-    wrapped = callback.wrap_fn(fn)
-
     @wraps(fn)
     def func(path: str, *args, **kwargs):
         kw: Dict[str, Any] = dict(kwargs)
         with callback.branch(path, path, kw):
-            return wrapped(path, *args, **kw)
+            res = fn(path, *args, **kw)
+            callback.relative_update()
+            return res
 
     return func

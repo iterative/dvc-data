@@ -1,10 +1,11 @@
 import hashlib
 import io
 import logging
-from typing import TYPE_CHECKING, BinaryIO, Optional, Tuple
+from typing import TYPE_CHECKING, BinaryIO, Optional, Tuple, cast
 
 from dvc_objects.fs import localfs
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
+from tqdm.utils import CallbackIOWrapper
 
 from .hash_info import HashInfo
 from .istextfile import DEFAULT_CHUNK_SIZE, istextblock
@@ -34,7 +35,7 @@ def get_hasher(name: str) -> "hashlib._Hash":
     if name == "blake3":
         from blake3 import blake3
 
-        return blake3(max_threads=blake3.AUTO)
+        return blake3(max_threads=blake3.AUTO)  # type: ignore[return-value]
     if name == "md5-dos2unix":
         name = "md5"
 
@@ -122,7 +123,8 @@ def file_md5(
 
     callback.set_size(size)
     with fs.open(fname, "rb") as fobj:
-        return fobj_md5(callback.wrap_attr(fobj), name=name)
+        wrapped = cast("BinaryIO", CallbackIOWrapper(callback.relative_update, fobj))
+        return fobj_md5(wrapped, name=name)
 
 
 def _hash_file(

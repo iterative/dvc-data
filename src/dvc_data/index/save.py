@@ -1,6 +1,5 @@
 from collections import defaultdict
-from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
@@ -104,18 +103,6 @@ def _save_dir_entry(
     assert tree.hash_info.name
     assert tree.hash_info.value
     setattr(entry.meta, tree.hash_info.name, tree.hash_info.value)
-
-
-def _wrap_add(callback: "Callback", fn: Callable):
-    wrapped = callback.wrap_fn(fn)
-
-    @wraps(fn)
-    def func(path: str, *args, **kwargs):
-        kw: Dict[str, Any] = dict(kwargs)
-        with callback.branch(path, path, kw):
-            return wrapped(path, *args, **kw)
-
-    return func
 
 
 if TYPE_CHECKING:
