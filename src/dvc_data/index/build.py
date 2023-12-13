@@ -1,6 +1,8 @@
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
 
+from dvc_objects.fs.local import LocalFileSystem
+
 from dvc_data.hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from dvc_data.hashfile.meta import Meta
 
@@ -46,10 +48,11 @@ def build_entries(
 ) -> Iterable[DataIndexEntry]:
     # NOTE: can't use detail=True with walk, because that will make it error
     # out on broken symlinks.
+    detail = not isinstance(fs, LocalFileSystem)
     if ignore:
-        walk_iter = ignore.walk(fs, path)
+        walk_iter = ignore.walk(fs, path, detail=detail)
     else:
-        walk_iter = fs.walk(path)
+        walk_iter = fs.walk(path, detail=detail)
 
     for root, dirs, files in walk_iter:
         if root == path:
@@ -57,7 +60,13 @@ def build_entries(
         else:
             root_key = fs.path.relparts(root, path)
 
-        for name in chain(dirs, files):
+        entries: Iterable[Tuple[str, Optional[Dict]]]
+        if detail:
+            entries = chain(dirs.items(), files.items())
+        else:
+            entries = ((name, None) for name in chain(dirs, files))
+
+        for name, info in entries:
             try:
                 entry = build_entry(
                     fs.path.join(root, name),
@@ -65,6 +74,7 @@ def build_entries(
                     compute_hash=compute_hash,
                     state=state,
                     hash_name=hash_name,
+                    info=info,
                 )
             except FileNotFoundError:
                 entry = DataIndexEntry()
