@@ -48,13 +48,12 @@ def _upload_file(
 
     from .hash import HashStreamFile
 
-    path = upload_odb.fs.path
-    tmp_info = path.join(upload_odb.path, tmp_fname())
+    tmp_info = upload_odb.fs.join(upload_odb.path, tmp_fname())
     with fs.open(from_path, mode="rb") as stream:
         hashed_stream = HashStreamFile(stream)
         size = fs.size(from_path)
         cb = callback or TqdmCallback(
-            desc=path.name(from_path),
+            desc=upload_odb.fs.name(from_path),
             bytes=True,
             size=size,
         )
@@ -125,7 +124,7 @@ def _build_tree(
     for root, _, fnames in walk_iter:
         if DefaultIgnoreFile in fnames:
             raise IgnoreInCollectedDirError(
-                DefaultIgnoreFile, fs.path.join(root, DefaultIgnoreFile)
+                DefaultIgnoreFile, fs.join(root, DefaultIgnoreFile)
             )
 
         # NOTE: we know for sure that root starts with path, so we can use
@@ -174,7 +173,7 @@ def _make_staging_url(fs: "FileSystem", odb: "HashFileDB", path: Optional[str]):
         if path not in _url_cache:
             _url_cache[path] = hashlib.sha256(path.encode("utf-8")).hexdigest()
 
-        url = fs.path.join(url, _url_cache[path])
+        url = fs.join(url, _url_cache[path])
 
     return url
 

@@ -58,7 +58,7 @@ def build_entries(
         if root == path:
             root_key: Tuple[str, ...] = ()
         else:
-            root_key = fs.path.relparts(root, path)
+            root_key = fs.relparts(root, path)
 
         entries: Iterable[Tuple[str, Optional[Dict]]]
         if detail:
@@ -69,7 +69,7 @@ def build_entries(
         for name, info in entries:
             try:
                 entry = build_entry(
-                    fs.path.join(root, name),
+                    fs.join(root, name),
                     fs,
                     compute_hash=compute_hash,
                     state=state,
