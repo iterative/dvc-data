@@ -65,7 +65,7 @@ class DataFileSystem(AbstractFileSystem):
         return self.root_marker
 
     def normpath(self, path: str) -> str:
-        return path
+        return posixpath.normpath(path)
 
     def abspath(self, path: str) -> str:
         if not posixpath.isabs(path):
