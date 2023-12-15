@@ -65,7 +65,7 @@ class LocalHashFileDB(HashFileDB):
     def _list_paths(self, prefix=None):
         assert self.path is not None
         if prefix:
-            path = self.fs.path.join(self.path, prefix[:2])
+            path = self.fs.join(self.path, prefix[:2])
             if not self.fs.exists(path):
                 return
         else:
@@ -74,9 +74,9 @@ class LocalHashFileDB(HashFileDB):
 
     def _remove_unpacked_dir(self, hash_):
         hash_path = self.oid_to_path(hash_)
-        path = self.fs.path.with_name(
+        path = self.fs.with_name(
             hash_path,
-            self.fs.path.name(hash_path) + self.UNPACKED_DIR_SUFFIX,
+            self.fs.name(hash_path) + self.UNPACKED_DIR_SUFFIX,
         )
         self.fs.remove(path)
 

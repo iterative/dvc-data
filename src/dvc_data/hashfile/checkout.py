@@ -161,7 +161,7 @@ class Link:
         if to_fs.exists(to_path):
             to_fs.remove(to_path)  # broken symlink
 
-        parent = to_fs.path.parent(to_path)
+        parent = to_fs.parent(to_path)
         to_fs.makedirs(parent)
         try:
             transfer(
@@ -199,16 +199,12 @@ def _checkout(
     progress_callback.set_size(sum(diff.stats.values()))
     link = Link(links, callback=progress_callback)
     for change in diff.deleted:
-        entry_path = (
-            fs.path.join(path, *change.old.key) if change.old.key != ROOT else path
-        )
+        entry_path = fs.join(path, *change.old.key) if change.old.key != ROOT else path
         _remove(entry_path, fs, change.old.in_cache, force=force, prompt=prompt)
 
     failed = []
     for change in chain(diff.added, diff.modified):
-        entry_path = (
-            fs.path.join(path, *change.new.key) if change.new.key != ROOT else path
-        )
+        entry_path = fs.join(path, *change.new.key) if change.new.key != ROOT else path
         if change.new.oid.isdir:
             fs.makedirs(entry_path)
             continue

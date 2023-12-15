@@ -34,7 +34,7 @@ def _meta_checksum(fs: "FileSystem", meta: "Meta") -> Any:
 
 def _onerror(cache, data, failed_keys, src_path, dest_path, exc):
     if not isinstance(exc, FileNotFoundError) or cache.fs.exists(src_path):
-        failed_keys.add(data.fs.path.relparts(dest_path, data.path))
+        failed_keys.add(data.fs.relparts(dest_path, data.path))
 
     logger.debug(
         "failed to create '%s' from '%s'",
@@ -89,7 +89,7 @@ def push(
                     meta_only=True,
                     meta_cmp_key=partial(_meta_checksum, data.fs),
                 )
-                data.fs.makedirs(data.fs.path.parent(data.path), exist_ok=True)
+                data.fs.makedirs(data.fs.parent(data.path), exist_ok=True)
 
                 failed_keys: Set["DataIndexKey"] = set()
 

@@ -67,7 +67,7 @@ def _delete_files(
     if not entries:
         return
 
-    fs.remove([fs.path.join(path, *(entry.key or ())) for entry in entries])
+    fs.remove([fs.join(path, *(entry.key or ())) for entry in entries])
 
 
 def _create_files(  # noqa: C901, PLR0912, PLR0913
@@ -90,7 +90,7 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
         list
     )
     for entry in entries:
-        dest_path = fs.path.join(path, *entry.key)
+        dest_path = fs.join(path, *entry.key)
         storage_info = index.storage_map[entry.key]
         storage_obj = getattr(storage_info, storage)
 
@@ -158,7 +158,7 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
                 FileStorage(
                     key,
                     fs,
-                    fs.path.join(path, *key),
+                    fs.join(path, *key),
                 )
             )
 
@@ -166,14 +166,14 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
 def _delete_dirs(entries, path, fs):
     for entry in entries:
         try:
-            fs.rmdir(fs.path.join(path, *entry.key))
+            fs.rmdir(fs.join(path, *entry.key))
         except OSError:
             pass
 
 
 def _create_dirs(entries, path, fs):
     for entry in entries:
-        fs.makedirs(fs.path.join(path, *entry.key), exist_ok=True)
+        fs.makedirs(fs.join(path, *entry.key), exist_ok=True)
 
 
 def _chmod_files(entries, path, fs):
@@ -181,7 +181,7 @@ def _chmod_files(entries, path, fs):
         return
 
     for entry in entries:
-        entry_path = fs.path.join(path, *entry.key)
+        entry_path = fs.join(path, *entry.key)
         mode = os.stat(entry_path).st_mode | stat.S_IEXEC
         try:
             os.chmod(entry_path, mode)
@@ -366,7 +366,7 @@ def apply(  # noqa: PLR0913
         onerror = _onerror_noop
 
     for entry in diff.dirs_failed:
-        onerror(None, fs.path.join(path, *entry.key), None)
+        onerror(None, fs.join(path, *entry.key), None)
 
     _delete_files(
         diff.files_delete,
@@ -409,9 +409,9 @@ def _prune_existing_versions(
         if entry.meta.version_id is None:
             yield entry
         else:
-            entry_path = fs.path.join(path, *(entry.key or ()))
-            assert hasattr(fs.path, "version_path")
-            versioned_path = fs.path.version_path(entry_path, entry.meta.version_id)
+            entry_path = fs.join(path, *(entry.key or ()))
+            assert hasattr(fs, "version_path")
+            versioned_path = fs.version_path(entry_path, entry.meta.version_id)
             query_vers[versioned_path] = entry
     for path, exists in batch_exists(
         fs, query_vers.keys(), batch_size=jobs, callback=callback

@@ -2,6 +2,7 @@ import copy
 import errno
 import logging
 import os
+import posixpath
 import typing
 from collections import deque
 from typing import Any, BinaryIO, NamedTuple, Optional, Tuple
@@ -9,12 +10,9 @@ from typing import Any, BinaryIO, NamedTuple, Optional, Tuple
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from fsspec import AbstractFileSystem
 
-from .utils import cached_property
-
 if typing.TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
     from dvc_objects.fs.callbacks import Callback
-    from dvc_objects.fs.path import Path
 
     from dvc_data.hashfile.db import HashFileDB
 
@@ -40,21 +38,54 @@ class DataFileSystem(AbstractFileSystem):
         super().__init__(**kwargs)
         self.index = index
 
-    @cached_property
-    def path(self) -> "Path":
-        from dvc_objects.fs.path import Path
+    @classmethod
+    def join(cls, *parts: str) -> str:
+        return posixpath.join(*parts)
 
-        def _getcwd() -> str:
-            return self.root_marker
+    @classmethod
+    def parts(cls, path: str) -> Tuple[str, ...]:
+        ret = []
+        while True:
+            path, part = posixpath.split(path)
 
-        return Path(self.sep, getcwd=_getcwd)
+            if part:
+                ret.append(part)
+                continue
+
+            if path:
+                ret.append(path)
+
+            break
+
+        ret.reverse()
+
+        return tuple(ret)
+
+    def getcwd(self) -> str:
+        return self.root_marker
+
+    def normpath(self, path: str) -> str:
+        return path
+
+    def abspath(self, path: str) -> str:
+        if not posixpath.isabs(path):
+            path = self.join(self.getcwd(), path)
+        return self.normpath(path)
+
+    def relpath(self, path: str, start: Optional[str] = None) -> str:
+        if start is None:
+            start = "."
+        return posixpath.relpath(self.abspath(path), start=self.abspath(start))
+
+    def relparts(self, path: str, start: Optional[str] = None) -> Tuple[str, ...]:
+        return self.parts(self.relpath(path, start=start))
 
     def _get_key(self, path: str) -> Tuple[str, ...]:
-        path = self.path.abspath(path)
+        path = self.abspath(path)
         if path == self.root_marker:
             return ()
 
-        key = self.path.relparts(path, self.root_marker)
+        key = self.relparts(path, self.root_marker)
         if key in ((".",), ("",)):
             key = ()
 
@@ -125,13 +156,13 @@ class DataFileSystem(AbstractFileSystem):
 
             if not detail:
                 return [
-                    self.path.join(path, key[-1])
+                    self.join(path, key[-1])
                     for key in self.index.ls(root_key, detail=False)
                 ]
 
             entries = []
             for key, info in self.index.ls(root_key, detail=True):
-                info["name"] = self.path.join(path, key[-1])
+                info["name"] = self.join(path, key[-1])
                 entries.append(info)
             return entries
         except KeyError as exc:
