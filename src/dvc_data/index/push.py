@@ -10,7 +10,7 @@ from dvc_data.hashfile.transfer import transfer
 from .build import build
 from .checkout import apply, compare
 from .fetch import _log_missing
-from .index import ObjectStorage
+from .index import DataIndex, ObjectStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs import FileSystem
@@ -42,6 +42,22 @@ def _onerror(cache, data, failed_keys, src_path, dest_path, exc):
         dest_path,
         exc_info=True,
     )
+
+
+def _filter_missing(index):
+    ret = DataIndex()
+    ret.storage_map = index.storage_map
+
+    for _, entry in index.items():
+        try:
+            cache_fs, cache_path = index.storage_map.get_cache(entry)
+        except ValueError:
+            continue
+
+        if cache_fs.exists(cache_path):
+            ret.add(entry)
+
+    return ret
 
 
 def push(
@@ -83,9 +99,11 @@ def push(
                 failed += len(result.failed)
             else:
                 old = build(data.path, data.fs)
+
+                existing_fs_index = _filter_missing(fs_index)
                 diff = compare(
                     old,
-                    fs_index,
+                    existing_fs_index,
                     meta_only=True,
                     meta_cmp_key=partial(_meta_checksum, data.fs),
                 )
