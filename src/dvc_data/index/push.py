@@ -124,7 +124,7 @@ def push(
                     onerror=partial(_onerror, cache, data, failed_keys),
                 )
 
-                added_keys = {ch.key for ch in diff.changes.get("added", [])}
+                added_keys = {entry.key for entry in diff.files_create}
                 pushed += len(added_keys - failed_keys)
                 failed += len(failed_keys)
 
