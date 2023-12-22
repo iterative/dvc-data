@@ -431,7 +431,9 @@ def test_open(tmp_path):
     assert index[key] == entry2
 
     index.commit()
+    assert index._trie._cache
     index.close()
+    assert not index._trie._cache
 
     index = DataIndex.open(path)
     index[key] = entry2
@@ -439,3 +441,7 @@ def test_open(tmp_path):
 
     index[key] = entry1
     assert index[key] == entry1
+
+    assert index._trie._cache
+    index.close()
+    assert not index._trie._cache

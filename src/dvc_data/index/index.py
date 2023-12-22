@@ -138,6 +138,10 @@ class DataIndexTrie(JSONTrie):
         self._cache.pop(key, None)
         super().delete_node(key)
 
+    def close(self):
+        self._cache = {}
+        super().close()
+
 
 class Storage(ABC):
     def __init__(self, key: "DataIndexKey"):
