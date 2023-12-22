@@ -35,7 +35,10 @@ def md5(
         if entry.hash_info and entry.hash_info.name in ("md5", "md5-dos2unix"):
             continue
 
-        fs, path = index.storage_map.get_storage(entry, storage)
+        try:
+            fs, path = index.storage_map.get_storage(entry, storage)
+        except ValueError:
+            continue
 
         info = None
         if check_meta:
@@ -48,7 +51,11 @@ def md5(
             if entry.meta != meta:
                 continue
 
-        meta, hash_info = hash_file(path, fs, name, state=state, info=info)
+        try:
+            _, hash_info = hash_file(path, fs, name, state=state, info=info)
+        except FileNotFoundError:
+            continue
+
         entries[key] = DataIndexEntry(
             key=entry.key,
             meta=entry.meta,
@@ -126,7 +133,12 @@ def save(
         if entry.meta and entry.meta.isdir:
             dir_entries.append(key)
             continue
-        fs, path = index.storage_map.get_storage(entry, storage)
+
+        try:
+            fs, path = index.storage_map.get_storage(entry, storage)
+        except ValueError:
+            continue
+
         if entry.hash_info:
             cache = odb or index.storage_map.get_cache_odb(entry)
             assert cache

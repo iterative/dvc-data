@@ -259,9 +259,17 @@ class FileStorage(Storage):
         assert entry.key is not None
         assert entry.key[: len(self.prefix)] == self.prefix
         path = self.fs.join(self.path, *entry.key[len(self.prefix) :])
-        if self.fs.version_aware and entry.meta and entry.meta.version_id:
-            path = self.fs.version_path(path, entry.meta.version_id)
-        return self.fs, path
+
+        if not self.fs.version_aware:
+            return self.fs, path
+
+        if not entry.meta or entry.meta.isdir:
+            return self.fs, path
+
+        if entry.meta and entry.meta.version_id:
+            return self.fs, self.fs.version_path(path, entry.meta.version_id)
+
+        raise ValueError(f"Missing version_id for {path}")
 
     def exists(self, entry: "DataIndexEntry", refresh: bool = False) -> bool:
         if self.index is None:
