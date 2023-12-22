@@ -28,7 +28,7 @@ dependencies = [
     "dvc-objects>=3,<4",
     "diskcache>=5.2.1",
     "attrs>=21.3.0",
-    "sqltrie>=0.9.0,<1",
+    "sqltrie>=0.11.0,<1",
     "tqdm>=4.63.1,<5",
 ]
 
