@@ -338,12 +338,11 @@ def _onerror_noop(*args, **kwargs):
     pass
 
 
-def apply(  # noqa: PLR0913
+def apply(
     diff: "Diff",
     path: str,
     fs: "FileSystem",
     callback: "Callback" = DEFAULT_CALLBACK,
-    latest_only: bool = True,
     update_meta: bool = True,
     jobs: Optional[int] = None,
     storage: str = "cache",
@@ -351,17 +350,6 @@ def apply(  # noqa: PLR0913
     state: Optional["StateBase"] = None,
     links: Optional[List[str]] = None,
 ) -> None:
-    if fs.version_aware and not latest_only:
-        if callback == DEFAULT_CALLBACK:
-            cb = callback
-        else:
-            desc = f"Checking status of existing versions in '{path}'"
-            cb = TqdmCallback(desc=desc, unit="file")
-        with cb:
-            diff.files_create = list(
-                _prune_existing_versions(diff.files_create, fs, path, callback=cb)
-            )
-
     if onerror is None:
         onerror = _onerror_noop
 
