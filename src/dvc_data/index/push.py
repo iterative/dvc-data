@@ -8,7 +8,7 @@ from dvc_data.hashfile.db import get_index
 from dvc_data.hashfile.transfer import transfer
 
 from .build import build
-from .checkout import apply, compare
+from .checkout import _prune_existing_versions, apply, compare
 from .fetch import _log_missing
 from .index import DataIndex, ObjectStorage
 
@@ -70,17 +70,8 @@ def push(
         data = fs_index.storage_map[()].data
         cache = fs_index.storage_map[()].cache
 
-        if callback != DEFAULT_CALLBACK:
-            cb = TqdmCallback(
-                unit="file",
-                total=len(fs_index),
-                desc=f"Pushing to {data.fs.protocol}",
-            )
-        else:
-            cb = callback
-
-        with cb:
-            if isinstance(cache, ObjectStorage) and isinstance(data, ObjectStorage):
+        if isinstance(cache, ObjectStorage) and isinstance(data, ObjectStorage):
+            with TqdmCallback(unit="file", desc=f"Pushing to {data.fs.protocol}") as cb:
                 result = transfer(
                     cache.odb,
                     data.odb,
@@ -97,25 +88,35 @@ def push(
                 )
                 pushed += len(result.transferred)
                 failed += len(result.failed)
-            else:
-                old = build(data.path, data.fs)
+        else:
+            old = build(data.path, data.fs)
 
-                existing_fs_index = _filter_missing(fs_index)
-                diff = compare(
-                    old,
-                    existing_fs_index,
-                    meta_only=True,
-                    meta_cmp_key=partial(_meta_checksum, data.fs),
-                )
-                data.fs.makedirs(data.fs.parent(data.path), exist_ok=True)
+            existing_fs_index = _filter_missing(fs_index)
+            diff = compare(
+                old,
+                existing_fs_index,
+                meta_only=True,
+                meta_cmp_key=partial(_meta_checksum, data.fs),
+            )
+            data.fs.makedirs(data.fs.parent(data.path), exist_ok=True)
 
-                failed_keys: Set["DataIndexKey"] = set()
+            failed_keys: Set["DataIndexKey"] = set()
 
+            if data.fs.version_aware:
+                desc = f"Checking status of existing versions in {data.path!r}"
+                with TqdmCallback(desc=desc, unit="file") as cb:
+                    diff.files_create = list(
+                        _prune_existing_versions(
+                            diff.files_create, data.fs, data.path, callback=cb
+                        )
+                    )
+
+            with TqdmCallback(unit="file", desc=f"Pushing to {data.fs.protocol}") as cb:
+                cb.set_size(len(diff.files_create))
                 apply(
                     diff,
                     data.path,
                     data.fs,
-                    latest_only=False,
                     update_meta=False,
                     storage="cache",
                     jobs=jobs,
@@ -124,8 +125,8 @@ def push(
                     onerror=partial(_onerror, cache, data, failed_keys),
                 )
 
-                added_keys = {entry.key for entry in diff.files_create}
-                pushed += len(added_keys - failed_keys)
-                failed += len(failed_keys)
+            added_keys = {entry.key for entry in diff.files_create}
+            pushed += len(added_keys - failed_keys)
+            failed += len(failed_keys)
 
     return pushed, failed
