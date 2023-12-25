@@ -14,7 +14,7 @@ from typing import (
     Tuple,
 )
 
-from attrs import Factory, define, field
+from attrs import define, field
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, TqdmCallback
 from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.local import LocalFileSystem
@@ -198,13 +198,13 @@ def _chmod_files(entries, path, fs):
 class Diff:
     old: Optional["BaseDataIndex"] = field(default=None)
     new: Optional["BaseDataIndex"] = field(default=None)
-    changes: Dict["DataIndexKey", "Change"] = field(default=Factory(dict))
-    files_delete: list = field(default=Factory(list))
-    dirs_delete: list = field(default=Factory(list))
-    files_create: list = field(default=Factory(list))
-    dirs_create: list = field(default=Factory(list))
-    files_chmod: list = field(default=Factory(list))
-    dirs_failed: list = field(default=Factory(list))
+    changes: Dict["DataIndexKey", "Change"] = field(factory=dict)
+    files_delete: list = field(factory=list)
+    dirs_delete: list = field(factory=list)
+    files_create: list = field(factory=list)
+    dirs_create: list = field(factory=list)
+    files_chmod: list = field(factory=list)
+    dirs_failed: list = field(factory=list)
 
 
 def _compare(  # noqa: C901, PLR0912
