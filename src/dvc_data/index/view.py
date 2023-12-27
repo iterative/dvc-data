@@ -104,11 +104,9 @@ class DataIndexView(BaseDataIndex):
         ):
             self._index._load(prefix, entry)
             if not shallow:
-                yield from (
-                    (key, val)
-                    for key, val in self._index.iteritems(entry.key)
-                    if key != prefix
-                )
+                for key, val in self._index.iteritems(entry.key):
+                    if key != prefix and self.filter_fn(key):
+                        yield key, val
 
     def iteritems(
         self,
