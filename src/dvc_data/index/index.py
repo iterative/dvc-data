@@ -144,8 +144,9 @@ class DataIndexTrie(JSONTrie):
 
 
 class Storage(ABC):
-    def __init__(self, key: "DataIndexKey"):
+    def __init__(self, key: "DataIndexKey", read_only: bool = False):
         self.key = key
+        self.read_only = read_only
 
     @property
     @abstractmethod
@@ -176,10 +177,11 @@ class ObjectStorage(Storage):
         key: "DataIndexKey",
         odb: "HashFileDB",
         index: Optional["DataIndex"] = None,
+        read_only: bool = False,
     ):
         self.odb = odb
         self.index = index
-        super().__init__(key)
+        super().__init__(key, read_only=read_only)
 
     @property
     def fs(self):
@@ -235,12 +237,13 @@ class FileStorage(Storage):
         path: "str",
         index: Optional["DataIndex"] = None,
         prefix: Optional["DataIndexKey"] = None,
+        read_only: bool = False,
     ):
         self._fs = fs
         self._path = path
         self.index = index
         self.prefix = prefix if prefix is not None else key
-        super().__init__(key)
+        super().__init__(key, read_only=read_only)
 
     @property
     def fs(self):
