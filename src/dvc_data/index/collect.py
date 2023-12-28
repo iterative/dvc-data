@@ -94,7 +94,7 @@ def collect(  # noqa: C901, PLR0912
             cache = storage_info.cache if storage != "cache" else None
             remote = storage_info.remote if storage != "remote" else None
 
-            if not data:
+            if not data or (push and data.read_only):
                 continue
 
             try:
