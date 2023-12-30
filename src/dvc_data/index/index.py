@@ -184,11 +184,14 @@ class ObjectStorage(Storage):
         super().__init__(key, read_only=read_only)
 
     def __repr__(self) -> str:
-        key = self.key
-        odb = self.odb
-        index = self.index
-        read_only = self.read_only
-        return f"{type(self).__name__}({key=!r}, {odb=!r}, {index=!r}, {read_only=!r})"
+        params = ", ".join(f"{k}={v!r}" for k, v, *_ in self.__rich_repr__())
+        return f"{self.__class__.__name__}({params})"
+
+    def __rich_repr__(self):
+        yield "key", self.key
+        yield "odb", self.odb
+        yield "index", self.index, None
+        yield "read_only", self.read_only, False
 
     @property
     def fs(self):
@@ -253,16 +256,15 @@ class FileStorage(Storage):
         super().__init__(key, read_only=read_only)
 
     def __repr__(self) -> str:
-        key = self.key
-        fs = self.fs
-        path = self.path
-        index = self.index
-        prefix = self.prefix
-        read_only = self.read_only
-        return (
-            f"{self.__class__.__name__}("
-            f"{key=!r}, {fs=!r}, {path=!r}, {index=!r}, {prefix=!r}, {read_only=!r})"
-        )
+        params = ", ".join(f"{k}={v!r}" for k, v, *_ in self.__rich_repr__())
+        return f"{self.__class__.__name__}({params})"
+
+    def __rich_repr__(self):
+        yield "key", self.key
+        yield "fs", self.fs
+        yield "index", self.index, None
+        yield "prefix", self.prefix, None
+        yield "read_only", self.read_only, False
 
     @property
     def fs(self):
@@ -339,6 +341,12 @@ class StorageKeyError(StorageError, KeyError):
 class StorageMapping(MutableMapping):
     def __init__(self, *args, **kwargs):
         self._map = dict(*args, **kwargs)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self._map!r})"
+
+    def __rich_repr__(self):
+        yield self._map
 
     def __setitem__(self, key, value):
         self._map[key] = value
