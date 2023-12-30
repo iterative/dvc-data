@@ -183,6 +183,13 @@ class ObjectStorage(Storage):
         self.index = index
         super().__init__(key, read_only=read_only)
 
+    def __repr__(self) -> str:
+        key = self.key
+        odb = self.odb
+        index = self.index
+        read_only = self.read_only
+        return f"{type(self).__name__}({key=!r}, {odb=!r}, {index=!r}, {read_only=!r})"
+
     @property
     def fs(self):
         return self.odb.fs
@@ -244,6 +251,18 @@ class FileStorage(Storage):
         self.index = index
         self.prefix = prefix if prefix is not None else key
         super().__init__(key, read_only=read_only)
+
+    def __repr__(self) -> str:
+        key = self.key
+        fs = self.fs
+        path = self.path
+        index = self.index
+        prefix = self.prefix
+        read_only = self.read_only
+        return (
+            f"{self.__class__.__name__}("
+            f"{key=!r}, {fs=!r}, {path=!r}, {index=!r}, {prefix=!r}, {read_only=!r})"
+        )
 
     @property
     def fs(self):
