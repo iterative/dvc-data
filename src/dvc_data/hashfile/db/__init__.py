@@ -52,28 +52,16 @@ class HashFileDB(ObjectDB):
     DEFAULT_CACHE_TYPES: ClassVar[List[str]] = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs: "FileSystem", path: str, **config):
+    def __init__(self, fs: "FileSystem", path: str, read_only: bool = False, **config):
         from dvc_data.hashfile.state import StateNoop
 
-        super().__init__(fs, path)
+        super().__init__(fs, path, read_only=read_only)
         self.state = config.get("state", StateNoop())
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
-        self.read_only = config.get("read_only", False)
         self.hash_name = config.get("hash_name", self.fs.PARAM_CHECKSUM)
-
-    @property
-    def config(self):
-        return {
-            "state": self.state,
-            "verify": self.verify,
-            "type": self.cache_types,
-            "slow_link_warning": self.slow_link_warning,
-            "tmp_dir": self.tmp_dir,
-            "read_only": self.read_only,
-        }
 
     def get(self, oid: str) -> HashFile:
         return HashFile(
