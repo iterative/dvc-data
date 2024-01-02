@@ -155,6 +155,11 @@ def collect(  # noqa: C901, PLR0912
     for key, storage_info in storage_by_fs.items():
         idx = cache_index.view((*cache_key, *key))
         idx.storage_map[()] = storage_info
+
+        def _onerror(*args):
+            pass
+
+        idx.onerror = _onerror
         storage_indexes.append(idx)
 
     return storage_indexes
