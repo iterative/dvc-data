@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, Optional
+from functools import partial
+from typing import TYPE_CHECKING, Optional, Set
 
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, TqdmCallback
 
@@ -17,6 +18,8 @@ if TYPE_CHECKING:
 
     from dvc_data.hashfile.status import CompareStatusResult
 
+    from .index import DataIndexKey
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +31,18 @@ def _log_missing(status: "CompareStatusResult"):
             "nor on remote. Missing cache files:\n%s",
             missing_desc,
         )
+
+
+def _onerror(data, cache, failed_keys, src_path, dest_path, exc):
+    if not isinstance(exc, FileNotFoundError) or data.fs.exists(src_path):
+        failed_keys.add(cache.fs.relparts(dest_path, cache.path))
+
+    logger.debug(
+        "failed to create '%s' from '%s'",
+        src_path,
+        dest_path,
+        exc_info=True,
+    )
 
 
 def fetch(
@@ -85,6 +100,8 @@ def fetch(
                 old = build(cache.path, cache.fs)
                 diff = compare(old, fs_index)
                 cache.fs.makedirs(cache.fs.parent(cache.path), exist_ok=True)
+
+                failed_keys: Set["DataIndexKey"] = set()
                 apply(
                     diff,
                     cache.path,
@@ -93,7 +110,11 @@ def fetch(
                     storage="data",
                     jobs=jobs,
                     callback=cb,
+                    onerror=partial(_onerror, data, cache, failed_keys),
                 )
-                fetched += len(diff.changes.get("added", []))
+
+                added_keys = {entry.key for entry in diff.files_create}
+                fetched += len(added_keys - failed_keys)
+                failed += len(failed_keys)
 
     return fetched, failed
