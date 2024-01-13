@@ -33,7 +33,7 @@ def test_md5(tmp_upath, odb, as_filesystem):
 
     fs = as_filesystem(tmp_upath.fs)
     index = build(str(tmp_upath), fs)
-    md5(index)
+    index = md5(index)
     assert index[("foo",)].hash_info == HashInfo(
         "md5",
         "d3b07384d113edec49eaa6238ad5ff00",
@@ -56,7 +56,7 @@ def test_save(tmp_upath, odb, as_filesystem):
 
     fs = as_filesystem(tmp_upath.fs)
     index = build(str(tmp_upath), fs)
-    md5(index)
+    index = md5(index)
     save(index, odb=odb)
     assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
     assert odb.exists("1f69c66028c35037e8bf67e5bc4ceb6a.dir")
@@ -397,7 +397,7 @@ def test_update(tmp_upath, odb, as_filesystem):
 
     fs = as_filesystem(tmp_upath.fs)
     old = build(str(tmp_upath), fs)
-    md5(old)
+    old = md5(old)
 
     index = build(str(tmp_upath), fs)
     update(index, old)

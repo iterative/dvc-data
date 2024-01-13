@@ -14,7 +14,25 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.state import StateBase
 
-    from .index import BaseDataIndex, DataIndexKey
+    from .index import BaseDataIndex, DataIndex, DataIndexKey
+
+
+def _meta_matches(fs, path, old_meta):
+    try:
+        info = fs.info(path)
+    except FileNotFoundError:
+        return False
+
+    if getattr(fs, "immutable", False):
+        return True
+
+    new_meta = Meta.from_info(info, fs.protocol)
+    old = getattr(old_meta, fs.PARAM_CHECKSUM, None) if old_meta else None
+    new = getattr(new_meta, fs.PARAM_CHECKSUM, None)
+    if not old or not new:
+        return None
+
+    return old == new
 
 
 def md5(
@@ -22,48 +40,49 @@ def md5(
     state: Optional["StateBase"] = None,
     storage: str = "data",
     name: str = DEFAULT_ALGORITHM,
-    check_meta: bool = True,
-) -> None:
-    from .index import DataIndexEntry
+) -> "DataIndex":
+    from .index import DataIndex, DataIndexEntry
 
-    entries = {}
+    ret = DataIndex()
 
-    for key, entry in index.iteritems():
+    for _, entry in index.iteritems():
         if entry.meta and entry.meta.isdir:
+            ret.add(entry)
             continue
 
+        hash_info = None
         if entry.hash_info and entry.hash_info.name in ("md5", "md5-dos2unix"):
-            continue
+            hash_info = entry.hash_info
 
         try:
             fs, path = index.storage_map.get_storage(entry, storage)
         except ValueError:
             continue
 
-        info = None
-        if check_meta:
-            try:
-                info = fs.info(path)
-            except FileNotFoundError:
-                continue
-
-            meta = Meta.from_info(info, fs.protocol)
-            if entry.meta != meta:
-                continue
+        matches = _meta_matches(fs, path, entry.meta)
+        if matches:
+            ret.add(entry)
+        elif matches is not None:
+            continue
 
         try:
-            _, hash_info = hash_file(path, fs, name, state=state, info=info)
+            _, hi = hash_file(path, fs, name, state=state)
         except FileNotFoundError:
             continue
 
-        entries[key] = DataIndexEntry(
-            key=entry.key,
-            meta=entry.meta,
-            hash_info=hash_info,
+        if hash_info and hi != hash_info:
+            continue
+
+        ret.add(
+            DataIndexEntry(
+                key=entry.key,
+                meta=entry.meta,
+                hash_info=hi,
+            )
         )
 
-    for key, entry in entries.items():
-        index[key] = entry
+    ret.storage_map = index.storage_map
+    return ret
 
 
 def build_tree(
