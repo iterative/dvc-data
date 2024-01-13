@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.state import StateBase
 
-    from .index import BaseDataIndex, DataIndexKey
+    from .index import BaseDataIndex, DataIndex, DataIndexKey
 
 
 def md5(
@@ -23,16 +23,22 @@ def md5(
     storage: str = "data",
     name: str = DEFAULT_ALGORITHM,
     check_meta: bool = True,
-) -> None:
-    from .index import DataIndexEntry
+) -> "DataIndex":
+    from .index import DataIndex, DataIndexEntry
 
-    entries = {}
+    ret = DataIndex()
 
-    for key, entry in index.iteritems():
+    for _, entry in index.iteritems():
         if entry.meta and entry.meta.isdir:
+            ret.add(entry)
             continue
 
+        hash_info = None
         if entry.hash_info and entry.hash_info.name in ("md5", "md5-dos2unix"):
+            hash_info = entry.hash_info
+
+        if hash_info and not check_meta:
+            ret.add(entry)
             continue
 
         try:
@@ -47,23 +53,37 @@ def md5(
             except FileNotFoundError:
                 continue
 
-            meta = Meta.from_info(info, fs.protocol)
-            if entry.meta != meta:
-                continue
+            if getattr(fs, "immutable", False):
+                ret.add(entry)
+            else:
+                meta = Meta.from_info(info, fs.protocol)
+                old = (
+                    getattr(entry.meta, fs.PARAM_CHECKSUM, None) if entry.meta else None
+                )
+                new = getattr(meta, fs.PARAM_CHECKSUM, None)
+                if old and new:
+                    if old == new:
+                        ret.add(entry)
+                    continue
 
         try:
-            _, hash_info = hash_file(path, fs, name, state=state, info=info)
+            _, hi = hash_file(path, fs, name, state=state, info=info)
         except FileNotFoundError:
             continue
 
-        entries[key] = DataIndexEntry(
-            key=entry.key,
-            meta=entry.meta,
-            hash_info=hash_info,
+        if hash_info and hi != hash_info:
+            continue
+
+        ret.add(
+            DataIndexEntry(
+                key=entry.key,
+                meta=entry.meta,
+                hash_info=hi,
+            )
         )
 
-    for key, entry in entries.items():
-        index[key] = entry
+    ret.storage_map = index.storage_map
+    return ret
 
 
 def build_tree(

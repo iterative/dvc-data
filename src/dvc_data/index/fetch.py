@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Optional, Set
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, TqdmCallback
 
 from dvc_data.hashfile.db import get_index
+from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer
 
 from .build import build
 from .checkout import apply, compare
 from .collect import collect  # noqa: F401
-from .index import ObjectStorage
+from .index import DataIndex, ObjectStorage
 from .save import md5, save
 
 if TYPE_CHECKING:
@@ -43,6 +44,43 @@ def _onerror(data, cache, failed_keys, src_path, dest_path, exc):
         dest_path,
         exc_info=True,
     )
+
+
+def _filter_changed(index):
+    ret = DataIndex()
+    ret.storage_map = index.storage_map
+
+    for _, entry in index.items():
+        if entry.meta and entry.meta.isdir:
+            ret.add(entry)
+            continue
+
+        if not entry.meta or entry.meta.version_id:
+            ret.add(entry)
+            continue
+
+        try:
+            data_fs, data_path = index.storage_map.get_data(entry)
+        except ValueError:
+            continue
+
+        try:
+            info = data_fs.info(data_path)
+        except FileNotFoundError:
+            continue
+
+        if getattr(data_fs, "immutable", None):
+            ret.add(entry)
+            continue
+
+        meta = Meta.from_info(info)
+        old = getattr(entry.meta, data_fs.PARAM_CHECKSUM, None) if entry.meta else None
+        new = getattr(meta, data_fs.PARAM_CHECKSUM, None)
+        if old and new:
+            if old == new:
+                ret.add(entry)
+
+    return ret
 
 
 def fetch(
@@ -94,7 +132,7 @@ def fetch(
                 fetched += len(result.transferred)
                 failed += len(result.failed)
             elif isinstance(cache, ObjectStorage):
-                md5(fs_index, check_meta=False)
+                updated = md5(fs_index, check_meta=True)
 
                 def _on_error(failed, oid, exc):
                     if isinstance(exc, FileNotFoundError):
@@ -107,14 +145,15 @@ def fetch(
                     )
 
                 fetched += save(
-                    fs_index,
+                    updated,
                     jobs=jobs,
                     callback=cb,
                     on_error=partial(_on_error, failed),
                 )
             else:
                 old = build(cache.path, cache.fs)
-                diff = compare(old, fs_index)
+                filtered = _filter_changed(fs_index)
+                diff = compare(old, filtered)
                 cache.fs.makedirs(cache.fs.parent(cache.path), exist_ok=True)
 
                 failed_keys: Set["DataIndexKey"] = set()
