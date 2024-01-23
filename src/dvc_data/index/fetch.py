@@ -95,7 +95,23 @@ def fetch(
                 failed += len(result.failed)
             elif isinstance(cache, ObjectStorage):
                 md5(fs_index, check_meta=False)
-                fetched += save(fs_index, jobs=jobs, callback=cb)
+
+                def _on_error(failed, oid, exc):
+                    if isinstance(exc, FileNotFoundError):
+                        return
+                    failed += 1
+                    logger.debug(
+                        "failed to transfer '%s'",
+                        oid,
+                        exc_info=True,
+                    )
+
+                fetched += save(
+                    fs_index,
+                    jobs=jobs,
+                    callback=cb,
+                    on_error=partial(_on_error, failed),
+                )
             else:
                 old = build(cache.path, cache.fs)
                 diff = compare(old, fs_index)
