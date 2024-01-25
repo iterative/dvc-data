@@ -76,9 +76,8 @@ def _filter_changed(index):
         meta = Meta.from_info(info)
         old = getattr(entry.meta, data_fs.PARAM_CHECKSUM, None) if entry.meta else None
         new = getattr(meta, data_fs.PARAM_CHECKSUM, None)
-        if old and new:
-            if old == new:
-                ret.add(entry)
+        if old and new and old == new:
+            ret.add(entry)
 
     return ret
 
@@ -132,7 +131,7 @@ def fetch(
                 fetched += len(result.transferred)
                 failed += len(result.failed)
             elif isinstance(cache, ObjectStorage):
-                updated = md5(fs_index, check_meta=True)
+                updated = md5(fs_index)
 
                 def _on_error(failed, oid, exc):
                     if isinstance(exc, FileNotFoundError):

@@ -17,12 +17,29 @@ if TYPE_CHECKING:
     from .index import BaseDataIndex, DataIndex, DataIndexKey
 
 
+def _meta_matches(fs, path, old_meta):
+    try:
+        info = fs.info(path)
+    except FileNotFoundError:
+        return False
+
+    if getattr(fs, "immutable", False):
+        return True
+
+    new_meta = Meta.from_info(info, fs.protocol)
+    old = getattr(old_meta, fs.PARAM_CHECKSUM, None) if old_meta else None
+    new = getattr(new_meta, fs.PARAM_CHECKSUM, None)
+    if not old or not new:
+        return None
+
+    return old == new
+
+
 def md5(
     index: "BaseDataIndex",
     state: Optional["StateBase"] = None,
     storage: str = "data",
     name: str = DEFAULT_ALGORITHM,
-    check_meta: bool = True,
 ) -> "DataIndex":
     from .index import DataIndex, DataIndexEntry
 
@@ -37,37 +54,19 @@ def md5(
         if entry.hash_info and entry.hash_info.name in ("md5", "md5-dos2unix"):
             hash_info = entry.hash_info
 
-        if hash_info and not check_meta:
-            ret.add(entry)
-            continue
-
         try:
             fs, path = index.storage_map.get_storage(entry, storage)
         except ValueError:
             continue
 
-        info = None
-        if check_meta:
-            try:
-                info = fs.info(path)
-            except FileNotFoundError:
-                continue
-
-            if getattr(fs, "immutable", False):
-                ret.add(entry)
-            else:
-                meta = Meta.from_info(info, fs.protocol)
-                old = (
-                    getattr(entry.meta, fs.PARAM_CHECKSUM, None) if entry.meta else None
-                )
-                new = getattr(meta, fs.PARAM_CHECKSUM, None)
-                if old and new:
-                    if old == new:
-                        ret.add(entry)
-                    continue
+        matches = _meta_matches(fs, path, entry.meta)
+        if matches:
+            ret.add(entry)
+        elif matches is not None:
+            continue
 
         try:
-            _, hi = hash_file(path, fs, name, state=state, info=info)
+            _, hi = hash_file(path, fs, name, state=state)
         except FileNotFoundError:
             continue
 
