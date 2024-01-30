@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04, macos-14]
     env:
       PYTEST_BENCHMARK_STORAGE: file://${{ github.workspace }}/.benchmarks
     steps:
