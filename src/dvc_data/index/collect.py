@@ -1,12 +1,12 @@
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from fsspec.callbacks import DEFAULT_CALLBACK
 
 from .index import DataIndex, DataIndexEntry, FileStorage, ObjectStorage, StorageInfo
 
 if TYPE_CHECKING:
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from .index import Storage
 

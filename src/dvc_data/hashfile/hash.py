@@ -4,8 +4,10 @@ import logging
 from typing import TYPE_CHECKING, BinaryIO, Optional, Tuple, cast
 
 from dvc_objects.fs import localfs
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
+from fsspec.callbacks import DEFAULT_CALLBACK, Callback
 from tqdm.utils import CallbackIOWrapper
+
+from dvc_data.callbacks import TqdmCallback
 
 from .hash_info import HashInfo
 from .istextfile import DEFAULT_CHUNK_SIZE, istextblock

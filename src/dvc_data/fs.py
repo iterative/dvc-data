@@ -7,12 +7,12 @@ import typing
 from collections import deque
 from typing import Any, BinaryIO, NamedTuple, Optional, Tuple
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from fsspec import AbstractFileSystem
+from fsspec.callbacks import DEFAULT_CALLBACK
 
 if typing.TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from dvc_data.hashfile.db import HashFileDB
 
@@ -151,9 +151,9 @@ class DataFileSystem(AbstractFileSystem):
         root_key = self._get_key(path)
         try:
             info = self.index.info(root_key)
-            if info["type"] != "directory":
-                raise NotADirectoryError(path)
-
+            if info["type"] == "file":
+                info["name"] = path = self.join(*root_key)
+                return [info] if detail else [path]
             if not detail:
                 return [
                     self.join(path, key[-1])

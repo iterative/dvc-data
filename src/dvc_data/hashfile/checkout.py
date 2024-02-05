@@ -2,15 +2,15 @@ import logging
 from itertools import chain
 from typing import TYPE_CHECKING, List, Optional
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.generic import test_links, transfer
+from fsspec.callbacks import DEFAULT_CALLBACK
 
 from .build import build
 from .diff import ROOT
 from .diff import diff as odiff
 
 if TYPE_CHECKING:
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from ._ignore import Ignore
 

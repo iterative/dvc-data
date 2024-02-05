@@ -15,11 +15,12 @@ from typing import (
 )
 
 from attrs import define, field
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, TqdmCallback
 from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.local import LocalFileSystem
 from dvc_objects.fs.utils import exists as batch_exists
+from fsspec.callbacks import DEFAULT_CALLBACK
 
+from dvc_data.callbacks import TqdmCallback
 from dvc_data.hashfile.meta import Meta
 
 from .diff import ADD, DELETE, MODIFY, UNCHANGED
@@ -28,7 +29,7 @@ from .index import FileStorage, ObjectStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from dvc_data.hashfile.state import StateBase
 

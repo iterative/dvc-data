@@ -3,7 +3,9 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
+from fsspec.callbacks import DEFAULT_CALLBACK, Callback
+
+from dvc_data.callbacks import TqdmCallback
 
 from .db.reference import ReferenceHashFileDB
 from .hash import hash_file

@@ -7,7 +7,7 @@ from . import HashFileDB, HashInfo
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
 logger = logging.getLogger(__name__)
 

@@ -6,8 +6,8 @@ from typing import ClassVar, List
 
 from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.utils import copyfile, remove
+from fsspec.callbacks import DEFAULT_CALLBACK
 from shortuuid import uuid
 
 from . import HashFileDB
@@ -108,7 +108,7 @@ class LocalHashFileDB(HashFileDB):
 
         files = self.fs.find(path) if os.path.isdir(path) else [path]
         for fname in callback.wrap(files):
-            with callback.branch(fname, fname, {}) as cb:
+            with callback.branched(fname, fname) as cb:
                 self._unprotect_file(fname, callback=cb)
 
     def protect(self, path):

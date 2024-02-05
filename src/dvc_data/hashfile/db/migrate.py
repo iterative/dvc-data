@@ -2,11 +2,11 @@ from functools import partial, wraps
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, NamedTuple, Tuple
 
 from dvc_objects.executors import ThreadPoolExecutor
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from fsspec.callbacks import DEFAULT_CALLBACK
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from . import HashFileDB
 
@@ -80,8 +80,8 @@ def _wrap_hash_file(callback: "Callback", fn: Callable):
     @wraps(fn)
     def func(path: str, *args, **kwargs):
         kw: Dict[str, Any] = dict(kwargs)
-        with callback.branch(path, path, kw):
-            res = fn(path, *args, **kw)
+        with callback.branched(path, path) as child:
+            res = fn(path, *args, callback=child, **kw)
             callback.relative_update()
             return res
 

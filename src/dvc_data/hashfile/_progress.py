@@ -1,4 +1,4 @@
-from dvc_objects._tqdm import Tqdm
+from dvc_data.callbacks import Tqdm
 
 
 class QueryingProgress(Tqdm):
@@ -25,4 +25,6 @@ class QueryingProgress(Tqdm):
             self.desc = self._estimating_msg
         elif phase == "querying":
             self.desc = self._listing_msg
-        self.update_to(completed, total)
+        if total:
+            self.total = total
+        self.update(completed - self.n)

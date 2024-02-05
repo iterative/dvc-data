@@ -2,8 +2,9 @@ import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, Optional, Set
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, TqdmCallback
+from fsspec.callbacks import DEFAULT_CALLBACK
 
+from dvc_data.callbacks import TqdmCallback
 from dvc_data.hashfile.db import get_index
 from dvc_data.hashfile.transfer import transfer
 
@@ -14,7 +15,7 @@ from .index import DataIndex, ObjectStorage
 
 if TYPE_CHECKING:
     from dvc_objects.fs import FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from dvc_data.hashfile.meta import Meta
 

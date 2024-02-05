@@ -14,14 +14,14 @@ from typing import (
     Tuple,
 )
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from fsspec.callbacks import DEFAULT_CALLBACK
 from funcy import split
 
 from .hash_info import HashInfo
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from .db import HashFileDB
     from .db.index import ObjectDBIndexBase
