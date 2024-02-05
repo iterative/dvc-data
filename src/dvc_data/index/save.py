@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from fsspec.callbacks import DEFAULT_CALLBACK
 
 from dvc_data.hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from dvc_data.hashfile.meta import Meta
@@ -9,7 +9,7 @@ from dvc_data.hashfile.tree import Tree
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.state import StateBase

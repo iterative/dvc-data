@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Union
 
 from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from fsspec.callbacks import DEFAULT_CALLBACK
 
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.obj import HashFile
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
     from dvc_data.hashfile.tree import Tree
 

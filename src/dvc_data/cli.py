@@ -38,7 +38,7 @@ from dvc_data.hashfile.tree import du as _du
 from dvc_data.repo import NotARepoError, Repo
 
 if TYPE_CHECKING:
-    from dvc_objects.fs.callbacks import Callback
+    from fsspec import Callback
 
 install(show_locals=True, suppress=[typer, click])
 

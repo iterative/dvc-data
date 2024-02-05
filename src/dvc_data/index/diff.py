@@ -2,7 +2,7 @@ from collections import deque
 from typing import TYPE_CHECKING, Any, Callable, Deque, Iterable, Optional, Tuple
 
 from attrs import define
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK, Callback
+from fsspec.callbacks import DEFAULT_CALLBACK, Callback
 
 if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
