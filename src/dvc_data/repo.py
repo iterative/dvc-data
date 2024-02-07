@@ -24,7 +24,8 @@ class Repo:
         self.root = root
         self._control_dir = control_dir
         self._tmp_dir: str = fs.join(self._control_dir, "tmp")
-        self._object_dir: str = fs.join(self._control_dir, "cache")
+        self._cache_dir = fs.join(self._control_dir, "cache")
+        self._object_dir = fs.join(self._cache_dir, "files", "md5")
 
         self.index = DataIndex()
 

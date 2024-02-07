@@ -10,16 +10,17 @@ from collections import deque
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
-from typing import TYPE_CHECKING, List, cast
+from typing import List
 
 import click
 import typer
 from attrs import asdict
-from dvc_objects._tqdm import Tqdm
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import LocalFileSystem, MemoryFileSystem
 from rich.traceback import install
+from tqdm import tqdm
 
+from dvc_data.callbacks import TqdmCallback
 from dvc_data.hashfile import load
 from dvc_data.hashfile.build import build as _build
 from dvc_data.hashfile.checkout import checkout as _checkout
@@ -36,9 +37,6 @@ from dvc_data.hashfile.transfer import transfer as _transfer
 from dvc_data.hashfile.tree import Tree, merge
 from dvc_data.hashfile.tree import du as _du
 from dvc_data.repo import NotARepoError, Repo
-
-if TYPE_CHECKING:
-    from fsspec import Callback
 
 install(show_locals=True, suppress=[typer, click])
 
@@ -332,7 +330,7 @@ def du(oid: str = typer.Argument(..., allow_dash=True)):
         tree.add(ROOT, None, obj.hash_info)
 
     total = _du(odb, tree)
-    print(Tqdm.format_sizeof(total, suffix="B", divisor=1024))
+    print(tqdm.format_sizeof(total, suffix="B", divisor=1024))
 
 
 @app.command(help="Remove object from the ODB")
@@ -348,7 +346,7 @@ def count_objects():
     it = (odb.fs.size(odb.oid_to_path(oid)) for oid in odb.all())
     item = deque(enumerate(accumulate(it), 1), maxlen=1)
     count, total = item[0] if item else (0, 0)
-    hsize = Tqdm.format_sizeof(total, suffix="B", divisor=1024)
+    hsize = tqdm.format_sizeof(total, suffix="B", divisor=1024)
     print(f"{count} objects, {hsize} size")
 
 
@@ -587,7 +585,7 @@ def checkout(
     odb = get_odb(type=[t.value for t in type])
     oid = from_shortoid(odb, oid)
     obj = load(odb, odb.get(oid).hash_info)
-    with Tqdm(total=len(obj), desc="Checking out", unit="obj") as pbar:
+    with TqdmCallback(size=len(obj), desc="Checking out", unit="obj") as callback:
         _checkout(
             os.fspath(path),
             LocalFileSystem(),
@@ -597,7 +595,7 @@ def checkout(
             force=force,
             prompt=typer.confirm,
             state=odb.state,
-            progress_callback=cast("Callback", lambda *_: pbar.update()),
+            progress_callback=callback,
         )
 
 
