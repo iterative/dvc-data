@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from dvc_data.hashfile.istextfile import istextblock, istextfile
@@ -30,4 +28,4 @@ def test_istextblock(block, expected):
 def test_istextfile(tmp_upath, block, expected):
     path = tmp_upath / "file"
     path.write_bytes(block)
-    assert istextfile(os.fspath(path), path.fs) is expected
+    assert istextfile(path.path, path.fs) is expected
