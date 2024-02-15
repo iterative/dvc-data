@@ -2,7 +2,7 @@ import logging
 from functools import partial
 from typing import TYPE_CHECKING, Optional, Set
 
-from dvc_objecs.fs.local import LocalFileSystem
+from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
 
 from dvc_data.callbacks import TqdmCallback
