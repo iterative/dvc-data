@@ -2,6 +2,7 @@ import logging
 from functools import partial
 from typing import TYPE_CHECKING, Optional, Set
 
+from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
 
 from dvc_data.callbacks import TqdmCallback
@@ -77,6 +78,15 @@ def _filter_changed(index):
         meta = Meta.from_info(info)
         old = getattr(entry.meta, data_fs.PARAM_CHECKSUM, None) if entry.meta else None
         new = getattr(meta, data_fs.PARAM_CHECKSUM, None)
+
+        if old and new is None and isinstance(data_fs, LocalFileSystem):
+            # NOTE: temporary ugly hack to handle local sources where
+            # the only thing we currently have is md5.
+            from dvc_data.hashfile.hash import hash_file
+
+            _, hi = hash_file(data_path, data_fs, "md5")
+            new = hi.value
+
         if old and new and old == new:
             ret.add(entry)
 
