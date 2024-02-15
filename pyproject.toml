@@ -47,7 +47,7 @@ all = [
     "dvc-data[cli]",
 ]
 tests = [
-    "pytest<8,>=7",
+    "pytest>=7,<9",
     "pytest-sugar",
     "pytest-cov>=4.1.0",
     "pytest-mock",
