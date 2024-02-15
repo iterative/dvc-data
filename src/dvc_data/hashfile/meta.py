@@ -38,6 +38,8 @@ class Meta:
         etag = info.get("etag")
         checksum = info.get("checksum")
 
+        if protocol == "azure" and etag and not etag.startswith('"'):
+            etag = f'"{etag}"'
         if protocol == "s3" and "ETag" in info:
             etag = info["ETag"].strip('"')
         elif protocol == "gs" and "etag" in info:
