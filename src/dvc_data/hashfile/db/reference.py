@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from dvc_data.hashfile.obj import HashFile
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class ReferenceHashFileDB(HashFileDB):
     def __init__(self, fs: "FileSystem", path: str, **config):
         super().__init__(fs, path, **config)
-        self._obj_cache: Dict["str", "HashFile"] = {}
+        self._obj_cache: dict["str", "HashFile"] = {}
 
     def __hash__(self):
         return hash((self.fs.protocol, self.path, *self._obj_cache.keys()))
@@ -31,9 +31,9 @@ class ReferenceHashFileDB(HashFileDB):
 
     def add(
         self,
-        path: Union["AnyFSPath", List["AnyFSPath"]],
+        path: Union["AnyFSPath", list["AnyFSPath"]],
         fs: "FileSystem",
-        oid: Union[str, List[str]],
+        oid: Union[str, list[str]],
         hardlink: bool = False,
         callback: Optional["Callback"] = None,
         check_exists: bool = True,

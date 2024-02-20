@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Any, Optional, Set
+from typing import TYPE_CHECKING, Any, Optional
 
 from fsspec.callbacks import DEFAULT_CALLBACK
 
@@ -101,7 +101,7 @@ def push(
             )
             data.fs.makedirs(data.fs.parent(data.path), exist_ok=True)
 
-            failed_keys: Set["DataIndexKey"] = set()
+            failed_keys: set["DataIndexKey"] = set()
 
             if data.fs.version_aware:
                 desc = f"Checking status of existing versions in {data.path!r}"

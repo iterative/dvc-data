@@ -2,15 +2,12 @@ import errno
 import logging
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Iterator, MutableMapping
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterator,
-    MutableMapping,
     Optional,
-    Tuple,
     cast,
 )
 
@@ -35,7 +32,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-DataIndexKey = Tuple[str, ...]
+DataIndexKey = tuple[str, ...]
 
 
 @attrs.define(hash=True)
@@ -54,7 +51,7 @@ class DataIndexEntry:
         return False
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Dict]) -> "DataIndexEntry":
+    def from_dict(cls, d: dict[str, dict]) -> "DataIndexEntry":
         ret = cls()
 
         meta = d.get("meta")
@@ -69,8 +66,8 @@ class DataIndexEntry:
 
         return ret
 
-    def to_dict(self) -> Dict[str, Any]:
-        ret: Dict[str, Any] = {}
+    def to_dict(self) -> dict[str, Any]:
+        ret: dict[str, Any] = {}
 
         if self.meta:
             ret["meta"] = self.meta.to_dict()
@@ -163,7 +160,7 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+    def get(self, entry: "DataIndexEntry") -> tuple["FileSystem", str]:
         pass
 
     def exists(self, entry: "DataIndexEntry") -> bool:
@@ -207,7 +204,7 @@ class ObjectStorage(Storage):
 
         return self.odb._oid_parts(entry.hash_info.value)
 
-    def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+    def get(self, entry: "DataIndexEntry") -> tuple["FileSystem", str]:
         if not entry.hash_info:
             raise ValueError
 
@@ -279,7 +276,7 @@ class FileStorage(Storage):
         assert entry.key[: len(self.prefix)] == self.prefix
         return entry.key[len(self.prefix) :]
 
-    def get(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+    def get(self, entry: "DataIndexEntry") -> tuple["FileSystem", str]:
         assert entry.key is not None
         assert entry.key[: len(self.prefix)] == self.prefix
         path = self.fs.join(self.path, *entry.key[len(self.prefix) :])
@@ -425,7 +422,7 @@ class StorageMapping(MutableMapping):
 
     def get_storage(
         self, entry: "DataIndexEntry", typ: str
-    ) -> Tuple["FileSystem", str]:
+    ) -> tuple["FileSystem", str]:
         info = self[entry.key]
         storage = getattr(info, typ)
         if not storage:
@@ -433,13 +430,13 @@ class StorageMapping(MutableMapping):
 
         return storage.get(entry)
 
-    def get_data(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+    def get_data(self, entry: "DataIndexEntry") -> tuple["FileSystem", str]:
         return self.get_storage(entry, "data")
 
-    def get_cache(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+    def get_cache(self, entry: "DataIndexEntry") -> tuple["FileSystem", str]:
         return self.get_storage(entry, "cache")
 
-    def get_remote(self, entry: "DataIndexEntry") -> Tuple["FileSystem", str]:
+    def get_remote(self, entry: "DataIndexEntry") -> tuple["FileSystem", str]:
         return self.get_storage(entry, "remote")
 
     def cache_exists(self, entry: "DataIndexEntry", **kwargs) -> bool:
@@ -465,7 +462,7 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
         self,
         prefix: Optional[DataIndexKey] = None,
         shallow: bool = False,
-    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
+    ) -> Iterator[tuple[DataIndexKey, DataIndexEntry]]:
         pass
 
     @abstractmethod
@@ -483,7 +480,7 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
     @abstractmethod
     def longest_prefix(
         self, key: DataIndexKey
-    ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
+    ) -> tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
         pass
 
     def _get_meta(self, key, entry):
@@ -745,7 +742,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
 
     def longest_prefix(
         self, key: DataIndexKey
-    ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
+    ) -> tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
         return self._trie.longest_prefix(key)
 
     def traverse(self, *args, **kwargs) -> Any:
@@ -755,7 +752,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         self,
         prefix: Optional[DataIndexKey] = None,
         shallow: bool = False,
-    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
+    ) -> Iterator[tuple[DataIndexKey, DataIndexEntry]]:
         if prefix:
             item = self._trie.longest_prefix(prefix)
             if item:

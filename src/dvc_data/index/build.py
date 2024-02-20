@@ -1,5 +1,6 @@
+from collections.abc import Iterable
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from dvc_objects.fs.local import LocalFileSystem
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 def build_entry(
     path: str,
     fs: "FileSystem",
-    info: Optional[Dict[str, Any]] = None,
+    info: Optional[dict[str, Any]] = None,
     compute_hash: Optional[bool] = False,
     state: Optional["StateBase"] = None,
     hash_name: str = DEFAULT_ALGORITHM,
@@ -56,11 +57,11 @@ def build_entries(
 
     for root, dirs, files in walk_iter:
         if root == path:
-            root_key: Tuple[str, ...] = ()
+            root_key: tuple[str, ...] = ()
         else:
             root_key = fs.relparts(root, path)
 
-        entries: Iterable[Tuple[str, Optional[Dict]]]
+        entries: Iterable[tuple[str, Optional[dict]]]
         if detail:
             entries = chain(dirs.items(), files.items())
         else:

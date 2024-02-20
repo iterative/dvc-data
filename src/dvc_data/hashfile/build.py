@@ -1,7 +1,7 @@
 import hashlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
 
@@ -45,7 +45,7 @@ def _upload_file(
     odb: "HashFileDB",
     upload_odb: "HashFileDB",
     callback: Optional[Callback] = None,
-) -> Tuple[Meta, HashFile]:
+) -> tuple[Meta, HashFile]:
     from dvc_objects.fs.utils import tmp_fname
 
     from .hash import HashStreamFile
@@ -131,7 +131,7 @@ def _build_tree(
 
         # NOTE: we know for sure that root starts with path, so we can use
         # faster string manipulation instead of a more robust relparts()
-        rel_key: Tuple[Optional[Any], ...] = ()
+        rel_key: tuple[Optional[Any], ...] = ()
         if root != path:
             rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
 
@@ -160,7 +160,7 @@ def _build_tree(
     return tree_meta, tree
 
 
-_url_cache: Dict[str, str] = {}
+_url_cache: dict[str, str] = {}
 
 
 def _make_staging_url(fs: "FileSystem", odb: "HashFileDB", path: Optional[str]):
@@ -232,7 +232,7 @@ def build(
     upload: bool = False,
     dry_run: bool = False,
     **kwargs,
-) -> Tuple["HashFileDB", "Meta", "HashFile"]:
+) -> tuple["HashFileDB", "Meta", "HashFile"]:
     """Stage (prepare) objects from the given path for addition to an ODB.
 
     Returns at tuple of (object_store, object) where addition to the ODB can

@@ -5,7 +5,7 @@ import os
 import posixpath
 import typing
 from collections import deque
-from typing import Any, BinaryIO, NamedTuple, Optional, Tuple
+from typing import Any, BinaryIO, NamedTuple, Optional
 
 from fsspec import AbstractFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
@@ -43,7 +43,7 @@ class DataFileSystem(AbstractFileSystem):
         return posixpath.join(*parts)
 
     @classmethod
-    def parts(cls, path: str) -> Tuple[str, ...]:
+    def parts(cls, path: str) -> tuple[str, ...]:
         ret = []
         while True:
             path, part = posixpath.split(path)
@@ -77,10 +77,10 @@ class DataFileSystem(AbstractFileSystem):
             start = "."
         return posixpath.relpath(self.abspath(path), start=self.abspath(start))
 
-    def relparts(self, path: str, start: Optional[str] = None) -> Tuple[str, ...]:
+    def relparts(self, path: str, start: Optional[str] = None) -> tuple[str, ...]:
         return self.parts(self.relpath(path, start=start))
 
-    def _get_key(self, path: str) -> Tuple[str, ...]:
+    def _get_key(self, path: str) -> tuple[str, ...]:
         path = self.abspath(path)
         if path == self.root_marker:
             return ()
@@ -125,7 +125,7 @@ class DataFileSystem(AbstractFileSystem):
         fs: "FileSystem",
         path: "AnyFSPath",
         hash_info: Optional["HashInfo"],
-    ) -> Tuple["FileSystem", "AnyFSPath"]:
+    ) -> tuple["FileSystem", "AnyFSPath"]:
         from dvc_objects.fs.local import LocalFileSystem
 
         odb: "HashFileDB" = cache_storage.odb

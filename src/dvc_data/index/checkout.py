@@ -2,16 +2,11 @@ import logging
 import os
 import stat
 from collections import defaultdict
+from collections.abc import Collection, Iterable, Iterator
 from typing import (
     TYPE_CHECKING,
     Callable,
-    Collection,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
     Optional,
-    Tuple,
 )
 
 from attrs import define, field
@@ -61,7 +56,7 @@ def _check_versioning(paths: Iterable["AnyFSPath"], fs: "FileSystem"):
 
 
 def _delete_files(
-    entries: List["DataIndexEntry"],
+    entries: list["DataIndexEntry"],
     path: str,
     fs: "FileSystem",
 ):
@@ -82,12 +77,12 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
     storage: str = "cache",
     onerror=None,
     state: Optional["StateBase"] = None,
-    links: Optional[List[str]] = None,
+    links: Optional[list[str]] = None,
 ):
     if index is None:
         return
 
-    by_storage: Dict["Storage", List[Tuple["DataIndexEntry", str, str]]] = defaultdict(
+    by_storage: dict["Storage", list[tuple["DataIndexEntry", str, str]]] = defaultdict(
         list
     )
     for entry in entries:
@@ -199,7 +194,7 @@ def _chmod_files(entries, path, fs):
 class Diff:
     old: Optional["BaseDataIndex"] = field(default=None)
     new: Optional["BaseDataIndex"] = field(default=None)
-    changes: Dict["DataIndexKey", "Change"] = field(factory=dict)
+    changes: dict["DataIndexKey", "Change"] = field(factory=dict)
     files_delete: list = field(factory=list)
     dirs_delete: list = field(factory=list)
     files_create: list = field(factory=list)
@@ -349,7 +344,7 @@ def apply(
     storage: str = "cache",
     onerror: Optional[Callable] = None,
     state: Optional["StateBase"] = None,
-    links: Optional[List[str]] = None,
+    links: Optional[list[str]] = None,
 ) -> None:
     if onerror is None:
         onerror = _onerror_noop
@@ -390,7 +385,7 @@ def _prune_existing_versions(
     jobs: Optional[int] = None,
 ) -> Iterator["DataIndexEntry"]:
     assert fs.version_aware
-    query_vers: Dict[str, "DataIndexEntry"] = {}
+    query_vers: dict[str, "DataIndexEntry"] = {}
     jobs = jobs or fs.jobs
 
     for entry in entries:

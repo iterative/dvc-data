@@ -1,5 +1,6 @@
 from collections import deque
-from typing import TYPE_CHECKING, Any, Callable, Deque, Iterable, Optional, Tuple
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from attrs import define
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
@@ -171,7 +172,7 @@ def _diff(  # noqa: C901, PLR0912
     roots: Optional[Iterable["DataIndexKey"]] = None,
 ):
     roots = roots or [()]
-    todo: Deque[Tuple[dict, dict, bool]] = deque()
+    todo: deque[tuple[dict, dict, bool]] = deque()
 
     for root in roots:
         old_root_items = {}

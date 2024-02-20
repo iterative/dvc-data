@@ -1,6 +1,6 @@
 import logging
 from itertools import chain
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from dvc_objects.fs.generic import test_links, transfer
 from fsspec.callbacks import DEFAULT_CALLBACK
@@ -24,7 +24,7 @@ class PromptError(Exception):
 
 
 class CheckoutError(Exception):
-    def __init__(self, paths: List[str]) -> None:
+    def __init__(self, paths: list[str]) -> None:
         self.paths = paths
         super().__init__("Checkout failed")
 

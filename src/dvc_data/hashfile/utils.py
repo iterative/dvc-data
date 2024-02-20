@@ -1,7 +1,7 @@
 import errno
 import hashlib
 import json
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
@@ -15,7 +15,7 @@ def to_nanoseconds(ts: float) -> int:
 
 def get_mtime_and_size(
     path: "AnyFSPath", fs: "FileSystem", ignore: Optional["Ignore"] = None
-) -> Tuple[str, int]:
+) -> tuple[str, int]:
     if not fs.isdir(path):
         base_stat = fs.info(path)
         size = base_stat["size"]

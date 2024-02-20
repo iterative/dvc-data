@@ -1,17 +1,13 @@
 import errno
 import logging
 from collections import defaultdict
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterable,
-    List,
     NamedTuple,
     Optional,
-    Set,
-    Tuple,
 )
 
 from fsspec.callbacks import DEFAULT_CALLBACK
@@ -32,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 class TransferResult(NamedTuple):
-    transferred: Set["HashInfo"]
-    failed: Set["HashInfo"]
+    transferred: set["HashInfo"]
+    failed: set["HashInfo"]
 
 
 def _log_exception(oid: str, exc: BaseException):
@@ -69,14 +65,14 @@ def _do_transfer(
     dest_index: Optional["ObjectDBIndexBase"] = None,
     cache_odb: Optional["HashFileDB"] = None,
     **kwargs: Any,
-) -> Set["HashInfo"]:
+) -> set["HashInfo"]:
     """Do object transfer.
 
     Returns:
         Set containing any hash_infos which failed to transfer.
     """
     dir_ids, file_ids = split(lambda hash_info: hash_info.isdir, obj_ids)
-    failed_ids: Set["HashInfo"] = set()
+    failed_ids: set["HashInfo"] = set()
     succeeded_dir_objs = []
     all_file_ids = set(file_ids)
 
@@ -145,8 +141,8 @@ def _add(
     dest: "HashFileDB",
     hash_infos: Iterable["HashInfo"],
     **kwargs,
-) -> Set["HashInfo"]:
-    failed: Set["HashInfo"] = set()
+) -> set["HashInfo"]:
+    failed: set["HashInfo"] = set()
     if not hash_infos:
         return failed
 
@@ -154,7 +150,7 @@ def _add(
         _log_exception(oid, exc)
         failed.add(HashInfo(src.hash_name, oid))
 
-    fs_map: Dict["FileSystem", List[Tuple[str, str]]] = defaultdict(list)
+    fs_map: dict["FileSystem", list[tuple[str, str]]] = defaultdict(list)
     for hash_info in hash_infos:
         assert hash_info.value
         obj = src.get(hash_info.value)

@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from dvc_objects.fs import Schemes
 
@@ -17,15 +18,15 @@ logger = logging.getLogger(__name__)
 
 
 class StatusResult(NamedTuple):
-    exists: Set["HashInfo"]
-    missing: Set["HashInfo"]
+    exists: set["HashInfo"]
+    missing: set["HashInfo"]
 
 
 class CompareStatusResult(NamedTuple):
-    ok: Set["HashInfo"]
-    missing: Set["HashInfo"]
-    new: Set["HashInfo"]
-    deleted: Set["HashInfo"]
+    ok: set["HashInfo"]
+    missing: set["HashInfo"]
+    new: set["HashInfo"]
+    deleted: set["HashInfo"]
 
 
 def _indexed_dir_hashes(
@@ -37,7 +38,7 @@ def _indexed_dir_hashes(
 
     dir_hashes = set(dir_objs.keys())
     indexed_dirs = set(index.dir_hashes())
-    indexed_dir_exists: Set[str] = set()
+    indexed_dir_exists: set[str] = set()
     if indexed_dirs:
         hashes = QueryingProgress(
             odb.list_oids_exists(indexed_dirs, jobs=jobs),
@@ -108,8 +109,8 @@ def status(  # noqa: C901, PLR0912
     if cache_odb is None:
         cache_odb = odb
 
-    hash_infos: Dict[str, "HashInfo"] = {}
-    dir_objs: Dict[str, Optional["HashFile"]] = {}
+    hash_infos: dict[str, "HashInfo"] = {}
+    dir_objs: dict[str, Optional["HashFile"]] = {}
     for hash_info in obj_ids:
         assert hash_info.value
         if hash_info.isdir:
@@ -129,8 +130,8 @@ def status(  # noqa: C901, PLR0912
         # assume memfs staged objects already exist
         return StatusResult(set(hash_infos.values()), set())
 
-    hashes: Set[str] = set(hash_infos.keys())
-    exists: Set[str] = set()
+    hashes: set[str] = set(hash_infos.keys())
+    exists: set[str] = set()
 
     logger.debug("Collecting status from '%s'", odb.path)
     if index and hashes:

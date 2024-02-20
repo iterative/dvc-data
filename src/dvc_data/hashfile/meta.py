@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Optional
 
 from attrs import define, field, fields_dict
 from dvc_objects.fs.utils import is_exec
@@ -18,7 +18,7 @@ class Meta:
     PARAM_MTIME: ClassVar[str] = "mtime"
     PARAM_REMOTE: ClassVar[str] = "remote"
 
-    fields: ClassVar[List[str]]
+    fields: ClassVar[list[str]]
 
     isdir: bool = False
     size: Optional[int] = None
@@ -34,7 +34,7 @@ class Meta:
     remote: Optional[str] = field(default=None, eq=False)
 
     @classmethod
-    def from_info(cls, info: Dict[str, Any], protocol: Optional[str] = None) -> "Meta":
+    def from_info(cls, info: dict[str, Any], protocol: Optional[str] = None) -> "Meta":
         etag = info.get("etag")
         checksum = info.get("checksum")
 
@@ -73,15 +73,15 @@ class Meta:
         )
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "Meta":
+    def from_dict(cls, d: dict[str, Any]) -> "Meta":
         kwargs = {}
         for field_ in cls.fields:
             if field_ in d:
                 kwargs[field_] = d[field_]
         return cls(**kwargs)
 
-    def to_dict(self) -> Dict[str, Any]:
-        ret: Dict[str, Any] = {}
+    def to_dict(self) -> dict[str, Any]:
+        ret: dict[str, Any] = {}
 
         if self.isdir:
             ret[self.PARAM_ISDIR] = self.isdir
