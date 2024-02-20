@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Optional
 
 from attrs import define, field
 
@@ -18,14 +18,14 @@ class HashInfo:
         return f"{self.name}: {self.value}"
 
     @classmethod
-    def from_dict(cls, d: Dict[str, str]) -> "HashInfo":
+    def from_dict(cls, d: dict[str, str]) -> "HashInfo":
         if not d:
             return cls()
 
         ((name, value),) = d.items()
         return cls(name, value)
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         if not self.value or not self.name:
             return {}
         return {self.name: self.value}

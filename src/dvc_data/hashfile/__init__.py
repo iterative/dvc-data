@@ -1,6 +1,7 @@
 """DVC data."""
 import logging
-from typing import TYPE_CHECKING, Iterator, Union, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Union, cast
 
 from .tree import Tree
 

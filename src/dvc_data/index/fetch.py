@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Optional, Set
+from typing import TYPE_CHECKING, Optional
 
 from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
@@ -166,7 +166,7 @@ def fetch(
                 diff = compare(old, filtered)
                 cache.fs.makedirs(cache.fs.parent(cache.path), exist_ok=True)
 
-                failed_keys: Set["DataIndexKey"] = set()
+                failed_keys: set["DataIndexKey"] = set()
                 apply(
                     diff,
                     cache.path,

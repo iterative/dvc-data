@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from fsspec.callbacks import DEFAULT_CALLBACK
 
@@ -89,7 +89,7 @@ def build_tree(
     index: "BaseDataIndex",
     prefix: "DataIndexKey",
     name: str = DEFAULT_ALGORITHM,
-) -> Tuple["Meta", Tree]:
+) -> tuple["Meta", Tree]:
     tree_meta = Meta(size=0, nfiles=0, isdir=True)
     assert tree_meta.size is not None
     assert tree_meta.nfiles is not None
@@ -132,8 +132,8 @@ def _save_dir_entry(
 
 
 if TYPE_CHECKING:
-    _ODBMap = Dict["HashFileDB", "_FSMap"]
-    _FSMap = Dict["FileSystem", List[Tuple[str, str]]]
+    _ODBMap = dict["HashFileDB", "_FSMap"]
+    _FSMap = dict["FileSystem", list[tuple[str, str]]]
 
 
 def save(
@@ -144,7 +144,7 @@ def save(
     storage: str = "data",
     **kwargs,
 ) -> int:
-    dir_entries: List["DataIndexKey"] = []
+    dir_entries: list["DataIndexKey"] = []
     transferred = 0
 
     odb_map: "_ODBMap" = {}

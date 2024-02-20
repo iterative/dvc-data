@@ -2,7 +2,7 @@ import logging
 import os
 import stat
 from functools import partial
-from typing import ClassVar, List
+from typing import ClassVar
 
 from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
@@ -19,7 +19,7 @@ os.umask(umask)
 
 
 class LocalHashFileDB(HashFileDB):
-    DEFAULT_CACHE_TYPES: ClassVar[List[str]] = ["reflink", "copy"]
+    DEFAULT_CACHE_TYPES: ClassVar[list[str]] = ["reflink", "copy"]
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 

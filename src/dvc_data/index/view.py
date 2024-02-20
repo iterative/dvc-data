@@ -1,5 +1,6 @@
 from collections import deque
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Tuple
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from .index import BaseDataIndex, DataIndex, DataIndexEntry, DataIndexKey
 
@@ -56,7 +57,7 @@ class DataIndexView(BaseDataIndex):
         prefix: Optional[DataIndexKey] = None,
         shallow: bool = False,
         ensure_loaded: bool = False,
-    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
+    ) -> Iterator[tuple[DataIndexKey, DataIndexEntry]]:
         # NOTE: iteration is implemented using traverse and not iter/iteritems
         # since it supports skipping subtrie traversal for prefixes that are
         # not in the view.
@@ -92,7 +93,7 @@ class DataIndexView(BaseDataIndex):
         prefix: DataIndexKey,
         entry: Optional[DataIndexEntry],
         shallow: Optional[bool] = False,
-    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
+    ) -> Iterator[tuple[DataIndexKey, DataIndexEntry]]:
         # NOTE: traverse() will not enter subtries that have been added
         # in-place during traversal. So for dirs which we load in-place, we
         # need to iterate over the new keys ourselves.
@@ -112,7 +113,7 @@ class DataIndexView(BaseDataIndex):
         self,
         prefix: Optional[DataIndexKey] = None,
         shallow: bool = False,
-    ) -> Iterator[Tuple[DataIndexKey, DataIndexEntry]]:
+    ) -> Iterator[tuple[DataIndexKey, DataIndexEntry]]:
         return self._iteritems(prefix=prefix, shallow=shallow, ensure_loaded=True)
 
     def traverse(self, node_factory: Callable, **kwargs) -> Any:
@@ -142,7 +143,7 @@ class DataIndexView(BaseDataIndex):
 
     def longest_prefix(
         self, key: DataIndexKey
-    ) -> Tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
+    ) -> tuple[Optional[DataIndexKey], Optional[DataIndexEntry]]:
         if self.filter_fn(key):
             return self._index.longest_prefix(key)
         return (None, None)

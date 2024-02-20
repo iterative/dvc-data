@@ -10,7 +10,6 @@ from collections import deque
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
-from typing import List
 
 import click
 import typer
@@ -580,7 +579,7 @@ def checkout(
     path: Path = typer.Argument(..., resolve_path=True),
     relink: bool = False,
     force: bool = False,
-    type: List[LinkEnum] = typer.Option(["copy"]),  # noqa: A002
+    type: list[LinkEnum] = typer.Option(["copy"]),  # noqa: A002
 ):
     odb = get_odb(type=[t.value for t in type])
     oid = from_shortoid(odb, oid)

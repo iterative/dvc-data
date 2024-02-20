@@ -3,7 +3,7 @@ import logging
 import os
 from contextlib import suppress
 from copy import copy
-from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, ClassVar, Optional, Union
 
 from dvc_objects.db import ObjectDB
 from dvc_objects.errors import ObjectFormatError
@@ -49,7 +49,7 @@ def get_index(odb) -> "ObjectDBIndexBase":
 
 class HashFileDB(ObjectDB):
     DEFAULT_VERIFY = False
-    DEFAULT_CACHE_TYPES: ClassVar[List[str]] = ["copy"]
+    DEFAULT_CACHE_TYPES: ClassVar[list[str]] = ["copy"]
     CACHE_MODE: Optional[int] = None
 
     def __init__(self, fs: "FileSystem", path: str, read_only: bool = False, **config):
@@ -72,9 +72,9 @@ class HashFileDB(ObjectDB):
 
     def add(
         self,
-        path: Union["AnyFSPath", List["AnyFSPath"]],
+        path: Union["AnyFSPath", list["AnyFSPath"]],
         fs: "FileSystem",
-        oid: Union[str, List[str]],
+        oid: Union[str, list[str]],
         hardlink: bool = False,
         callback: "Callback" = DEFAULT_CALLBACK,
         check_exists: bool = True,

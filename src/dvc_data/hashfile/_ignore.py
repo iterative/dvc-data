@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Iterator
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Protocol
 

@@ -1,7 +1,8 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Iterable, Iterator, Set
+from collections.abc import Iterable, Iterator
+from typing import TYPE_CHECKING
 
 from dvc_objects.errors import ObjectDBError
 
@@ -44,7 +45,7 @@ class ObjectDBIndexBase(ABC):
         pass
 
     @abstractmethod
-    def intersection(self, hashes: Set[str]) -> Iterator[str]:
+    def intersection(self, hashes: set[str]) -> Iterator[str]:
         pass
 
 
@@ -73,7 +74,7 @@ class ObjectDBIndexNoop(ObjectDBIndexBase):
     def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]) -> None:
         pass
 
-    def intersection(self, hashes: Set[str]) -> Iterator[str]:
+    def intersection(self, hashes: set[str]) -> Iterator[str]:
         yield from []
 
 
@@ -131,6 +132,6 @@ class ObjectDBIndex(ObjectDBIndexBase):
         except Timeout as exc:
             raise ObjectDBError("Failed to update ODB index") from exc
 
-    def intersection(self, hashes: Set[str]) -> Iterator[str]:
+    def intersection(self, hashes: set[str]) -> Iterator[str]:
         """Iterate over values from `hashes` which exist in the index."""
         yield from hashes.intersection(self.index.keys())

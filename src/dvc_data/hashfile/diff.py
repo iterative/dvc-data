@@ -1,5 +1,5 @@
 import reprlib
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from attrs import asdict, define, field
 
@@ -19,7 +19,7 @@ UNCHANGED = "unchanged"
 @define(hash=True, order=True)
 class TreeEntry:
     in_cache: bool = field(default=False, eq=False)
-    key: Tuple[str, ...] = ()
+    key: tuple[str, ...] = ()
     meta: Optional["Meta"] = field(default=None, eq=False)
     oid: Optional["HashInfo"] = None
 
@@ -55,16 +55,16 @@ class Change:
 
 @define
 class DiffResult:
-    added: List[Change] = field(factory=list, repr=reprlib.repr)
-    modified: List[Change] = field(factory=list, repr=reprlib.repr)
-    deleted: List[Change] = field(factory=list, repr=reprlib.repr)
-    unchanged: List[Change] = field(factory=list, repr=reprlib.repr)
+    added: list[Change] = field(factory=list, repr=reprlib.repr)
+    modified: list[Change] = field(factory=list, repr=reprlib.repr)
+    deleted: list[Change] = field(factory=list, repr=reprlib.repr)
+    unchanged: list[Change] = field(factory=list, repr=reprlib.repr)
 
     def __bool__(self):
         return bool(self.added or self.modified or self.deleted)
 
     @property
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         return {k: len(v) for k, v in asdict(self).items() if k != "unchanged"}
 
 

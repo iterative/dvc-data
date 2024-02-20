@@ -1,7 +1,7 @@
 import hashlib
 import io
 import logging
-from typing import TYPE_CHECKING, BinaryIO, Optional, Tuple, cast
+from typing import TYPE_CHECKING, BinaryIO, Optional, cast
 
 from dvc_objects.fs import localfs
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
@@ -135,7 +135,7 @@ def _hash_file(
     name: str,
     callback: "Callback" = DEFAULT_CALLBACK,
     info: Optional[dict] = None,
-) -> Tuple["str", Meta]:
+) -> tuple["str", Meta]:
     info = info or fs.info(path)
     meta = Meta.from_info(info, fs.protocol)
 
@@ -188,7 +188,7 @@ def hash_file(
     state: Optional["StateBase"] = None,
     callback: Optional["Callback"] = None,
     info: Optional[dict] = None,
-) -> Tuple["Meta", "HashInfo"]:
+) -> tuple["Meta", "HashInfo"]:
     if state:
         meta, hash_info = state.get(path, fs, info=info)
         if hash_info and hash_info.name == name:

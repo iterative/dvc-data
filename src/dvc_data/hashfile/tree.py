@@ -1,7 +1,8 @@
 import json
 import logging
 import posixpath
-from typing import TYPE_CHECKING, Any, Dict, Final, Iterable, Optional, Tuple
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, Final, Optional
 
 from dvc_objects.errors import ObjectFormatError
 
@@ -54,8 +55,8 @@ class Tree(HashFile):
         self.path = None  # type: ignore[assignment]
         self.hash_info = None  # type: ignore[assignment]
         self.oid = None  # type: ignore[assignment]
-        self._dict: Dict[
-            Tuple[str, ...], Tuple[Optional["Meta"], Optional["HashInfo"]]
+        self._dict: dict[
+            tuple[str, ...], tuple[Optional["Meta"], Optional["HashInfo"]]
         ] = {}
 
     @cached_property
@@ -66,7 +67,7 @@ class Tree(HashFile):
 
     def add(
         self,
-        key: Tuple[str, ...],
+        key: tuple[str, ...],
         meta: Optional["Meta"],
         oid: Optional["HashInfo"],
     ):
@@ -74,8 +75,8 @@ class Tree(HashFile):
         self._dict[key] = (meta, oid)
 
     def get(
-        self, key: Tuple[str, ...], default=None
-    ) -> Optional[Tuple[Optional["Meta"], Optional["HashInfo"]]]:
+        self, key: tuple[str, ...], default=None
+    ) -> Optional[tuple[Optional["Meta"], Optional["HashInfo"]]]:
         return self._dict.get(key, default)
 
     def digest(self, with_meta: bool = False, name: str = DEFAULT_ALGORITHM):
@@ -132,7 +133,7 @@ class Tree(HashFile):
     def as_list(self, with_meta: bool = False):
         from operator import itemgetter
 
-        def _hi_to_dict(hi: Optional["HashInfo"]) -> Dict[str, Any]:
+        def _hi_to_dict(hi: Optional["HashInfo"]) -> dict[str, Any]:
             if not hi:
                 return {}
             if hi.name == "md5-dos2unix":
@@ -211,7 +212,7 @@ class Tree(HashFile):
 
         return tree
 
-    def filter(self, prefix: Tuple[str]) -> Optional["Tree"]:  # noqa: A003
+    def filter(self, prefix: tuple[str]) -> Optional["Tree"]:  # noqa: A003
         """Return a filtered copy of this tree that only contains entries
         inside prefix.
 
@@ -232,7 +233,7 @@ class Tree(HashFile):
             pass
         return tree
 
-    def get_obj(self, odb, prefix: Tuple[str]) -> Optional[HashFile]:
+    def get_obj(self, odb, prefix: tuple[str]) -> Optional[HashFile]:
         """Return object at the specified prefix in this tree.
 
         Returns None if no object exists at the specified prefix.

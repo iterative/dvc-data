@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from fsspec.callbacks import DEFAULT_CALLBACK
 
@@ -78,10 +78,10 @@ def collect(  # noqa: C901, PLR0912
     cache_index=None,
     cache_key=None,
     push: bool = False,
-) -> List["DataIndex"]:
+) -> list["DataIndex"]:
     from fsspec.utils import tokenize
 
-    storage_by_fs: Dict[Tuple[str, str], StorageInfo] = {}
+    storage_by_fs: dict[tuple[str, str], StorageInfo] = {}
     skip = set()
 
     if cache_index is None:
