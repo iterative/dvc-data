@@ -3,26 +3,15 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, MutableMapping
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Optional,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import attrs
-from sqltrie import (
-    JSONTrie,
-    PyGTrie,
-    ShortKeyError,
-    SQLiteTrie,
-)
+from sqltrie import JSONTrie, PyGTrie, ShortKeyError, SQLiteTrie
 
+from dvc_data.compat import cached_property
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.tree import Tree
-from dvc_data.utils import cached_property
 
 if TYPE_CHECKING:
     from dvc_objects.fs.base import FileSystem

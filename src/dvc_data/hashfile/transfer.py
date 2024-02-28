@@ -11,7 +11,6 @@ from typing import (
 )
 
 from fsspec.callbacks import DEFAULT_CALLBACK
-from funcy import split
 
 from .hash_info import HashInfo
 
@@ -56,7 +55,7 @@ def find_tree_by_obj_id(
     return None
 
 
-def _do_transfer(
+def _do_transfer(  # noqa: C901
     src: "HashFileDB",
     dest: "HashFileDB",
     obj_ids: Iterable["HashInfo"],
@@ -71,18 +70,23 @@ def _do_transfer(
     Returns:
         Set containing any hash_infos which failed to transfer.
     """
-    dir_ids, file_ids = split(lambda hash_info: hash_info.isdir, obj_ids)
+    dir_ids, file_ids = set(), set()
+    for hash_info in obj_ids:
+        if hash_info.isdir:
+            dir_ids.add(hash_info)
+        else:
+            file_ids.add(hash_info)
+
     failed_ids: set["HashInfo"] = set()
     succeeded_dir_objs = []
-    all_file_ids = set(file_ids)
 
     for dir_hash in dir_ids:
         dir_obj = find_tree_by_obj_id([cache_odb, src], dir_hash)
         assert dir_obj
 
         entry_ids = {oid for _, _, oid in dir_obj}
-        bound_file_ids = all_file_ids & entry_ids
-        all_file_ids -= entry_ids
+        bound_file_ids = file_ids & entry_ids
+        file_ids -= entry_ids
 
         logger.debug("transfer dir: %s with %d files", dir_hash, len(bound_file_ids))
 
@@ -114,7 +118,7 @@ def _do_transfer(
             succeeded_dir_objs.append(dir_obj)
 
     # insert the rest
-    failed_ids.update(_add(src, dest, all_file_ids, **kwargs))
+    failed_ids.update(_add(src, dest, file_ids, **kwargs))
     if failed_ids:
         if src_index:
             src_index.clear()

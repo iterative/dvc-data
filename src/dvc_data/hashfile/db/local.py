@@ -6,9 +6,8 @@ from typing import ClassVar
 
 from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
-from dvc_objects.fs.utils import copyfile, remove
+from dvc_objects.fs.utils import copyfile, remove, tmp_fname
 from fsspec.callbacks import DEFAULT_CALLBACK
-from shortuuid import uuid
 
 from . import HashFileDB
 
@@ -83,7 +82,7 @@ class LocalHashFileDB(HashFileDB):
     def _unprotect_file(self, path, callback=DEFAULT_CALLBACK):
         if self.fs.is_symlink(path) or self.fs.is_hardlink(path):
             logger.debug("Unprotecting '%s'", path)
-            tmp = os.path.join(os.path.dirname(path), "." + uuid())
+            tmp = os.path.join(os.path.dirname(path), tmp_fname())
 
             # The operations order is important here - if some application
             # would access the file during the process of copyfile then it

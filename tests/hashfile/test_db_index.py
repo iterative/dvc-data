@@ -1,5 +1,4 @@
 import pytest
-from funcy import first
 
 from dvc_data.hashfile.db.index import ObjectDBIndex
 
@@ -22,7 +21,7 @@ def test_roundtrip(tmp_upath, index):
 def test_clear(index):
     index.update(["1234.dir"], ["5678"])
     index.clear()
-    assert first(index.hashes()) is None
+    assert not list(index.hashes())
 
 
 def test_update(index):

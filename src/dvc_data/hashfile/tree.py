@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Any, Final, Optional
 
 from dvc_objects.errors import ObjectFormatError
 
+from dvc_data.compat import cached_property
 from dvc_data.hashfile.hash import DEFAULT_ALGORITHM, hash_file
 from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.obj import HashFile
-from dvc_data.utils import cached_property
 
 if TYPE_CHECKING:
     from pygtrie import Trie
