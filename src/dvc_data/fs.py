@@ -206,6 +206,7 @@ class DataFileSystem(AbstractFileSystem):
         cache = kwargs.pop("cache", False)
         if cache and typ == "remote" and cache_storage:
             fs, path = self._cache_remote_file(cache_storage, fs, path, hi)
+            storage = cache_storage
 
         if (
             isinstance(storage, ObjectStorage)
