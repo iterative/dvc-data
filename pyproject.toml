@@ -56,7 +56,7 @@ dev = [
     "dvc-data[all]",
     "dvc-data[tests]",
     "blake3>=0.3.1",
-    "mypy==1.8.0",
+    "mypy==1.9.0",
     "types-tqdm",
 ]
 
