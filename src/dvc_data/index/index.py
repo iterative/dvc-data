@@ -86,7 +86,7 @@ class DataIndexTrie(JSONTrie):
         return SQLiteTrie()
 
     @classmethod
-    def open(cls, path):  # noqa: A003
+    def open(cls, path):
         ret = cls()
         ret._trie = SQLiteTrie.open(path)
         return ret
@@ -642,7 +642,7 @@ class DataIndex(BaseDataIndex, MutableMapping[DataIndexKey, DataIndexEntry]):
         self.update(*args, **kwargs)
 
     @classmethod
-    def open(cls, path):  # noqa: A003
+    def open(cls, path):
         ret = cls()
         ret._trie = DataIndexTrie.open(path)
         return ret

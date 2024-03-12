@@ -212,7 +212,7 @@ class Tree(HashFile):
 
         return tree
 
-    def filter(self, prefix: tuple[str]) -> Optional["Tree"]:  # noqa: A003
+    def filter(self, prefix: tuple[str]) -> Optional["Tree"]:
         """Return a filtered copy of this tree that only contains entries
         inside prefix.
 
