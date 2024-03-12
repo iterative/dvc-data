@@ -14,3 +14,9 @@ updates:
       interval: "weekly"
     labels:
       - "maintenance"
+<<<<<<<
+=======
+      interval: "weekly"
+    labels:
+      - "maintenance"
+>>>>>>>
