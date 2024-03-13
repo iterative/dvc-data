@@ -1,4 +1,5 @@
 """DVC data."""
+
 import logging
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Union, cast
