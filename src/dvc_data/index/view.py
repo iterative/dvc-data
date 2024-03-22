@@ -127,11 +127,14 @@ class DataIndexView(BaseDataIndex):
     def ls(self, root_key: DataIndexKey, detail=True):
         self._index._ensure_loaded(root_key)
 
-        def _filter_fn(entry):
-            key = entry[0] if detail else entry
-            return self.filter_fn(key)
-
-        yield from filter(_filter_fn, self._index.ls(root_key, detail=detail))
+        if detail:
+            yield from (
+                (key, self._index._info_from_entry(key, entry))
+                for key, entry in self._index._trie.ls(root_key, with_values=True)
+                if self.filter_fn(key)
+            )
+        else:
+            yield from filter(self.filter_fn, self._index.ls(root_key, detail=False))
 
     def has_node(self, key: DataIndexKey) -> bool:
         return self.filter_fn(key) and self._index.has_node(key)
