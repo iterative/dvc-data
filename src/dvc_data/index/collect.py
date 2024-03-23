@@ -101,11 +101,8 @@ def collect(  # noqa: C901, PLR0912, PLR0915
                 fsid = data.fs.fsid
             except (NotImplementedError, AttributeError):
                 fsid = data.fs.protocol
-            except BaseException as exc:  # noqa: BLE001
-                logger.debug(
-                    "skipping index collection for data with invalid fsid",
-                    exc_info=exc,
-                )
+            except BaseException:  # noqa: BLE001
+                logger.debug("skipping index collection for data with invalid fsid")
                 continue
 
             key = (fsid, tokenize(data.path))
