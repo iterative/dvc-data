@@ -71,7 +71,7 @@ def _collect_from_index(
         cache[(*cache_prefix, *key)] = entry
 
 
-def collect(  # noqa: C901, PLR0912
+def collect(  # noqa: C901, PLR0912, PLR0915
     idxs,
     storage,
     callback: "Callback" = DEFAULT_CALLBACK,
@@ -101,6 +101,12 @@ def collect(  # noqa: C901, PLR0912
                 fsid = data.fs.fsid
             except (NotImplementedError, AttributeError):
                 fsid = data.fs.protocol
+            except BaseException as exc:  # noqa: BLE001
+                logger.debug(
+                    "skipping index collection for data with invalid fsid",
+                    exc_info=exc,
+                )
+                continue
 
             key = (fsid, tokenize(data.path))
 
