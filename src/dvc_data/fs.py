@@ -98,10 +98,10 @@ class DataFileSystem(AbstractFileSystem):
         if info["type"] == "directory":
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path)
 
-        entry: Optional["DataIndexEntry"] = info["entry"]
+        entry: Optional[DataIndexEntry] = info["entry"]
 
         assert entry
-        hash_info: Optional["HashInfo"] = entry.hash_info
+        hash_info: Optional[HashInfo] = entry.hash_info
 
         for typ in ["cache", "remote", "data"]:
             try:
@@ -128,7 +128,7 @@ class DataFileSystem(AbstractFileSystem):
     ) -> tuple["FileSystem", "AnyFSPath"]:
         from dvc_objects.fs.local import LocalFileSystem
 
-        odb: "HashFileDB" = cache_storage.odb
+        odb: HashFileDB = cache_storage.odb
         oid = hash_info.value if hash_info else None
         hash_name = hash_info.name if hash_info else None
         assert odb.hash_name

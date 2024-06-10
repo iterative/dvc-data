@@ -109,8 +109,8 @@ def status(  # noqa: C901, PLR0912
     if cache_odb is None:
         cache_odb = odb
 
-    hash_infos: dict[str, "HashInfo"] = {}
-    dir_objs: dict[str, Optional["HashFile"]] = {}
+    hash_infos: dict[str, HashInfo] = {}
+    dir_objs: dict[str, Optional[HashFile]] = {}
     for hash_info in obj_ids:
         assert hash_info.value
         if hash_info.isdir:

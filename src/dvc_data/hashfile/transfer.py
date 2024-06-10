@@ -77,7 +77,7 @@ def _do_transfer(  # noqa: C901
         else:
             file_ids.add(hash_info)
 
-    failed_ids: set["HashInfo"] = set()
+    failed_ids: set[HashInfo] = set()
     succeeded_dir_objs = []
 
     for dir_hash in dir_ids:
@@ -146,7 +146,7 @@ def _add(
     hash_infos: Iterable["HashInfo"],
     **kwargs,
 ) -> set["HashInfo"]:
-    failed: set["HashInfo"] = set()
+    failed: set[HashInfo] = set()
     if not hash_infos:
         return failed
 
@@ -154,7 +154,7 @@ def _add(
         _log_exception(oid, exc)
         failed.add(HashInfo(src.hash_name, oid))
 
-    fs_map: dict["FileSystem", list[tuple[str, str]]] = defaultdict(list)
+    fs_map: dict[FileSystem, list[tuple[str, str]]] = defaultdict(list)
     for hash_info in hash_infos:
         assert hash_info.value
         obj = src.get(hash_info.value)

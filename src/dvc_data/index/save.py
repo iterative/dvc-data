@@ -144,10 +144,10 @@ def save(
     storage: str = "data",
     **kwargs,
 ) -> int:
-    dir_entries: list["DataIndexKey"] = []
+    dir_entries: list[DataIndexKey] = []
     transferred = 0
 
-    odb_map: "_ODBMap" = {}
+    odb_map: _ODBMap = {}
     for key, entry in index.iteritems():
         if entry.meta and entry.meta.isdir:
             dir_entries.append(key)

@@ -82,9 +82,7 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
     if index is None:
         return
 
-    by_storage: dict["Storage", list[tuple["DataIndexEntry", str, str]]] = defaultdict(
-        list
-    )
+    by_storage: dict[Storage, list[tuple[DataIndexEntry, str, str]]] = defaultdict(list)
     for entry in entries:
         dest_path = fs.join(path, *entry.key)
         storage_info = index.storage_map[entry.key]
@@ -385,7 +383,7 @@ def _prune_existing_versions(
     jobs: Optional[int] = None,
 ) -> Iterator["DataIndexEntry"]:
     assert fs.version_aware
-    query_vers: dict[str, "DataIndexEntry"] = {}
+    query_vers: dict[str, DataIndexEntry] = {}
     jobs = jobs or fs.jobs
 
     for entry in entries:

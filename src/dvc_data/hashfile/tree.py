@@ -56,7 +56,7 @@ class Tree(HashFile):
         self.hash_info = None  # type: ignore[assignment]
         self.oid = None  # type: ignore[assignment]
         self._dict: dict[
-            tuple[str, ...], tuple[Optional["Meta"], Optional["HashInfo"]]
+            tuple[str, ...], tuple[Optional[Meta], Optional[HashInfo]]
         ] = {}
 
     @cached_property

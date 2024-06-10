@@ -166,7 +166,7 @@ def fetch(
                 diff = compare(old, filtered)
                 cache.fs.makedirs(cache.fs.parent(cache.path), exist_ok=True)
 
-                failed_keys: set["DataIndexKey"] = set()
+                failed_keys: set[DataIndexKey] = set()
                 apply(
                     diff,
                     cache.path,
