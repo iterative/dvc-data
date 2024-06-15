@@ -101,7 +101,7 @@ def push(
             )
             data.fs.makedirs(data.fs.parent(data.path), exist_ok=True)
 
-            failed_keys: set["DataIndexKey"] = set()
+            failed_keys: set[DataIndexKey] = set()
 
             if data.fs.version_aware:
                 desc = f"Checking status of existing versions in {data.path!r}"

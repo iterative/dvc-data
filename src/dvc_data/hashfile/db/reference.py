@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class ReferenceHashFileDB(HashFileDB):
     def __init__(self, fs: "FileSystem", path: str, **config):
         super().__init__(fs, path, **config)
-        self._obj_cache: dict["str", "HashFile"] = {}
+        self._obj_cache: dict[str, HashFile] = {}
 
     def __hash__(self):
         return hash((self.fs.protocol, self.path, *self._obj_cache.keys()))

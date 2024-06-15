@@ -158,7 +158,7 @@ def _get_items(
     return items, unknown
 
 
-def _diff(  # noqa: C901, PLR0912
+def _diff(  # noqa: C901
     old: Optional["BaseDataIndex"],
     new: Optional["BaseDataIndex"],
     *,

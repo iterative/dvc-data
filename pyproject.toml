@@ -126,6 +126,7 @@ module = [
 
 [tool.codespell]
 ignore-words-list = "fo"
+skip = "CODE_OF_CONDUCT.rst"
 
 [tool.ruff]
 ignore = [

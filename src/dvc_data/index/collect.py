@@ -123,9 +123,9 @@ def collect(  # noqa: C901, PLR0912, PLR0915
                 cache_index.commit()
 
             if key not in storage_by_fs:
-                fs_data: "Storage"
-                fs_cache: Optional["Storage"]
-                fs_remote: Optional["Storage"]
+                fs_data: Storage
+                fs_cache: Optional[Storage]
+                fs_remote: Optional[Storage]
 
                 if isinstance(data, ObjectStorage):
                     fs_data = ObjectStorage(key=(), odb=data.odb)
