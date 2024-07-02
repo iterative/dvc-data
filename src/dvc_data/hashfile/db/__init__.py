@@ -90,9 +90,9 @@ class HashFileDB(ObjectDB):
         assert len(paths) == len(oids)
 
         if verify:
-            for oid in oids:
+            for o in oids:
                 try:
-                    self.check(oid, check_hash=True)
+                    self.check(o, check_hash=True)
                 except (ObjectFormatError, FileNotFoundError):
                     pass
 
