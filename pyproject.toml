@@ -129,6 +129,11 @@ ignore-words-list = "fo"
 skip = "CODE_OF_CONDUCT.rst"
 
 [tool.ruff]
+show-fixes = true
+
+[tool.ruff.lint]
+preview = true
+explicit-preview-rules = true
 ignore = [
     "ISC001", # single-line-implicit-string-concatenation
     "PLR2004", # magic-value-comparison
@@ -181,8 +186,6 @@ select = [
     "W", # pycodestyle - Warning
     "YTT", # flake8-2020
 ]
-show-source = true
-show-fixes = true
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false

@@ -45,15 +45,13 @@ jobs:
 
     - name: Benchmark on base branch
       working-directory: base
-      run: nox -s bench -- --benchmark-save=base
+      run: |
+        nox -s bench -- --benchmark-save=base
 
     - name: Benchmark on pull request
       working-directory: pr
-      run: >
-        nox -s bench --
-        --benchmark-save=${GITHUB_SHA::7}
-        --benchmark-compare=0001
-        --benchmark-compare-fail=mean:10%
+      run: |
+        nox -s bench -- --benchmark-save=${GITHUB_SHA::7} --benchmark-compare=0001 --benchmark-compare-fail=mean:10%
 
     - name: Compare benchmark
       if: always()
