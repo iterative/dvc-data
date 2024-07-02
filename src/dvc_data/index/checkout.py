@@ -395,8 +395,8 @@ def _prune_existing_versions(
             assert hasattr(fs, "version_path")
             versioned_path = fs.version_path(entry_path, entry.meta.version_id)
             query_vers[versioned_path] = entry
-    for path, exists in batch_exists(
+    for pth, exists in batch_exists(
         fs, query_vers.keys(), batch_size=jobs, callback=callback
     ).items():
         if not exists:
-            yield query_vers[path]
+            yield query_vers[pth]
