@@ -107,16 +107,16 @@ class HashFileDB(ObjectDB):
             **kwargs,
         )
 
-        for oid in oids:
-            cache_path = self.oid_to_path(oid)
+        for o in oids:
+            cache_path = self.oid_to_path(o)
             try:
                 if verify:
-                    self.check(oid, check_hash=True)
+                    self.check(o, check_hash=True)
                 self.protect(cache_path)
                 self.state.save(
                     cache_path,
                     self.fs,
-                    HashInfo(name=self.hash_name, value=oid),
+                    HashInfo(name=self.hash_name, value=o),
                 )
             except (ObjectFormatError, FileNotFoundError):
                 pass
