@@ -50,7 +50,7 @@ tests = [
     "pytest-cov>=4.1.0",
     "pytest-mock",
     "pytest-benchmark>=4",
-    "pytest-servers[s3]==0.5.4",
+    "pytest-servers[s3]==0.5.5",
 ]
 dev = [
     "dvc-data[all]",
