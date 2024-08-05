@@ -26,11 +26,11 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Upgrade pip and nox
+    - name: Upgrade nox and uv
       run: |
-        pip install --upgrade pip nox
-        pip --version
+        python -m pip install --upgrade 'nox[uv]'
         nox --version
+        uv --version
 
     - name: Build package
       run: nox -s build

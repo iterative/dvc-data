@@ -5,6 +5,7 @@ import os
 
 import nox
 
+nox.options.default_venv_backend = "uv|virtualenv"
 nox.options.reuse_existing_virtualenvs = True
 nox.options.sessions = "lint", "tests"
 
@@ -46,8 +47,8 @@ def lint(session: nox.Session) -> None:
 
 @nox.session
 def build(session: nox.Session) -> None:
-    session.install("build", "setuptools", "twine")
-    session.run("python", "-m", "build")
+    session.install("build", "setuptools", "twine", "uv")
+    session.run("python", "-m", "build", "--installer", "uv")
     dists = glob.glob("dist/*")
     session.run("twine", "check", *dists, silent=True)
 
