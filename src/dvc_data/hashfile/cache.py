@@ -106,12 +106,6 @@ class HashesCache(Cache):
         ((exists,),) = res
         return exists == 0
 
-    def set(
-        self, key: str, value: str, expire=None, read=False, tag=None, retry=False
-    ) -> Literal[True]:
-        self.set_many([(key, value)], retry=retry)
-        return True
-
     def get(
         self, key, default=None, read=False, expire_time=False, tag=False, retry=False
     ):
