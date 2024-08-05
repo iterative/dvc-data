@@ -21,7 +21,7 @@ UNCHANGED = "unchanged"
 UNKNOWN = "unknown"
 
 
-@define(frozen=True, hash=True, order=True)
+@define(frozen=True, unsafe_hash=True, order=True)
 class Change:
     typ: str
     old: Optional[DataIndexEntry]
