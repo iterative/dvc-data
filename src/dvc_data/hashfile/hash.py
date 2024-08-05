@@ -4,7 +4,8 @@ import logging
 from typing import TYPE_CHECKING, BinaryIO, Optional, cast
 
 from dvc_objects.fs import localfs
-from fsspec.callbacks import DEFAULT_CALLBACK, Callback
+from fsspec.callbacks import Callback
+from fsspec.utils import nullcontext
 from tqdm.utils import CallbackIOWrapper
 
 from dvc_data.callbacks import TqdmCallback
@@ -48,6 +49,8 @@ def get_hasher(name: str) -> "hashlib._Hash":
 
 
 class HashStreamFile(io.IOBase):
+    __slots__ = ("fobj", "hasher", "total_read")
+
     def __init__(
         self,
         fobj: BinaryIO,
@@ -81,6 +84,8 @@ class HashStreamFile(io.IOBase):
 
 
 class Dos2UnixHashStreamFile(HashStreamFile):
+    __slots__ = ()
+
     def read(self, n=-1) -> bytes:
         # ideally, we want the heuristics to be applied in a similar way,
         # regardless of the size of the first chunk,
@@ -116,24 +121,25 @@ def fobj_md5(
 def file_md5(
     fname: "AnyFSPath",
     fs: "FileSystem" = localfs,
-    callback: "Callback" = DEFAULT_CALLBACK,
+    callback: Optional["Callback"] = None,
     name: str = DEFAULT_ALGORITHM,
     size: Optional[int] = None,
 ) -> str:
-    if size is None:
+    if size is None and callback is not None:
         size = fs.size(fname) or 0
+        callback.set_size(size)
 
-    callback.set_size(size)
     with fs.open(fname, "rb") as fobj:
-        wrapped = cast("BinaryIO", CallbackIOWrapper(callback.relative_update, fobj))
-        return fobj_md5(wrapped, name=name)
+        if callback is not None:
+            fobj = cast("BinaryIO", CallbackIOWrapper(callback.relative_update, fobj))
+        return fobj_md5(fobj, name=name)
 
 
 def _hash_file(
     path: "AnyFSPath",
     fs: "FileSystem",
     name: str,
-    callback: "Callback" = DEFAULT_CALLBACK,
+    callback: Optional["Callback"] = None,
     info: Optional[dict] = None,
 ) -> tuple["str", Meta]:
     info = info or fs.info(path)
@@ -191,15 +197,22 @@ def hash_file(
 ) -> tuple["Meta", "HashInfo"]:
     if state:
         meta, hash_info = state.get(path, fs, info=info)
-        if hash_info and hash_info.name == name:
+        if meta is not None and hash_info is not None and hash_info.name == name:
             return meta, hash_info
 
-    cb = callback or LargeFileHashingCallback(desc=path)
-    with cb:
-        hash_value, meta = _hash_file(path, fs, name, callback=cb, info=info)
-    hash_info = HashInfo(name, hash_value)
-    if state:
-        assert ".dir" not in hash_info.value
-        state.save(path, fs, hash_info, info=info)
+    size = info.get("size") if info else None
+    _callback = callback
+    # never initialize callback if it's never going to be used
+    if size and size < LargeFileHashingCallback.LARGE_FILE_SIZE:
+        _callback = nullcontext(None)
+    else:
+        _callback = LargeFileHashingCallback(desc=path)
 
+    with _callback as cb:
+        oid, meta = _hash_file(path, fs, name, callback=cb, info=info)
+
+    hash_info = HashInfo(name, oid)
+    if state:
+        assert ".dir" not in oid
+        state.save(path, fs, hash_info, info=info)
     return meta, hash_info

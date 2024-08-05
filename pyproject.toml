@@ -30,6 +30,7 @@ dependencies = [
     "pygtrie>=2.3.2",
     "sqltrie>=0.11.0,<1",
     "tqdm>=4.63.1,<5",
+    "orjson>=3,<4; implementation_name=='cpython'",
 ]
 
 [project.urls]

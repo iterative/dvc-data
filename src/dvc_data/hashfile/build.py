@@ -1,11 +1,15 @@
 import hashlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Optional, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
+from dvc_objects.executors import ThreadPoolExecutor
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
 
 from dvc_data.callbacks import TqdmCallback
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.state import StateBase, StateNoop
 
 from .db.reference import ReferenceHashFileDB
 from .hash import hash_file
@@ -15,10 +19,12 @@ from .obj import HashFile
 if TYPE_CHECKING:
     from typing import BinaryIO
 
+    from dvc_objects.db import ObjectDB
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
     from ._ignore import Ignore
     from .db import HashFileDB
+    from .state import StateBase
     from .tree import Tree
 
 
@@ -43,7 +49,7 @@ def _upload_file(
     from_path: "AnyFSPath",
     fs: "FileSystem",
     odb: "HashFileDB",
-    upload_odb: "HashFileDB",
+    upload_odb: "ObjectDB",
     callback: Optional[Callback] = None,
 ) -> tuple[Meta, HashFile]:
     from dvc_objects.fs.utils import tmp_fname
@@ -69,33 +75,153 @@ def _upload_file(
     return meta, odb.get(oid)
 
 
-def _build_file(path, fs, name, odb=None, upload_odb=None, dry_run=False):
-    state = odb.state if odb else None
-    meta, hash_info = hash_file(path, fs, name, state=state)
-    if upload_odb and not dry_run:
-        assert odb
+def _hash_files(
+    small_files: list[tuple[str, dict]],
+    large_files: list[tuple[str, dict]],
+    fs: "FileSystem",
+    name: str,
+    jobs: Optional[int] = None,
+) -> Iterator[tuple[str, tuple[Meta, HashInfo, dict]]]:
+    def _hash(arg: tuple[str, dict]) -> tuple[str, tuple[Meta, HashInfo, dict]]:
+        p, info = arg
+        # `hash_file` only hashes files that are not in `state`, so we need to pass
+        # `state=None` here. We'll save the hashes outside this function.
+        meta, hi = hash_file(p, fs, name, state=None, info=info)
+        return p, (meta, hi, info)
+
+    if len(large_files) < 2:
+        small_files.extend(large_files)
+        large_files.clear()
+
+    yield from map(_hash, small_files)
+    if large_files:
+        max_workers = jobs if jobs else min(16, (os.cpu_count() or 1) + 4)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            yield from executor.imap_unordered(_hash, large_files)
+
+
+def _get_hashes(
+    paths: list["AnyFSPath"],
+    fs: "FileSystem",
+    name: str,
+    infos: dict[str, dict],
+    state: Optional["StateBase"] = None,
+    callback: Optional["Callback"] = None,
+    jobs: Optional[int] = None,
+    large_file_threshold: int = 2**21,
+) -> dict[str, tuple[Meta, HashInfo, dict]]:
+    hashes: dict[str, tuple[Meta, HashInfo, dict]] = {}
+    state = state if state is not None else StateNoop()
+
+    large_files: list[tuple[str, dict]] = []
+    small_files: list[tuple[str, dict]] = []
+    lappend = large_files.append
+    sappend = small_files.append
+
+    for path, meta, hi in state.get_many(paths, fs, infos):
+        info = infos[path]
+        if meta is not None and hi is not None and hi.name == name:
+            hashes[path] = meta, hi, info
+        elif (size := info.get("size")) and size > large_file_threshold:
+            lappend((path, info))
+        else:
+            sappend((path, info))
+
+    if callback:
+        callback.relative_update(len(hashes))
+
+    hashes_it = _hash_files(small_files, large_files, fs, name, jobs=jobs)
+    if callback:
+        hashes_it = callback.wrap(hashes_it)
+    new_hashes: dict[str, tuple[Meta, HashInfo, dict]] = dict(hashes_it)
+    items = ((path, hi, info) for path, (_, hi, info) in new_hashes.items())
+    state.save_many(items, fs)
+
+    hashes.update(new_hashes)
+    return hashes
+
+
+def _build_files(
+    root: Optional["AnyFSPath"],
+    fnames: Union["AnyFSPath", list["AnyFSPath"]],
+    fs: "FileSystem",
+    name: str,
+    odb: Optional["HashFileDB"] = None,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    upload_odb: Optional["ObjectDB"] = None,
+    dry_run: bool = False,
+    jobs: Optional[int] = None,
+    large_file_threshold: int = 2**20,
+) -> dict[str, tuple[Meta, HashInfo]]:
+    sep = fs.sep
+    fnames = [fnames] if isinstance(fnames, str) else fnames
+    paths: list[str] = [f"{root}{sep}{fname}" for fname in fnames] if root else fnames
+    state = odb.state if odb is not None else None
+
+    infos: dict[str, dict] = {path: fs.info(path) for path in paths}
+    hashes = _get_hashes(
+        paths,
+        fs,
+        name,
+        infos,
+        state=state,
+        callback=callback,
+        jobs=jobs,
+        large_file_threshold=large_file_threshold,
+    )
+
+    objects: dict[str, tuple[Meta, HashInfo]] = {}
+    if upload_odb is not None and not dry_run:
+        assert odb is not None
         assert name == "md5"
-        return _upload_file(path, fs, odb, upload_odb)
+        for fname, path in zip(fnames, paths):
+            meta, obj = _upload_file(path, fs, odb, upload_odb)
+            objects[fname] = meta, obj.hash_info
+        return objects
 
-    oid = hash_info.value
+    if not dry_run:
+        assert odb is not None
+        to_add = {path: hashes[path][1].value for path in paths}
+        oids = list(to_add.values())
+        paths = list(to_add)
+        odb.add(paths, fs, oids, hardlink=False)  # type: ignore[arg-type]
+    return {fname: hashes[path][:2] for fname, path in zip(fnames, paths)}
+
+
+def _build_file(
+    path: "AnyFSPath",
+    fs: "FileSystem",
+    name: str,
+    odb: Optional["HashFileDB"] = None,
+    upload_odb: Optional["ObjectDB"] = None,
+    dry_run: bool = False,
+) -> tuple[Meta, HashFile]:
+    objects = _build_files(
+        None, path, fs, name, odb=odb, upload_odb=upload_odb, dry_run=dry_run
+    )
+    ((fname, (meta, hi)),) = objects.items()
+    assert path == fname
+    assert hi.value is not None
     if dry_run:
-        obj = HashFile(path, fs, hash_info)
+        obj = HashFile(path, fs, hi)
     else:
-        odb.add(path, fs, oid, hardlink=False)
-        obj = odb.get(oid)
-
+        assert odb is not None
+        obj = odb.get(hi.value)
     return meta, obj
 
 
-def _build_tree(
-    path,
-    fs,
-    fs_info,
-    name,
-    odb=None,
+def _build_tree(  # noqa: C901, PLR0912
+    path: "AnyFSPath",
+    fs: "FileSystem",
+    fs_info: dict,
+    name: str,
+    odb: Optional["HashFileDB"] = None,
+    upload_odb: Optional["ObjectDB"] = None,
     ignore: Optional["Ignore"] = None,
     callback: "Callback" = DEFAULT_CALLBACK,
-    **kwargs,
+    dry_run: bool = False,
+    checksum_jobs: Optional[int] = None,
+    **kwargs: Any,
 ):
     from .db import add_update_tree
     from .hash_info import HashInfo
@@ -116,54 +242,63 @@ def _build_tree(
     else:
         walk_iter = fs.walk(path)
 
-    tree_meta = Meta(size=0, nfiles=0, isdir=True)
-    # assuring mypy that they are not None but integer
-    assert tree_meta.size is not None
-    assert tree_meta.nfiles is not None
-
     tree = Tree()
+    size = 0
 
-    for root, _, fnames in walk_iter:
-        if DefaultIgnoreFile in fnames:
-            raise IgnoreInCollectedDirError(
-                DefaultIgnoreFile, fs.join(root, DefaultIgnoreFile)
-            )
-
-        # NOTE: we know for sure that root starts with path, so we can use
-        # faster string manipulation instead of a more robust relparts()
-        rel_key: tuple[Optional[Any], ...] = ()
-        if root != path:
-            rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
-
-        for fname in fnames:
-            if fname == "":
+    for root, _, files in walk_iter:
+        assert isinstance(root, str)
+        fnames: list[str] = []
+        for file in files:
+            if not file:
                 # NOTE: might happen with s3/gs/azure/etc, where empty
                 # objects like `dir/` might be used to create an empty dir
                 continue
+            if file == DefaultIgnoreFile:
+                raise IgnoreInCollectedDirError(DefaultIgnoreFile, root)
+            fnames.append(file)
 
-            callback.relative_update(1)
-            meta, obj = _build_file(
-                f"{root}{fs.sep}{fname}", fs, name, odb=odb, **kwargs
-            )
+        if not fnames:
+            continue
+
+        # NOTE: we know for sure that root starts with path, so we can use
+        # faster string manipulation instead of a more robust relparts()
+        rel_key: tuple[str, ...] = ()
+        if root != path:
+            rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
+
+        callback.set_size((callback.size or 0) + len(fnames))
+        objects = _build_files(
+            root,
+            fnames,
+            fs,
+            name,
+            odb=odb,
+            callback=callback,
+            upload_odb=upload_odb,
+            dry_run=dry_run,
+            jobs=checksum_jobs,
+        )
+        for fname, (meta, hi) in objects.items():
             key = (*rel_key, fname)
-            tree.add(key, meta, obj.hash_info)
-            tree_meta.size += meta.size or 0
-            tree_meta.nfiles += 1
+            tree.add(key, meta, hi)
+            size += meta.size or 0
 
+    tree_meta = Meta(size=size, nfiles=len(tree), isdir=True)
     if not tree_meta.nfiles:
         # This will raise FileNotFoundError if it is a
         # broken symlink or TreeError
-        next(iter(fs.ls(path)), None)
+        next(iter(fs.ls(path, detail=False)), None)
 
     tree.digest()
-    tree = add_update_tree(odb, tree)
+    if odb:
+        tree = add_update_tree(odb, tree)
     return tree_meta, tree
 
 
 _url_cache: dict[str, str] = {}
 
 
-def _make_staging_url(fs: "FileSystem", odb: "HashFileDB", path: Optional[str]):
+def _make_staging_url(fs: "FileSystem", odb: "HashFileDB", path: Optional["AnyFSPath"]):
     from dvc_objects.fs import Schemes
 
     url = f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}-{odb.hash_name}"
@@ -231,6 +366,9 @@ def build(
     name: str,
     upload: bool = False,
     dry_run: bool = False,
+    ignore: Optional["Ignore"] = None,
+    callback: "Callback" = DEFAULT_CALLBACK,
+    checksum_jobs: Optional[int] = None,
     **kwargs,
 ) -> tuple["HashFileDB", "Meta", "HashFile"]:
     """Stage (prepare) objects from the given path for addition to an ODB.
@@ -261,7 +399,10 @@ def build(
             name,
             odb=staging,
             upload_odb=odb if upload else None,
+            ignore=ignore,
+            callback=callback,
             dry_run=dry_run,
+            checksum_jobs=checksum_jobs,
             **kwargs,
         )
         logger.debug("built tree '%s'", obj)

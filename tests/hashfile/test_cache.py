@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from dvc_data.hashfile.cache import Cache, DiskError
+from dvc_data.hashfile.cache import Cache, DiskError, HashesCache
 
 
 def set_value(cache: Cache, key: str, value: Any) -> Any:
@@ -47,3 +47,30 @@ def test_pickle_backwards_compat(tmp_path, proto_a, proto_b):
         assert cache["key"] == ("value1", "value2")
         set_value(cache, "key", ("value3", "value4"))
         assert cache["key"] == ("value3", "value4")
+
+
+def test_hashes_cache(tmp_path):
+    with HashesCache(tmp_path / "test") as cache:
+        assert cache.is_empty()
+        assert cache.set("key", "value")
+        assert not cache.is_empty()
+        assert cache.get("key") == "value"
+        assert cache.get("not-existing-key") is None
+
+
+def test_hashes_cache_many(tmp_path):
+    with HashesCache(tmp_path / "test") as cache:
+        assert cache.is_empty()
+        assert list(cache.get_many(("key1",))) == [("key1", None)]
+
+        cache.set_many((("key1", "value1"), ("key2", "value2")))
+        assert not cache.is_empty()
+        assert list(cache.get_many(("key1", "key2"))) == [
+            ("key1", "value1"),
+            ("key2", "value2"),
+        ]
+        assert list(cache.get_many(("key1", "key2", "not-existing-key"))) == [
+            ("key1", "value1"),
+            ("key2", "value2"),
+            ("not-existing-key", None),
+        ]

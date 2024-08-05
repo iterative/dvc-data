@@ -1,19 +1,27 @@
 """Manages state database used for checksum caching."""
 
-import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from collections.abc import Iterable, Iterator
+from itertools import zip_longest
+from typing import TYPE_CHECKING, Optional, Union
 
 from dvc_objects.fs import LocalFileSystem
 from dvc_objects.fs.system import inode as get_inode
 from dvc_objects.fs.utils import relpath
+from fsspec.utils import tokenize
+
+from dvc_data.json_compat import dumps as json_dumps
+from dvc_data.json_compat import loads as json_loads
 
 from .hash_info import HashInfo
+from .meta import Meta
 from .utils import get_mtime_and_size
 
 if TYPE_CHECKING:
+    from dvc_objects.fs import FileSystem
+
     from ._ignore import Ignore
 
 
@@ -26,11 +34,31 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
-    def save(self, path, fs, hash_info, info=None):
+    def save(
+        self,
+        path: str,
+        fs: "FileSystem",
+        hash_info: "HashInfo",
+        info: Optional[dict] = None,
+    ) -> None:
         pass
 
     @abstractmethod
-    def get(self, path, fs, info=None):
+    def save_many(
+        self, items: Iterable[tuple[str, "HashInfo", Optional[dict]]], fs: "FileSystem"
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def get(
+        self, path: str, fs: "FileSystem", info: Optional[dict] = None
+    ) -> Union[tuple[None, None], tuple["Meta", HashInfo]]:
+        pass
+
+    @abstractmethod
+    def get_many(
+        self, items: Iterable[str], fs: "FileSystem", infos: dict[str, dict]
+    ) -> Iterator[Union[tuple[str, None, None], tuple[str, "Meta", "HashInfo"]]]:
         pass
 
     @abstractmethod
@@ -50,11 +78,29 @@ class StateNoop(StateBase):
     def close(self):
         pass
 
-    def save(self, path, fs, hash_info, info=None):
+    def save(
+        self,
+        path: str,
+        fs: "FileSystem",
+        hash_info: "HashInfo",
+        info: Optional[dict] = None,
+    ) -> None:
         pass
 
-    def get(self, path, fs, info=None):
-        return None, None
+    def save_many(
+        self, items: Iterable[tuple[str, "HashInfo", Optional[dict]]], fs: "FileSystem"
+    ) -> None:
+        pass
+
+    def get(
+        self, path: str, fs: "FileSystem", info: Optional[dict] = None
+    ) -> Union[tuple[None, None], tuple["Meta", HashInfo]]:
+        return (None, None)
+
+    def get_many(
+        self, items: Iterable[str], fs: "FileSystem", infos: dict[str, dict]
+    ) -> Iterator[Union[tuple[str, None, None], tuple[str, "Meta", "HashInfo"]]]:
+        yield from zip_longest(items, [], [])
 
     def save_link(self, path, fs):
         pass
@@ -67,8 +113,6 @@ class StateNoop(StateBase):
 
 
 def _checksum(info):
-    from fsspec.utils import tokenize
-
     return str(int(tokenize([info["ino"], info["mtime"], info["size"]]), 16))
 
 
@@ -76,7 +120,7 @@ class State(StateBase):
     HASH_VERSION = 1
 
     def __init__(self, root_dir=None, tmp_dir=None, ignore: Optional["Ignore"] = None):
-        from .cache import Cache
+        from .cache import Cache, HashesCache
 
         super().__init__()
 
@@ -90,13 +134,19 @@ class State(StateBase):
         links_dir = os.path.join(tmp_dir, "links")
         hashes_dir = os.path.join(tmp_dir, "hashes", "local")
         self.links = Cache(links_dir)
-        self.hashes = Cache(hashes_dir)
+        self.hashes = HashesCache(hashes_dir)
 
     def close(self):
         self.hashes.close()
         self.links.close()
 
-    def save(self, path, fs, hash_info, info=None):
+    def save(
+        self,
+        path: str,
+        fs: "FileSystem",
+        hash_info: "HashInfo",
+        info: Optional[dict] = None,
+    ) -> None:
         """Save hash for the specified path info.
 
         Args:
@@ -115,9 +165,33 @@ class State(StateBase):
             "hash_info": hash_info.to_dict(),
         }
 
-        self.hashes[path] = json.dumps(entry)
+        self.hashes[path] = json_dumps(entry)
 
-    def get(self, path, fs, info=None):  # noqa: PLR0911
+    def save_many(
+        self, items: Iterable[tuple[str, "HashInfo", Optional[dict]]], fs: "FileSystem"
+    ) -> None:
+        if not isinstance(fs, LocalFileSystem):
+            return
+
+        lst: list[tuple[str, str]] = []
+        for path, hash_info, info in items:
+            try:
+                info = info or fs.info(path)
+            except FileNotFoundError:
+                continue
+
+            entry = {
+                "version": self.HASH_VERSION,
+                "checksum": _checksum(info),
+                "size": info["size"],
+                "hash_info": hash_info.to_dict(),
+            }
+            lst.append((path, json_dumps(entry)))
+        return self.hashes.set_many(lst)
+
+    def get(
+        self, path: str, fs: "FileSystem", info: Optional[dict] = None
+    ) -> Union[tuple[None, None], tuple["Meta", HashInfo]]:
         """Gets the hash for the specified path info. Hash will be
         retrieved from the state database if available.
 
@@ -128,7 +202,6 @@ class State(StateBase):
             HashInfo or None: hash for the specified path info or None if it
             doesn't exist in the state database.
         """
-        from .meta import Meta
 
         if not isinstance(fs, LocalFileSystem):
             return None, None
@@ -138,27 +211,58 @@ class State(StateBase):
             return None, None
 
         try:
-            entry = json.loads(raw)
-        except ValueError:
-            return None, None
-
-        try:
             info = info or fs.info(path)
-            actual = _checksum(info)
         except FileNotFoundError:
             return None, None
 
+        if r := self._get(path, raw, info):
+            return r
+        return None, None
+
+    def _get(
+        self, path: str, raw: str, info: Optional[dict]
+    ) -> Optional[tuple["Meta", HashInfo]]:
+        try:
+            entry = json_loads(raw)
+        except ValueError:
+            return None
+
+        actual = _checksum(info)
         if entry["checksum"] != actual:
-            return None, None
+            return None
 
         version: Optional[int] = entry.get("version")
         if version is not None and version > self.HASH_VERSION:
-            return None, None
+            return None
+
         meta = Meta(size=entry["size"])
         hash_info = HashInfo.from_dict(entry["hash_info"])
         if version is None and hash_info.name == "md5":
             hash_info.name = "md5-dos2unix"
         return meta, hash_info
+
+    def get_many(
+        self, items: Iterable[str], fs: "FileSystem", infos: dict[str, dict]
+    ) -> Iterator[Union[tuple[str, None, None], tuple[str, "Meta", "HashInfo"]]]:
+        if not isinstance(fs, LocalFileSystem):
+            yield from zip_longest(items, [], [])
+            return
+
+        for path, raw in self.hashes.get_many(items):
+            if not raw:
+                yield path, None, None
+                continue
+
+            try:
+                info = infos.get(path) or fs.info(path)
+            except FileNotFoundError:
+                yield path, None, None
+                continue
+
+            if r := self._get(path, raw, info):
+                yield path, r[0], r[1]
+            else:
+                yield path, None, None
 
     def save_link(self, path, fs):
         """Adds the specified path to the list of links created by dvc. This
