@@ -2,9 +2,10 @@ import hashlib
 import logging
 import os
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from dvc_objects.executors import ThreadPoolExecutor
+from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
 
 from dvc_data.callbacks import TqdmCallback
@@ -143,7 +144,7 @@ def _get_hashes(
 
 def _build_files(
     root: Optional["AnyFSPath"],
-    fnames: Union["AnyFSPath", list["AnyFSPath"]],
+    file_infos: dict[str, dict],
     fs: "FileSystem",
     name: str,
     odb: Optional["HashFileDB"] = None,
@@ -154,11 +155,13 @@ def _build_files(
     large_file_threshold: int = 2**20,
 ) -> dict[str, tuple[Meta, HashInfo]]:
     sep = fs.sep
-    fnames = [fnames] if isinstance(fnames, str) else fnames
-    paths: list[str] = [f"{root}{sep}{fname}" for fname in fnames] if root else fnames
-    state = odb.state if odb is not None else None
+    fnames = list(file_infos)
+    infos = file_infos
+    if root:
+        infos = {f"{root}{sep}{fname}": info for fname, info in infos.items()}
 
-    infos: dict[str, dict] = {path: fs.info(path) for path in paths}
+    paths = list(infos)
+    state = odb.state if odb is not None else None
     hashes = _get_hashes(
         paths,
         fs,
@@ -197,7 +200,13 @@ def _build_file(
     dry_run: bool = False,
 ) -> tuple[Meta, HashFile]:
     objects = _build_files(
-        None, path, fs, name, odb=odb, upload_odb=upload_odb, dry_run=dry_run
+        None,
+        {path: fs.info(path)},
+        fs,
+        name,
+        odb=odb,
+        upload_odb=upload_odb,
+        dry_run=dry_run,
     )
     ((fname, (meta, hi)),) = objects.items()
     assert path == fname
@@ -210,7 +219,25 @@ def _build_file(
     return meta, obj
 
 
-def _build_tree(  # noqa: C901, PLR0912
+def _walk_files(
+    fs: "FileSystem", path: str, ignore: Optional["Ignore"] = None
+) -> Iterator[tuple[str, dict[str, dict]]]:
+    if not isinstance(fs, LocalFileSystem):
+        # reduce no. of info calls for non-local fs
+        for root, _, files in fs.walk(path, detail=True):
+            assert isinstance(root, str)
+            assert isinstance(files, dict)
+            yield root, files
+        return
+
+    sep = fs.sep
+    walk_iter = ignore.walk(fs, path) if ignore else fs.walk(path)
+    for root, _, files in walk_iter:
+        assert isinstance(root, str)
+        yield root, {file: fs.info(f"{root}{sep}{file}") for file in files}
+
+
+def _build_tree(
     path: "AnyFSPath",
     fs: "FileSystem",
     fs_info: dict,
@@ -237,28 +264,16 @@ def _build_tree(  # noqa: C901, PLR0912
 
     path = path.rstrip(fs.sep)
 
-    if ignore:
-        walk_iter = ignore.walk(fs, path)
-    else:
-        walk_iter = fs.walk(path)
-
     tree = Tree()
     size = 0
-
-    for root, _, files in walk_iter:
-        assert isinstance(root, str)
-        fnames: list[str] = []
-        for file in files:
-            if not file:
-                # NOTE: might happen with s3/gs/azure/etc, where empty
-                # objects like `dir/` might be used to create an empty dir
-                continue
-            if file == DefaultIgnoreFile:
-                raise IgnoreInCollectedDirError(DefaultIgnoreFile, root)
-            fnames.append(file)
-
-        if not fnames:
+    for root, files in _walk_files(fs, path, ignore=ignore):
+        # NOTE: might happen with s3/gs/azure/etc, where empty
+        # objects like `dir/` might be used to create an empty dir
+        files.pop("", None)
+        if not files:
             continue
+        if DefaultIgnoreFile in files:
+            raise IgnoreInCollectedDirError(DefaultIgnoreFile, root)
 
         # NOTE: we know for sure that root starts with path, so we can use
         # faster string manipulation instead of a more robust relparts()
@@ -266,10 +281,10 @@ def _build_tree(  # noqa: C901, PLR0912
         if root != path:
             rel_key = tuple(root[len(path) + 1 :].split(fs.sep))
 
-        callback.set_size((callback.size or 0) + len(fnames))
+        callback.set_size((callback.size or 0) + len(files))
         objects = _build_files(
             root,
-            fnames,
+            files,
             fs,
             name,
             odb=odb,
