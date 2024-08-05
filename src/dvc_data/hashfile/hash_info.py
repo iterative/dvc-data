@@ -5,7 +5,7 @@ from attrs import define, field
 HASH_DIR_SUFFIX = ".dir"
 
 
-@define(hash=True)
+@define(unsafe_hash=True)
 class HashInfo:
     name: Optional[str] = None
     value: Optional[str] = None

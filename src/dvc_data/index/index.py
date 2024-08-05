@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 DataIndexKey = tuple[str, ...]
 
 
-@attrs.define(hash=True)
+@attrs.define(unsafe_hash=True)
 class DataIndexEntry:
     key: Optional[DataIndexKey] = None
     meta: Optional["Meta"] = None

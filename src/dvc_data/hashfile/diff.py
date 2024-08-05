@@ -16,7 +16,7 @@ DELETE = "delete"
 UNCHANGED = "unchanged"
 
 
-@define(hash=True, order=True)
+@define(unsafe_hash=True, order=True)
 class TreeEntry:
     in_cache: bool = field(default=False, eq=False)
     key: tuple[str, ...] = ()
@@ -27,7 +27,7 @@ class TreeEntry:
         return bool(self.oid)
 
 
-@define(hash=True, order=True)
+@define(unsafe_hash=True, order=True)
 class Change:
     old: TreeEntry = field(factory=TreeEntry)
     new: TreeEntry = field(factory=TreeEntry)
