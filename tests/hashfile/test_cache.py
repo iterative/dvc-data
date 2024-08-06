@@ -74,3 +74,17 @@ def test_hashes_cache_many(tmp_path):
             ("key2", "value2"),
             ("not-existing-key", None),
         ]
+
+
+@pytest.mark.parametrize("upsert", [True, False])
+def test_hashes_cache_update(tmp_path, upsert):
+    with HashesCache(tmp_path / "test") as cache:
+        cache.SUPPORTS_UPSERT = upsert
+
+        assert cache.is_empty()
+        cache.set("key1", "value")
+        cache.set_many((("key1", "value1"), ("key2", "value2")))
+        assert list(cache.get_many(("key1", "key2"))) == [
+            ("key1", "value1"),
+            ("key2", "value2"),
+        ]

@@ -1,6 +1,7 @@
 import os
 import pickle
-from collections.abc import Iterable, Iterator
+import sqlite3
+from collections.abc import Iterable, Iterator, Sequence
 from functools import wraps
 from itertools import zip_longest
 from typing import Any, ClassVar, Literal, Optional
@@ -69,6 +70,7 @@ class Cache(diskcache.Cache):
 
 
 class HashesCache(Cache):
+    SUPPORTS_UPSERT = sqlite3.sqlite_version_info >= (3, 24, 0)
     SQLITE_MAX_VARIABLE_NUMBER: ClassVar[Literal[999]] = 999
     """The maximum number of host parameters is 999 for SQLite versions prior to 3.32.0
     (2020-05-22) or 32766 for SQLite versions after 3.32.0.
@@ -91,15 +93,27 @@ class HashesCache(Cache):
             for key in chunk:
                 yield key, d.get(key, default)
 
-    def set_many(self, items: Iterable[tuple[str, str]], retry: bool = False) -> None:
-        with self.transact(retry):
-            self._con.executemany(
+    def set_many(self, items: Sequence[tuple[str, str]], retry: bool = False) -> None:
+        if not items:
+            return
+
+        if self.SUPPORTS_UPSERT:
+            query = (
+                "INSERT INTO Cache("
+                " key, raw, store_time, expire_time, access_time,"
+                " tag, mode, filename, value"
+                ") VALUES (?, 1, 0, null, 0, null, 1, null, ?)"
+                " ON CONFLICT(key, raw) DO UPDATE SET value = excluded.value"
+            )
+        else:
+            query = (
                 "INSERT OR REPLACE INTO Cache("
                 " key, raw, store_time, expire_time, access_time,"
                 " tag, mode, filename, value"
-                ") VALUES (?, 1, 0, null, 0, null, 1, null, ?)",
-                items,
+                ") VALUES (?, 1, 0, null, 0, null, 1, null, ?)"
             )
+        with self.transact(retry):
+            self._con.executemany(query, items)
 
     def is_empty(self) -> bool:
         res = self._sql("SELECT EXISTS (SELECT 1 FROM Cache)")
