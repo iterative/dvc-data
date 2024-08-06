@@ -160,6 +160,8 @@ class Link:
     def __call__(self, cache, from_path, to_fs, to_path):
         if to_fs.exists(to_path):
             to_fs.remove(to_path)  # broken symlink
+        if not cache.fs.exists(from_path):
+            raise CheckoutError([from_path])
 
         parent = to_fs.parent(to_path)
         to_fs.makedirs(parent)
