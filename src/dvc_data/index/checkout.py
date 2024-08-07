@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
     from fsspec import Callback
 
+    from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.state import StateBase
 
     from .diff import Change
@@ -123,15 +124,16 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
 
         _check_versioning(dest_paths, fs)
 
-        if state:
+        if state and isinstance(fs, LocalFileSystem):
+            _infos: list[tuple[str, HashInfo, dict]] = []
             for entry, _, dest_path in args:
                 if not entry.hash_info:
                     continue
-
                 try:
-                    state.save(dest_path, fs, entry.hash_info)
+                    _infos.append((dest_path, entry.hash_info, fs.info(dest_path)))
                 except FileNotFoundError:
                     continue
+            state.save_many(_infos, fs)
 
         if update_meta:
             if callback == DEFAULT_CALLBACK:
