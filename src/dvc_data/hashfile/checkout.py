@@ -3,6 +3,7 @@ from itertools import chain
 from typing import TYPE_CHECKING, Optional
 
 from dvc_objects.fs.generic import test_links, transfer
+from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
 
 from .build import build
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from fsspec import Callback
 
     from ._ignore import Ignore
+    from .hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -110,10 +112,6 @@ def _checkout_file(
     else:
         link(cache, cache_path, fs, path)
         modified = True
-
-    if state:
-        state.save(path, fs, change.new.oid)
-
     return modified
 
 
@@ -178,7 +176,7 @@ class Link:
             raise LinkError(to_path) from exc
 
 
-def _checkout(
+def _checkout(  # noqa: C901
     diff,
     path,
     fs,
@@ -203,6 +201,8 @@ def _checkout(
         _remove(entry_path, fs, change.old.in_cache, force=force, prompt=prompt)
 
     failed = []
+    hashes_to_update: list[tuple[str, HashInfo, None]] = []
+    is_local_fs = isinstance(fs, LocalFileSystem)
     for change in chain(diff.added, diff.modified):
         entry_path = fs.join(path, *change.new.key) if change.new.key != ROOT else path
         if change.new.oid.isdir:
@@ -223,6 +223,13 @@ def _checkout(
             )
         except CheckoutError as exc:
             failed.extend(exc.paths)
+        else:
+            if is_local_fs:
+                info = fs.info(entry_path)
+                hashes_to_update.append((entry_path, change.new.oid, info))
+
+    if state is not None:
+        state.save_many(hashes_to_update, fs)
 
     if failed:
         raise CheckoutError(failed)
