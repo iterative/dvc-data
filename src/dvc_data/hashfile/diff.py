@@ -18,13 +18,17 @@ UNCHANGED = "unchanged"
 
 @define(unsafe_hash=True, order=True)
 class TreeEntry:
-    in_cache: bool = field(default=False, eq=False)
+    cache_meta: Optional["Meta"] = field(default=None, eq=False)
     key: tuple[str, ...] = ()
     meta: Optional["Meta"] = field(default=None, eq=False)
     oid: Optional["HashInfo"] = None
 
     def __bool__(self):
         return bool(self.oid)
+
+    @property
+    def in_cache(self) -> bool:
+        return self.cache_meta is not None
 
 
 @define(unsafe_hash=True, order=True)
@@ -102,17 +106,18 @@ def diff(  # noqa: C901
             return None, None
         return obj.get(key, (None, None))
 
-    def _in_cache(oid, cache):
+    def _cache_check(
+        oid: Optional["HashInfo"], cache: "HashFileDB"
+    ) -> Optional["Meta"]:
         from dvc_objects.errors import ObjectFormatError
 
         if not oid:
-            return False
+            return None
 
         try:
-            cache.check(oid.value)
-            return True
+            return cache.check(oid.value)  # type: ignore[arg-type]
         except (FileNotFoundError, ObjectFormatError):
-            return False
+            return None
 
     ret = DiffResult()
     for key in old_keys | new_keys:
@@ -120,8 +125,8 @@ def diff(  # noqa: C901
         new_meta, new_oid = _get(new, key)
 
         change = Change(
-            old=TreeEntry(_in_cache(old_oid, cache), key, old_meta, old_oid),
-            new=TreeEntry(_in_cache(new_oid, cache), key, new_meta, new_oid),
+            old=TreeEntry(_cache_check(old_oid, cache), key, old_meta, old_oid),
+            new=TreeEntry(_cache_check(new_oid, cache), key, new_meta, new_oid),
         )
 
         if change.typ == ADD:

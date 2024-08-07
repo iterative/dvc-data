@@ -7,14 +7,17 @@ from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
 
 from .build import build
-from .diff import ROOT
+from .diff import ROOT, DiffResult
 from .diff import diff as odiff
 
 if TYPE_CHECKING:
+    from dvc_objects.fs.base import FileSystem
     from fsspec import Callback
 
     from ._ignore import Ignore
+    from .db import HashFileDB
     from .hash_info import HashInfo
+    from .meta import Meta
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +117,64 @@ def _checkout_file(
     return modified
 
 
+def _needs_relink(
+    path: str,
+    cache: "HashFileDB",
+    meta: "Meta",
+    cache_meta: Optional["Meta"],
+    oid: Optional[str],
+) -> bool:
+    destination = meta.destination
+    is_symlink = meta.is_link
+    is_hardlink = meta.nlink > 1
+    is_copy = not is_symlink and not is_hardlink
+
+    obj_path: Optional[str] = None
+
+    for link_type in cache.cache_types:
+        if link_type in ("copy", "reflink") and is_copy:
+            return False
+        if not oid:
+            continue
+
+        if obj_path is None:
+            obj_path = cache.oid_to_path(oid)
+
+        if link_type == "symlink" and is_symlink and destination:
+            return destination != obj_path
+        if link_type == "hardlink" and is_hardlink and cache_meta:
+            return meta.inode != cache_meta.inode
+    return True
+
+
+def _check_relink(
+    diff: DiffResult, path: str, fs: "FileSystem", cache: "HashFileDB"
+) -> None:
+    modified = diff.modified
+    if not isinstance(fs, LocalFileSystem) or not isinstance(cache.fs, LocalFileSystem):
+        modified.extend(diff.unchanged)
+        return
+
+    path_join = fs.sep.join
+    mappend = modified.append
+    for change in diff.unchanged:
+        old = change.old
+        old_meta = old.meta
+        new = change.new
+        new_meta = new.meta
+        if old_meta is None or new_meta is None:
+            mappend(change)
+            continue
+
+        cache_meta = change.new.cache_meta
+
+        p = path_join((path, *old.key))
+        oid = new.oid
+        oid_str = oid.value if oid is not None else None
+        if _needs_relink(p, cache, new_meta, cache_meta, oid_str):
+            mappend(change)
+
+
 def _diff(
     path,
     fs,
@@ -136,9 +197,8 @@ def _diff(
         pass
 
     diff = odiff(old, obj, cache)
-
     if relink:
-        diff.modified.extend(diff.unchanged)
+        _check_relink(diff, path, fs, cache)
     else:
         for change in diff.unchanged:
             if not change.new.in_cache and not (
@@ -280,7 +340,7 @@ def checkout(  # noqa: PLR0913
     except CheckoutError as exc:
         failed.extend(exc.paths)
 
-    if diff and state:
+    if state and (diff or relink):
         state.save_link(path, fs)
 
     if failed or not diff:

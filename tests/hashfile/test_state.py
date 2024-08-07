@@ -23,21 +23,22 @@ def test_hashes(tmp_path):
     hash_info = HashInfo(name="md5", value="6dbda444875c24ec1bbdb433456be11f")
 
     state.save(str(path), fs, hash_info)
+    info = fs.info(str(path))
+    meta = Meta.from_info(info)
     assert state.hashes[str(path)] == json_dumps(
         {
             "version": 1,
-            "checksum": _checksum(fs.info(str(path))),
+            "checksum": _checksum(info),
             "size": 11,
             "hash_info": {"md5": hash_info.value},
         }
     )
-    assert state.get(str(path), fs) == (Meta(size=11), hash_info)
-    assert list(state.get_many((str(path),), fs, {})) == [
-        (str(path), Meta(size=11), hash_info)
-    ]
+    assert state.get(str(path), fs) == (meta, hash_info)
+    assert list(state.get_many((str(path),), fs, {})) == [(str(path), meta, hash_info)]
 
     path.write_text("foo content 1", encoding="utf-8")
     info = fs.info(str(path))
+    meta = Meta.from_info(info)
     hash_info = HashInfo(name="md5", value="8efcb74434c93f295375a9118292fd0c")
     path.unlink()
 
@@ -50,9 +51,9 @@ def test_hashes(tmp_path):
             "hash_info": {"md5": hash_info.value},
         }
     )
-    assert state.get(str(path), fs, info) == (Meta(size=13), hash_info)
+    assert state.get(str(path), fs, info) == (meta, hash_info)
     assert list(state.get_many((str(path),), fs, {str(path): info})) == [
-        (str(path), Meta(size=13), hash_info)
+        (str(path), meta, hash_info)
     ]
 
     assert state.get(str(path), fs) == (None, None)
@@ -120,19 +121,22 @@ def test_hashes_without_version(tmp_path):
     path = tmp_path / "foo"
     path.write_text("foo content", encoding="utf-8")
 
+    info = fs.info(str(path))
+    meta = Meta.from_info(info)
+
     state.hashes[str(path)] = json_dumps(
         {
-            "checksum": _checksum(fs.info(str(path))),
+            "checksum": _checksum(info),
             "size": 11,
             "hash_info": {"md5": "value"},
         }
     )
     assert state.get(str(path), fs) == (
-        Meta(size=11),
+        meta,
         HashInfo("md5-dos2unix", "value"),
     )
     assert list(state.get_many((str(path),), fs, {})) == [
-        (str(path), Meta(size=11), HashInfo("md5-dos2unix", "value"))
+        (str(path), meta, HashInfo("md5-dos2unix", "value"))
     ]
 
 
@@ -169,14 +173,16 @@ def test_state_many(tmp_path):
     fs = LocalFileSystem()
 
     hash_info_foo = HashInfo("md5", file_md5(foo, fs))
+    foo_info = fs.info(str(foo))
+    bar_info = fs.info(str(bar))
     hash_info_bar = HashInfo("md5", file_md5(bar, fs))
 
     state.save_many(
         [(str(foo), hash_info_foo, None), (str(bar), hash_info_bar, None)], fs
     )
     assert list(state.get_many([str(foo), str(bar)], fs, {})) == [
-        (str(foo), Meta(size=11), hash_info_foo),
-        (str(bar), Meta(size=11), hash_info_bar),
+        (str(foo), Meta.from_info(foo_info), hash_info_foo),
+        (str(bar), Meta.from_info(bar_info), hash_info_bar),
     ]
 
     foo.write_text("foo content 1", encoding="utf-8")
@@ -196,8 +202,8 @@ def test_state_many(tmp_path):
             [str(foo), str(bar)], fs, {str(foo): foo_info, str(bar): bar_info}
         )
     ) == [
-        (str(foo), Meta(size=13), hash_info_foo),
-        (str(bar), Meta(size=13), hash_info_bar),
+        (str(foo), Meta.from_info(foo_info), hash_info_foo),
+        (str(bar), Meta.from_info(bar_info), hash_info_bar),
     ]
 
 
