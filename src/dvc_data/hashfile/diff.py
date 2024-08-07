@@ -65,7 +65,11 @@ class DiffResult:
 
     @property
     def stats(self) -> dict[str, int]:
-        return {k: len(v) for k, v in asdict(self).items() if k != "unchanged"}
+        return {
+            k: len(v)
+            for k, v in asdict(self, recurse=False).items()
+            if k != "unchanged"
+        }
 
 
 ROOT = ("",)
