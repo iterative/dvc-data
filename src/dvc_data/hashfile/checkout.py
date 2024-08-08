@@ -1,8 +1,11 @@
 import logging
+import os
+from functools import partial
 from itertools import chain
 from os.path import samefile
 from typing import TYPE_CHECKING, Optional
 
+from dvc_objects.executors import ThreadPoolExecutor
 from dvc_objects.fs.generic import test_links, transfer
 from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
@@ -17,6 +20,7 @@ if TYPE_CHECKING:
 
     from ._ignore import Ignore
     from .db import HashFileDB
+    from .diff import Change
     from .hash_info import HashInfo
     from .meta import Meta
 
@@ -144,6 +148,20 @@ def _needs_relink(
     return True
 
 
+def _change_needs_relink(
+    change: "Change", path: str, fs: "FileSystem", cache: "HashFileDB"
+) -> tuple["Change", bool]:
+    meta = change.old.meta
+    if meta is None:
+        return change, True
+
+    assert meta is not None
+    p = fs.sep.join((path, *change.old.key))
+    oid = change.new.oid.value if change.new.oid else None
+    relink = _needs_relink(p, cache, meta, oid)
+    return change, relink
+
+
 def _check_relink(
     diff: DiffResult, path: str, fs: "FileSystem", cache: "HashFileDB"
 ) -> None:
@@ -151,17 +169,12 @@ def _check_relink(
         diff.modified.extend(diff.unchanged)
         return
 
-    for change in diff.unchanged:
-        meta = change.old.meta
-        if meta is None:
-            diff.modified.append(change)
-            continue
-
-        assert meta is not None
-        p = fs.sep.join((path, *change.old.key))
-        oid = change.new.oid.value if change.new.oid else None
-        if _needs_relink(p, cache, meta, oid):
-            diff.modified.append(change)
+    relink_func = partial(_change_needs_relink, fs=fs, path=path, cache=cache)
+    max_workers = min(16, (os.cpu_count() or 1) + 4)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for change, relink in executor.imap_unordered(relink_func, diff.unchanged):
+            if relink:
+                diff.modified.append(change)
 
 
 def _diff(
