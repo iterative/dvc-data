@@ -60,6 +60,57 @@ def test_diff():
     }
 
 
+def test_diff_non_unique_hash():
+    """Test rename when multiple entries share the same hash."""
+    def entry(key):
+        return DataIndexEntry(
+            key=key,
+            meta=Meta(),
+            hash_info=HashInfo(name="md5", value="d3b07384d113edec49eaa6238ad5ff00"),
+        )
+
+    old_foo_entry = entry(("foo",))
+    old_bar_entry = entry(("bar",))
+    old_baz_entry = entry(("baz",))
+    old = DataIndex({
+        ("foo",): old_foo_entry,
+        ("bar",): old_bar_entry,
+        ("baz",): old_baz_entry,
+    })
+
+    assert set(diff(old, old, with_unchanged=True)) == {
+        Change(UNCHANGED, old_foo_entry, old_foo_entry),
+        Change(UNCHANGED, old_bar_entry, old_bar_entry),
+        Change(UNCHANGED, old_baz_entry, old_baz_entry),
+    }
+    assert set(diff(old, old, with_renames=True, with_unchanged=True)) == {
+        Change(UNCHANGED, old_foo_entry, old_foo_entry),
+        Change(UNCHANGED, old_bar_entry, old_bar_entry),
+        Change(UNCHANGED, old_baz_entry, old_baz_entry),
+    }
+
+    new_foo_entry = entry(("my","new", "foo",))
+    new_bar_entry = entry(("new", "bar",))
+    new = DataIndex({
+        ("my", "new", "foo",): new_foo_entry,
+        ("new", "bar",): new_bar_entry,
+        ("baz",): old_baz_entry,
+    })
+
+    assert set(diff(old, new, with_unchanged=True)) == {
+        Change(ADD, None, new_foo_entry),
+        Change(DELETE, old_foo_entry, None),
+        Change(ADD, None, new_bar_entry),
+        Change(DELETE, old_bar_entry, None),
+        Change(UNCHANGED, old_baz_entry, old_baz_entry),
+    }
+    assert set(diff(old, new, with_renames=True, with_unchanged=True)) == {
+        Change(RENAME, old_foo_entry, new_foo_entry),
+        Change(RENAME, old_bar_entry, new_bar_entry),
+        Change(UNCHANGED, old_baz_entry, old_baz_entry),
+    }
+
+
 def test_diff_no_hashes():
     index = DataIndex(
         {
