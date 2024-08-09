@@ -2,7 +2,7 @@ import logging
 import os
 import stat
 from functools import partial
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from dvc_objects.db import noop, wrap_iter
 from dvc_objects.errors import ObjectDBError, ObjectFormatError
@@ -19,7 +19,7 @@ os.umask(umask)
 
 class LocalHashFileDB(HashFileDB):
     DEFAULT_CACHE_TYPES: ClassVar[list[str]] = ["reflink", "copy"]
-    CACHE_MODE = 0o444
+    CACHE_MODE: ClassVar[int] = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
     def __init__(self, fs, path, **config):
@@ -118,6 +118,15 @@ class LocalHashFileDB(HashFileDB):
             # might happen on funky filesystems (e.g. Samba, see #5255),
             # read-only filesystems or in a shared cache scenario.
             logger.debug("failed to protect '%s'", path, exc_info=True)
+
+    def check(self, oid: str, check_hash: bool = True, _info: Optional[dict] = None):
+        from dvc_data.hashfile.meta import Meta
+
+        path = self.oid_to_path(oid)
+        info = _info or self.fs.info(path)
+        if stat.S_IMODE(info["mode"]) == self.CACHE_MODE:
+            return Meta.from_info(info)
+        return super().check(oid, check_hash, info)
 
     def is_protected(self, path):
         try:

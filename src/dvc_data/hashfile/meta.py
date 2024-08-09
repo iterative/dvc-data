@@ -33,6 +33,10 @@ class Meta:
 
     remote: Optional[str] = field(default=None, eq=False)
 
+    is_link: bool = field(default=False, eq=False)
+    destination: Optional[str] = field(default=None, eq=False)
+    nlink: int = field(default=1, eq=False)
+
     @classmethod
     def from_info(cls, info: dict[str, Any], protocol: Optional[str] = None) -> "Meta":
         etag = info.get("etag")
@@ -70,6 +74,9 @@ class Meta:
             inode=info.get("ino"),
             mtime=info.get("mtime"),
             remote=info.get("remote"),
+            is_link=info.get("islink", False),
+            nlink=info.get("nlink", 1),
+            destination=info.get("destination"),
         )
 
     @classmethod

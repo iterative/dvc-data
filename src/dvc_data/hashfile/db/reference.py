@@ -52,5 +52,6 @@ class ReferenceHashFileDB(HashFileDB):
         self,
         oid: str,
         check_hash: bool = True,
+        _info: Optional[dict] = None,
     ):
         return

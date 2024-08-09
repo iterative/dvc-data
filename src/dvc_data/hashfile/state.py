@@ -220,7 +220,7 @@ class State(StateBase):
         return None, None
 
     def _get(
-        self, path: str, raw: str, info: Optional[dict]
+        self, path: str, raw: str, info: dict
     ) -> Optional[tuple["Meta", HashInfo]]:
         try:
             entry = json_loads(raw)
@@ -235,7 +235,8 @@ class State(StateBase):
         if version is not None and version > self.HASH_VERSION:
             return None
 
-        meta = Meta(size=entry["size"])
+        meta = Meta.from_info(info)
+        meta.size = meta.size if meta.size is not None else entry["size"]
         hash_info = HashInfo.from_dict(entry["hash_info"])
         if version is None and hash_info.name == "md5":
             hash_info.name = "md5-dos2unix"

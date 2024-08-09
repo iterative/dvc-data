@@ -1,6 +1,7 @@
 import pytest
 
 from dvc_data.hashfile.diff import ROOT, Change, TreeEntry, diff
+from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.obj import HashFile
 from dvc_data.hashfile.tree import Tree
 
@@ -17,12 +18,9 @@ def tree():
     return tree
 
 
-@pytest.fixture
-def mocked_cache(mocker):
-    return mocker.MagicMock(cache=mocker.MagicMock(return_value=True))
-
-
-def test_diff_unchanged(mocker, tree, mocked_cache):
+def test_diff_unchanged(mocker, tree):
+    meta = Meta()
+    mocked_cache = mocker.MagicMock(check=mocker.MagicMock(return_value=meta))
     _, bar_oid = tree.get(("bar",))
     obj = HashFile("data", mocker.MagicMock(), bar_oid)
 
@@ -30,7 +28,10 @@ def test_diff_unchanged(mocker, tree, mocked_cache):
     assert not diff(tree, tree, mocked_cache)
 
 
-def test_different_object_type_tree_to_hashfile(mocker, tree, mocked_cache):
+def test_different_object_type_tree_to_hashfile(mocker, tree):
+    meta = Meta()
+    mocked_cache = mocker.MagicMock(check=mocker.MagicMock(return_value=meta))
+
     (_, bar_oid), (_, foo_oid) = tree.get(("bar",)), tree.get(("foo",))
     obj = HashFile("data", mocker.MagicMock(), bar_oid)
     d = diff(tree, obj, mocked_cache)
@@ -39,23 +40,25 @@ def test_different_object_type_tree_to_hashfile(mocker, tree, mocked_cache):
     assert not d.unchanged
     assert d.modified == [
         Change(
-            old=TreeEntry(in_cache=True, key=ROOT, oid=tree.hash_info),
-            new=TreeEntry(in_cache=True, key=ROOT, oid=bar_oid),
+            old=TreeEntry(cache_meta=meta, key=ROOT, oid=tree.hash_info),
+            new=TreeEntry(cache_meta=meta, key=ROOT, oid=bar_oid),
         )
     ]
     assert sorted(d.deleted) == [
         Change(
-            old=TreeEntry(in_cache=True, key=("bar",), oid=bar_oid),
+            old=TreeEntry(cache_meta=meta, key=("bar",), oid=bar_oid),
             new=TreeEntry(key=("bar",)),
         ),
         Change(
-            old=TreeEntry(in_cache=True, key=("foo",), oid=foo_oid),
+            old=TreeEntry(cache_meta=meta, key=("foo",), oid=foo_oid),
             new=TreeEntry(key=("foo",)),
         ),
     ]
 
 
-def test_different_object_type_hashfile_to_tree(mocker, tree, mocked_cache):
+def test_different_object_type_hashfile_to_tree(mocker, tree):
+    meta = Meta()
+    mocked_cache = mocker.MagicMock(check=mocker.MagicMock(return_value=meta))
     (_, bar_oid), (_, foo_oid) = tree.get(("bar",)), tree.get(("foo",))
     obj = HashFile("data", mocker.MagicMock(), bar_oid)
     d = diff(obj, tree, mocked_cache)
@@ -64,17 +67,17 @@ def test_different_object_type_hashfile_to_tree(mocker, tree, mocked_cache):
     assert not d.unchanged
     assert d.modified == [
         Change(
-            old=TreeEntry(in_cache=True, key=ROOT, oid=bar_oid),
-            new=TreeEntry(in_cache=True, key=ROOT, oid=tree.hash_info),
+            old=TreeEntry(cache_meta=meta, key=ROOT, oid=bar_oid),
+            new=TreeEntry(cache_meta=meta, key=ROOT, oid=tree.hash_info),
         )
     ]
     assert sorted(d.added) == [
         Change(
-            old=TreeEntry(in_cache=True, key=("bar",)),
+            old=TreeEntry(cache_meta=meta, key=("bar",)),
             new=TreeEntry(key=("bar",), oid=bar_oid),
         ),
         Change(
-            old=TreeEntry(in_cache=True, key=("foo",)),
+            old=TreeEntry(cache_meta=meta, key=("foo",)),
             new=TreeEntry(key=("foo",), oid=foo_oid),
         ),
     ]
