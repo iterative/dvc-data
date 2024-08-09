@@ -1,5 +1,6 @@
-from collections import deque
+from collections import defaultdict, deque
 from collections.abc import Iterable
+import itertools
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from attrs import define
@@ -252,9 +253,9 @@ def _detect_renames(changes: Iterable[Change]):
             yield change
 
     # Create a dictionary for fast lookup of deletions by hash_info
-    deleted_dict = {ch.old.hash_info: ch for ch in deleted if ch.old and ch.old.hash_info}
-
-    unmatched_deleted = set(deleted_dict.keys())
+    deleted_dict = defaultdict(set)
+    for change in deleted:
+        deleted_dict[change.old.hash_info].add(change)
 
     for change in added:
         new_entry = change.new
@@ -264,21 +265,24 @@ def _detect_renames(changes: Iterable[Change]):
             yield change
             continue
 
-        old_entry = deleted_dict.get(new_entry.hash_info)
+        # If the new entry is the same as a delted change,
+        # it is in fact a rename.
+        # Note: get instead of __getitem__, to avoid creating
+        # unnecessary entries.
+        if deleted_dict.get(new_entry.hash_info):
+            deletion = deleted_dict[new_entry.hash_info].pop()
 
-        if old_entry:
-            unmatched_deleted.remove(new_entry.hash_info)
             yield Change(
                 RENAME,
-                old_entry.old,
+                deletion.old,
                 new_entry,
             )
         else:
             yield change
 
     # Yield the remaining unmatched deletions
-    for hash_info in unmatched_deleted:
-        yield deleted_dict[hash_info]
+    if deleted_dict:
+        yield from set.union(*deleted_dict.values())
 
 
 def diff(  # noqa: PLR0913
