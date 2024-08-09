@@ -1,6 +1,6 @@
+import itertools
 from collections import defaultdict, deque
 from collections.abc import Iterable
-import itertools
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from attrs import define
