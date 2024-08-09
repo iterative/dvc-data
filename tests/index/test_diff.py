@@ -61,47 +61,40 @@ def test_diff():
 
 
 def test_diff_non_unique_hash():
-    """Test rename when multiple entries share the same hash."""
-    def entry(key):
+    """Test renaming behavior when multiple entries share the same hash."""
+
+    def create_entry(key):
         return DataIndexEntry(
             key=key,
             meta=Meta(),
             hash_info=HashInfo(name="md5", value="d3b07384d113edec49eaa6238ad5ff00"),
         )
 
-    old_foo_entry = entry(("foo",))
-    old_bar_entry = entry(("bar",))
-    old = DataIndex({
-        old_foo_entry.key: old_foo_entry,
-        old_bar_entry.key: old_bar_entry,
-    })
+    initial_entries = [create_entry(("foo",)), create_entry(("bar",))]
+    intermediate_entries = [create_entry(("foo.txt",)), create_entry(("bar",))]
+    final_entries = [create_entry(("foo.txt",)), create_entry(("zab", "bar"))]
 
-    assert set(diff(old, old, with_unchanged=True)) == {
-        Change(UNCHANGED, old_foo_entry, old_foo_entry),
-        Change(UNCHANGED, old_bar_entry, old_bar_entry),
+    initial = DataIndex({entry.key: entry for entry in initial_entries})
+    intermediate = DataIndex({entry.key: entry for entry in intermediate_entries})
+    final = DataIndex({entry.key: entry for entry in final_entries})
+
+    expected_initial_intermediate_diff = {
+        Change(RENAME, initial[("foo",)], intermediate[("foo.txt",)]),
+        Change(UNCHANGED, initial[("bar",)], initial[("bar",)]),
     }
-    assert set(diff(old, old, with_renames=True, with_unchanged=True)) == {
-        Change(UNCHANGED, old_foo_entry, old_foo_entry),
-        Change(UNCHANGED, old_bar_entry, old_bar_entry),
+    expected_initial_final_diff = {
+        Change(RENAME, initial[("foo",)], final[("foo.txt",)]),
+        Change(RENAME, initial[("bar",)], final[("zab", "bar")]),
     }
 
-    new_foo_entry = entry(("foo.txt",))
-    new_bar_entry = entry(("zab", "bar",))
-    new = DataIndex({
-        new_foo_entry.key: new_foo_entry,
-        new_bar_entry.key: new_bar_entry,
-    })
-
-    assert set(diff(old, new, with_unchanged=True)) == {
-        Change(ADD, None, new_foo_entry),
-        Change(ADD, None, new_bar_entry),
-        Change(DELETE, old_foo_entry, None),
-        Change(DELETE, old_bar_entry, None),
-    }
-    assert set(diff(old, new, with_renames=True, with_unchanged=True)) == {
-        Change(RENAME, old_foo_entry, new_foo_entry),
-        Change(RENAME, old_bar_entry, new_bar_entry),
-    }
+    assert (
+        set(diff(initial, intermediate, with_renames=True, with_unchanged=True))
+        == expected_initial_intermediate_diff
+    )
+    assert (
+        set(diff(initial, final, with_renames=True, with_unchanged=True))
+        == expected_initial_final_diff
+    )
 
 
 def test_diff_no_hashes():

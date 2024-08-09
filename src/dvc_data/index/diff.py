@@ -240,6 +240,7 @@ def _diff(  # noqa: C901
 
             yield Change(typ, old_entry, new_entry)
 
+
 def _detect_renames(changes: Iterable[Change]):
     added = []
     deleted = []
@@ -257,7 +258,6 @@ def _detect_renames(changes: Iterable[Change]):
 
     added.sort(key=_get_key)
     deleted.sort(key=_get_key, reverse=True)
-
 
     # Create a dictionary for fast lookup of deletions by hash_info
     deleted_dict = defaultdict(list)
