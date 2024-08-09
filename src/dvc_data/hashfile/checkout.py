@@ -147,7 +147,7 @@ def _needs_relink(
     return True
 
 
-def _check_relink(
+def _determine_files_to_relink(
     diff: DiffResult, path: str, fs: "FileSystem", cache: "HashFileDB"
 ) -> None:
     modified = diff.modified
@@ -166,8 +166,7 @@ def _check_relink(
             mappend(change)
             continue
 
-        cache_meta = change.new.cache_meta
-
+        cache_meta = new.cache_meta
         p = path_join((path, *old.key))
         oid = new.oid
         oid_str = oid.value if oid is not None else None
@@ -198,7 +197,7 @@ def _diff(
 
     diff = odiff(old, obj, cache)
     if relink:
-        _check_relink(diff, path, fs, cache)
+        _determine_files_to_relink(diff, path, fs, cache)
     else:
         for change in diff.unchanged:
             if not change.new.in_cache and not (
