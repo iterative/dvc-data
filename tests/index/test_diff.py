@@ -70,32 +70,37 @@ def test_diff_non_unique_hash():
         )
 
     old_foo_entry = entry(("foo",))
+    old_bar_entry = entry(("bar",))
     old = DataIndex({
-        ("foo",): old_foo_entry,
+        old_foo_entry.key: old_foo_entry,
+        old_bar_entry.key: old_bar_entry,
     })
 
     assert set(diff(old, old, with_unchanged=True)) == {
         Change(UNCHANGED, old_foo_entry, old_foo_entry),
+        Change(UNCHANGED, old_bar_entry, old_bar_entry),
     }
     assert set(diff(old, old, with_renames=True, with_unchanged=True)) == {
         Change(UNCHANGED, old_foo_entry, old_foo_entry),
+        Change(UNCHANGED, old_bar_entry, old_bar_entry),
     }
 
-    new_foo_1 = entry(("a/foo.txt",))
-    new_foo_2 = entry(("foo.md",))
+    new_foo_entry = entry(("foo.txt",))
+    new_bar_entry = entry(("zab", "bar",))
     new = DataIndex({
-        new_foo_1.key: new_foo_1,
-        new_foo_2.key: new_foo_2,
+        new_foo_entry.key: new_foo_entry,
+        new_bar_entry.key: new_bar_entry,
     })
 
     assert set(diff(old, new, with_unchanged=True)) == {
-        Change(ADD, None, new_foo_1),
-        Change(ADD, None, new_foo_2),
+        Change(ADD, None, new_foo_entry),
+        Change(ADD, None, new_bar_entry),
         Change(DELETE, old_foo_entry, None),
+        Change(DELETE, old_bar_entry, None),
     }
     assert set(diff(old, new, with_renames=True, with_unchanged=True)) == {
-        Change(RENAME, old_foo_entry, new_foo_1),
-        Change(ADD, None, new_foo_2),
+        Change(RENAME, old_foo_entry, new_foo_entry),
+        Change(RENAME, old_bar_entry, new_bar_entry),
     }
 
 
