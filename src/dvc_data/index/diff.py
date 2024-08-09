@@ -252,10 +252,17 @@ def _detect_renames(changes: Iterable[Change]):
         else:
             yield change
 
+    def _get_key(change):
+        return change.key
+
+    added.sort(key=_get_key)
+    deleted.sort(key=_get_key, reverse=True)
+
+
     # Create a dictionary for fast lookup of deletions by hash_info
-    deleted_dict = defaultdict(set)
+    deleted_dict = defaultdict(list)
     for change in deleted:
-        deleted_dict[change.old.hash_info].add(change)
+        deleted_dict[change.old.hash_info].append(change)
 
     for change in added:
         new_entry = change.new
@@ -265,7 +272,7 @@ def _detect_renames(changes: Iterable[Change]):
             yield change
             continue
 
-        # If the new entry is the same as a delted change,
+        # If the new entry is the same as a deleted change,
         # it is in fact a rename.
         # Note: get instead of __getitem__, to avoid creating
         # unnecessary entries.
@@ -282,7 +289,7 @@ def _detect_renames(changes: Iterable[Change]):
 
     # Yield the remaining unmatched deletions
     if deleted_dict:
-        yield from set.union(*deleted_dict.values())
+        yield from itertools.chain.from_iterable(deleted_dict.values())
 
 
 def diff(  # noqa: PLR0913
