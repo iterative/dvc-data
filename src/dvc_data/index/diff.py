@@ -239,7 +239,6 @@ def _diff(  # noqa: C901
 
             yield Change(typ, old_entry, new_entry)
 
-
 def _detect_renames(changes: Iterable[Change]):
     added = []
     deleted = []
@@ -252,11 +251,10 @@ def _detect_renames(changes: Iterable[Change]):
         else:
             yield change
 
-    def _get_key(change):
-        return change.key
+    # Create a dictionary for fast lookup of deletions by hash_info
+    deleted_dict = {ch.old.hash_info: ch for ch in deleted if ch.old and ch.old.hash_info}
 
-    added[:] = sorted(added, key=_get_key)
-    deleted[:] = sorted(deleted, key=_get_key)
+    unmatched_deleted = set(deleted_dict.keys())
 
     for change in added:
         new_entry = change.new
@@ -266,24 +264,21 @@ def _detect_renames(changes: Iterable[Change]):
             yield change
             continue
 
-        index, old_entry = None, None
-        for idx, ch in enumerate(deleted):
-            assert ch.old
-            if ch.old.hash_info == new_entry.hash_info:
-                index, old_entry = idx, ch.old
-                break
+        old_entry = deleted_dict.get(new_entry.hash_info)
 
-        if index is not None:
-            del deleted[index]
+        if old_entry:
+            unmatched_deleted.remove(new_entry.hash_info)
             yield Change(
                 RENAME,
-                old_entry,
+                old_entry.old,
                 new_entry,
             )
         else:
             yield change
 
-    yield from deleted
+    # Yield the remaining unmatched deletions
+    for hash_info in unmatched_deleted:
+        yield deleted_dict[hash_info]
 
 
 def diff(  # noqa: PLR0913
