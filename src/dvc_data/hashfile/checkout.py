@@ -1,6 +1,7 @@
 import logging
+import os
 from itertools import chain
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from dvc_objects.fs.generic import test_links, transfer
 from dvc_objects.fs.local import LocalFileSystem
@@ -16,8 +17,12 @@ if TYPE_CHECKING:
 
     from ._ignore import Ignore
     from .db import HashFileDB
+    from .diff import Change
     from .hash_info import HashInfo
     from .meta import Meta
+    from .obj import HashFile
+    from .state import StateBase
+    from .tree import Tree
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +45,13 @@ class LinkError(Exception):
         super().__init__("No possible cache link types for '{path}'.")
 
 
-def _remove(path, fs, in_cache, force=False, prompt=None):
+def _remove(
+    path: str,
+    fs: "FileSystem",
+    in_cache: bool,
+    force: bool = False,
+    prompt: Optional[Callable[[str], bool]] = None,
+):
     if not force and not in_cache:
         if not fs.exists(path):
             return
@@ -59,7 +70,16 @@ def _remove(path, fs, in_cache, force=False, prompt=None):
         pass
 
 
-def _relink(link, cache, cache_info, fs, path, in_cache, force, prompt=None):
+def _relink(
+    link: "Link",
+    cache: "HashFileDB",
+    cache_info: str,
+    fs: "FileSystem",
+    path: str,
+    in_cache: bool,
+    force: bool,
+    prompt: Optional[Callable[[str], bool]] = None,
+):
     _remove(path, fs, in_cache, force=force, prompt=prompt)
     link(cache, cache_info, fs, path)
     # NOTE: Depending on a file system (e.g. on NTFS), `_remove` might reset
@@ -70,19 +90,21 @@ def _relink(link, cache, cache_info, fs, path, in_cache, force, prompt=None):
 
 
 def _checkout_file(
-    link,
-    path,
-    fs,
-    change,
-    cache,
-    force,
-    relink=False,
-    state=None,
-    prompt=None,
+    link: "Link",
+    path: str,
+    fs: "FileSystem",
+    change: "Change",
+    cache: "HashFileDB",
+    force: bool,
+    relink: bool = False,
+    state: Optional["StateBase"] = None,
+    prompt: Optional[Callable[[str], bool]] = None,
 ):
     """The file is changed we need to checkout a new copy"""
     modified = False
 
+    assert change.new.oid
+    assert change.new.oid.value
     cache_path = cache.oid_to_path(change.new.oid.value)
     if change.old.oid:
         if relink:
@@ -129,21 +151,17 @@ def _needs_relink(
     is_hardlink = meta.nlink > 1
     is_copy = not is_symlink and not is_hardlink
 
-    obj_path: Optional[str] = None
-
     for link_type in cache.cache_types:
         if link_type in ("copy", "reflink") and is_copy:
             return False
-        if not oid:
-            continue
-
-        if obj_path is None:
-            obj_path = cache.oid_to_path(oid)
-
-        if link_type == "symlink" and is_symlink and destination:
-            return destination != obj_path
-        if link_type == "hardlink" and is_hardlink and cache_meta:
+        if link_type == "hardlink" and is_hardlink and cache_meta is not None:
             return meta.inode != cache_meta.inode
+        if link_type == "symlink" and is_symlink and destination and oid:
+            if os.name == "nt":
+                # See: https://github.com/python/cpython/issues/87123
+                # https://github.com/jaraco/path/blob/e03580edf6cfec719890599010e0b164d06af50f/path/__init__.py#L1361
+                destination = destination.removeprefix("\\\\?\\")
+            return destination != cache.oid_to_path(oid)
     return True
 
 
@@ -159,41 +177,40 @@ def _determine_files_to_relink(
     mappend = modified.append
     for change in diff.unchanged:
         old = change.old
-        old_meta = old.meta
         new = change.new
         new_meta = new.meta
-        if old_meta is None or new_meta is None:
+        if new_meta is None:
             mappend(change)
             continue
 
-        cache_meta = new.cache_meta
         p = path_join((path, *old.key))
         oid = new.oid
         oid_str = oid.value if oid is not None else None
-        if _needs_relink(p, cache, new_meta, cache_meta, oid_str):
+        if _needs_relink(p, cache, new_meta, new.cache_meta, oid_str):
             mappend(change)
 
 
 def _diff(
-    path,
-    fs,
-    obj,
-    cache,
-    relink=False,
+    path: str,
+    fs: "FileSystem",
+    obj: Union["HashFile", "Tree"],
+    cache: "HashFileDB",
+    relink: bool = False,
     ignore: Optional["Ignore"] = None,
+    old: Union["HashFile", "Tree", None] = None,
 ):
-    old = None
-    try:
-        _, _, old = build(
-            cache,
-            path,
-            fs,
-            obj.hash_info.name if obj else cache.hash_name,
-            dry_run=True,
-            ignore=ignore,
-        )
-    except FileNotFoundError:
-        pass
+    if old is None:
+        try:
+            _, _, old = build(
+                cache,
+                path,
+                fs,
+                obj.hash_info.name if obj and obj.hash_info else cache.hash_name,
+                dry_run=True,
+                ignore=ignore,
+            )
+        except FileNotFoundError:
+            pass
 
     diff = odiff(old, obj, cache)
     if relink:
@@ -204,16 +221,19 @@ def _diff(
                 change.new.oid and change.new.oid.isdir
             ):
                 diff.modified.append(change)
-
     return diff
 
 
 class Link:
-    def __init__(self, links, callback: "Callback" = DEFAULT_CALLBACK):
+    def __init__(
+        self, links: Optional[list[str]], callback: "Callback" = DEFAULT_CALLBACK
+    ):
         self._links = links
         self._callback = callback
 
-    def __call__(self, cache, from_path, to_fs, to_path):
+    def __call__(
+        self, cache: "HashFileDB", from_path: str, to_fs: "FileSystem", to_path: str
+    ):
         parent = to_fs.parent(to_path)
         to_fs.makedirs(parent)
         try:
@@ -232,15 +252,15 @@ class Link:
 
 
 def _checkout(  # noqa: C901
-    diff,
-    path,
-    fs,
-    cache,
-    force=False,
+    diff: DiffResult,
+    path: str,
+    fs: "FileSystem",
+    cache: "HashFileDB",
+    force: bool = False,
     progress_callback: "Callback" = DEFAULT_CALLBACK,
-    relink=False,
-    state=None,
-    prompt=None,
+    relink: bool = False,
+    state: Optional["StateBase"] = None,
+    prompt: Optional[Callable[[str], bool]] = None,
 ):
     if not diff:
         return
@@ -256,10 +276,11 @@ def _checkout(  # noqa: C901
         _remove(entry_path, fs, change.old.in_cache, force=force, prompt=prompt)
 
     failed = []
-    hashes_to_update: list[tuple[str, HashInfo, None]] = []
+    hashes_to_update: list[tuple[str, HashInfo, dict]] = []
     is_local_fs = isinstance(fs, LocalFileSystem)
     for change in chain(diff.added, diff.modified):
         entry_path = fs.join(path, *change.new.key) if change.new.key != ROOT else path
+        assert change.new.oid
         if change.new.oid.isdir:
             fs.makedirs(entry_path)
             continue
@@ -291,17 +312,18 @@ def _checkout(  # noqa: C901
 
 
 def checkout(  # noqa: PLR0913
-    path,
-    fs,
-    obj,
-    cache,
-    force=False,
+    path: str,
+    fs: "FileSystem",
+    obj: Union["HashFile", "Tree"],
+    cache: "HashFileDB",
+    force: bool = False,
     progress_callback: "Callback" = DEFAULT_CALLBACK,
-    relink=False,
-    quiet=False,
+    relink: bool = False,
+    quiet: bool = False,
     ignore: Optional["Ignore"] = None,
-    state=None,
-    prompt=None,
+    state: Optional["StateBase"] = None,
+    prompt: Optional[Callable[[str], bool]] = None,
+    old: Union["HashFile", "Tree", None] = None,
 ):
     # if protocol(path) not in ["local", cache.fs.protocol]:
     #    raise NotImplementedError
@@ -313,6 +335,7 @@ def checkout(  # noqa: PLR0913
         cache,
         relink=relink,
         ignore=ignore,
+        old=old,
     )
 
     failed = []
@@ -339,7 +362,7 @@ def checkout(  # noqa: PLR0913
     except CheckoutError as exc:
         failed.extend(exc.paths)
 
-    if state and (diff or relink):
+    if diff and state:
         state.save_link(path, fs)
 
     if failed or not diff:

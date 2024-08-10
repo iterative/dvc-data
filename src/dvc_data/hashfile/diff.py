@@ -1,3 +1,4 @@
+import functools
 import reprlib
 from typing import TYPE_CHECKING, Optional
 
@@ -106,16 +107,15 @@ def diff(  # noqa: C901
             return None, None
         return obj.get(key, (None, None))
 
-    def _cache_check(
-        oid: Optional["HashInfo"], cache: "HashFileDB"
-    ) -> Optional["Meta"]:
+    @functools.cache
+    def _cache_check(oid: Optional["str"], cache: "HashFileDB") -> Optional["Meta"]:
         from dvc_objects.errors import ObjectFormatError
 
         if not oid:
             return None
 
         try:
-            return cache.check(oid.value)  # type: ignore[arg-type]
+            return cache.check(oid)
         except (FileNotFoundError, ObjectFormatError):
             return None
 
@@ -124,9 +124,11 @@ def diff(  # noqa: C901
         old_meta, old_oid = _get(old, key)
         new_meta, new_oid = _get(new, key)
 
+        old_cache_meta = _cache_check(old_oid.value, cache) if old_oid else None
+        new_cache_meta = _cache_check(new_oid.value, cache) if new_oid else None
         change = Change(
-            old=TreeEntry(_cache_check(old_oid, cache), key, old_meta, old_oid),
-            new=TreeEntry(_cache_check(new_oid, cache), key, new_meta, new_oid),
+            old=TreeEntry(old_cache_meta, key, old_meta, old_oid),
+            new=TreeEntry(new_cache_meta, key, new_meta, new_oid),
         )
 
         if change.typ == ADD:
