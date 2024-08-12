@@ -326,6 +326,7 @@ def checkout(  # noqa: PLR0913
     state: Optional["StateBase"] = None,
     prompt: Optional[Callable[[str], bool]] = None,
     old: Union["HashFile", "Tree", None] = None,
+    checksum_jobs: Optional[int] = None,
 ):
     # if protocol(path) not in ["local", cache.fs.protocol]:
     #    raise NotImplementedError
