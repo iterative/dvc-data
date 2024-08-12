@@ -264,7 +264,7 @@ def _detect_renames(changes: Iterable[Change]):
     deleted.sort(key=_get_key)
 
     # Create a dictionary for fast lookup of deletions by hash_info
-    deleted_dict = defaultdict(deque)
+    deleted_dict: dict[HashInfo | None, deque[Change]] = defaultdict(deque)
     for change in deleted:
         # We checked change.old for all deleted above, so cast
         change_hash = cast(DataIndexEntry, change.old).hash_info
