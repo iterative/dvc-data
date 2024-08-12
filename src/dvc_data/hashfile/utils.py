@@ -3,6 +3,8 @@ import hashlib
 import json
 from typing import TYPE_CHECKING, Optional
 
+from dvc_data.fsutils import _localfs_info
+
 if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
 
@@ -30,7 +32,7 @@ def get_mtime_and_size(
         walk_iterator = fs.find(path)
     for file_path in walk_iterator:
         try:
-            stats = fs.info(file_path)
+            stats = _localfs_info(file_path)
         except OSError as exc:
             # NOTE: broken symlink case.
             if exc.errno != errno.ENOENT:

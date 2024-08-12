@@ -7,6 +7,8 @@ from dvc_objects.fs.generic import test_links, transfer
 from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK
 
+from dvc_data.fsutils import _localfs_info
+
 from .build import build
 from .diff import ROOT, DiffResult
 from .diff import diff as odiff
@@ -301,7 +303,7 @@ def _checkout(  # noqa: C901
             failed.extend(exc.paths)
         else:
             if is_local_fs:
-                info = fs.info(entry_path)
+                info = _localfs_info(entry_path)
                 hashes_to_update.append((entry_path, change.new.oid, info))
 
     if state is not None:
