@@ -1,12 +1,15 @@
 from copy import deepcopy
+from os.path import realpath, samefile
+from pathlib import Path
 
 import pytest
 from attrs import evolve
 from dvc_objects.fs.generic import transfer
-from dvc_objects.fs.local import LocalFileSystem
+from dvc_objects.fs.local import LocalFileSystem, localfs
 
+from dvc_data.hashfile import checkout as checkout_mod
 from dvc_data.hashfile.build import build
-from dvc_data.hashfile.checkout import _determine_files_to_relink
+from dvc_data.hashfile.checkout import LinkError, _determine_files_to_relink, checkout
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.diff import Change, DiffResult, TreeEntry
 
@@ -15,7 +18,7 @@ from dvc_data.hashfile.diff import Change, DiffResult, TreeEntry
 @pytest.mark.parametrize("link", ["copy", "hardlink", "symlink", "reflink"])
 def test_determine_relinking(tmp_path, cache_type, link):
     fs = LocalFileSystem()
-    cache = HashFileDB(fs, str(tmp_path), type=[cache_type])
+    cache = HashFileDB(fs, tmp_path, type=[cache_type])
 
     foo_oid = "acbd18db4cc2f85cedef654fccc4a4d8"
     cache.add_bytes(foo_oid, b"foo")
@@ -27,11 +30,12 @@ def test_determine_relinking(tmp_path, cache_type, link):
             fs,
             [cache.oid_to_path(foo_oid), cache.oid_to_path(bar_oid)],
             fs,
-            [str(tmp_path / "foo"), str(tmp_path / "bar")],
+            [tmp_path / "foo", tmp_path / "bar"],
             links=[link],
         )
     except OSError:
-        pytest.skip(f"Link {link} not supported")
+        if link == "reflink":
+            pytest.skip(f"{link=} not supported")
 
     _, foo_meta, foo_obj = build(cache, str(tmp_path / "foo"), fs, "md5")
     _, bar_meta, bar_obj = build(cache, str(tmp_path / "bar"), fs, "md5")
@@ -49,3 +53,116 @@ def test_determine_relinking(tmp_path, cache_type, link):
         assert diff == old_diff
     else:
         assert diff == evolve(old_diff, modified=old_diff.unchanged)
+
+
+def _check_link(path, target, link_type):
+    if link_type in ("reflink", "copy"):
+        return (
+            localfs.iscopy(path)
+            and Path(path).read_bytes() == Path(target).read_bytes()
+        )
+    if link_type == "symlink":
+        return realpath(path) == target
+    if link_type == "hardlink":
+        return samefile(path, target)
+    raise ValueError(f"Unknown {link_type=}")
+
+
+@pytest.mark.parametrize("link", ["copy", "hardlink", "symlink", "reflink"])
+@pytest.mark.parametrize("cache_type", ["copy", "hardlink", "symlink", "reflink"])
+def test_checkout_relinking(tmp_path, cache_type, link):
+    fs = LocalFileSystem()
+    cache = HashFileDB(fs, tmp_path, type=[cache_type])
+
+    foo_oid = "acbd18db4cc2f85cedef654fccc4a4d8"
+    cache.add_bytes(foo_oid, b"foo")
+    bar_oid = "37b51d194a7513e45b56f6524f2d51f2"
+    cache.add_bytes(bar_oid, b"bar")
+
+    (tmp_path / "dataset").mkdir()
+    try:
+        transfer(
+            fs,
+            [cache.oid_to_path(foo_oid), cache.oid_to_path(bar_oid)],
+            fs,
+            [tmp_path / "dataset" / "foo", tmp_path / "dataset" / "bar"],
+            links=[link],
+        )
+    except OSError:
+        if link == "reflink":
+            pytest.skip(f"{link=} not supported")
+
+    _, _, obj = build(cache, str(tmp_path / "dataset"), fs, "md5")
+    assert obj.hash_info.value == "5ea40360f5b4ec688df672a4db9c17d1.dir"
+
+    try:
+        checkout(str(tmp_path / "dataset"), fs, obj, cache, relink=True)
+    except LinkError:
+        if cache_type == "reflink":
+            pytest.skip(f"{cache_type=} not supported for checkout")
+
+    assert _check_link(
+        tmp_path / "dataset" / "foo", cache.oid_to_path(foo_oid), cache_type
+    )
+    assert _check_link(
+        tmp_path / "dataset" / "bar", cache.oid_to_path(bar_oid), cache_type
+    )
+
+
+@pytest.mark.parametrize("link", ["copy", "hardlink", "symlink", "reflink"])
+@pytest.mark.parametrize("cache_type", ["copy", "hardlink", "symlink", "reflink"])
+def test_checkout_relinking_optimization(mocker, tmp_path, cache_type, link):
+    fs = LocalFileSystem()
+    cache = HashFileDB(fs, tmp_path, type=[cache_type])
+
+    foo_oid = "acbd18db4cc2f85cedef654fccc4a4d8"
+    cache.add_bytes(foo_oid, b"foo")
+    bar_oid = "37b51d194a7513e45b56f6524f2d51f2"
+    cache.add_bytes(bar_oid, b"bar")
+
+    (tmp_path / "dataset").mkdir()
+    fs.pipe(str(tmp_path / "dataset" / "foo"), b"foo")
+
+    try:
+        transfer(
+            fs,
+            [cache.oid_to_path(bar_oid)],
+            fs,
+            [tmp_path / "dataset" / "bar"],
+            links=[link],
+        )
+    except OSError:
+        if link == "reflink":
+            pytest.skip(f"{link=} not supported")
+
+    _, _, obj = build(cache, str(tmp_path / "dataset"), fs, "md5")
+    assert obj.hash_info.value == "5ea40360f5b4ec688df672a4db9c17d1.dir"
+    m = mocker.spy(checkout_mod, "_checkout_file")
+
+    try:
+        checkout(str(tmp_path / "dataset"), fs, obj, cache, relink=True)
+    except LinkError:
+        if cache_type == "reflink":
+            pytest.skip(f"{cache_type=} not supported for checkout")
+
+    ca = m.call_args_list
+
+    if {cache_type, link} <= {"copy", "reflink"}:
+        assert m.call_count == 0
+    elif cache_type in (link, "copy", "reflink"):
+        changed_file = "foo" if cache_type == link else "bar"
+        assert m.call_count == 1
+        assert ca[0][0][1] == str(tmp_path / "dataset" / changed_file)
+    else:
+        assert m.call_count == 2
+        assert {ca[0][0][1], ca[1][0][1]} == {
+            str(tmp_path / "dataset" / "foo"),
+            str(tmp_path / "dataset" / "bar"),
+        }
+
+    assert _check_link(
+        tmp_path / "dataset" / "foo", cache.oid_to_path(foo_oid), cache_type
+    )
+    assert _check_link(
+        tmp_path / "dataset" / "bar", cache.oid_to_path(bar_oid), cache_type
+    )
