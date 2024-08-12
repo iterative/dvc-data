@@ -78,10 +78,12 @@ def build_entries(
     compute_hash: Optional[bool] = False,
     state: Optional["StateBase"] = None,
     hash_name: str = DEFAULT_ALGORITHM,
+    checksum_jobs: Optional[int] = None,
 ) -> Iterable[DataIndexEntry]:
     from dvc_data.hashfile.build import _get_hashes
 
     sep = fs.sep
+    jobs = checksum_jobs or fs.hash_jobs
     for root, dirs, files, broken in safe_walk(path, fs, ignore=ignore):
         if root == path:
             root_key: tuple[str, ...] = ()
@@ -94,7 +96,9 @@ def build_entries(
                 f"{root}{sep}{name}": info for name, info in files.items() if info
             }
             file_paths = list(file_infos)
-            hashes = _get_hashes(file_paths, fs, hash_name, file_infos, state=state)
+            hashes = _get_hashes(
+                file_paths, fs, hash_name, file_infos, state=state, jobs=jobs
+            )
 
         for name, info in chain(dirs.items(), files.items()):
             key = (*root_key, name)
