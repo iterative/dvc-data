@@ -1,7 +1,7 @@
 import itertools
 from collections import defaultdict, deque
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from attrs import define
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
@@ -247,8 +247,10 @@ def _detect_renames(changes: Iterable[Change]):
 
     for change in changes:
         if change.typ == ADD:
+            assert change.new
             added.append(change)
         elif change.typ == DELETE:
+            assert change.old
             deleted.append(change)
         else:
             yield change
@@ -256,17 +258,20 @@ def _detect_renames(changes: Iterable[Change]):
     def _get_key(change):
         return change.key
 
+    # Sort the lists to maintain the same order
+    # as older implementation.
     added.sort(key=_get_key)
     deleted.sort(key=_get_key, reverse=True)
 
     # Create a dictionary for fast lookup of deletions by hash_info
     deleted_dict = defaultdict(list)
     for change in deleted:
-        deleted_dict[change.old.hash_info].append(change)
+        # We checked change.old for all deleted above, so cast
+        deleted_dict[cast(DataIndexEntry, change.old).hash_info].append(change)
 
     for change in added:
-        new_entry = change.new
-        assert new_entry
+        # We checked change.new for all new above, so cast
+        new_entry = cast(DataIndexEntry, change.new)
 
         if not new_entry.hash_info:
             yield change
