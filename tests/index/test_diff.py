@@ -83,8 +83,8 @@ def test_diff_non_unique_hash():
         Change(UNCHANGED, initial[("bar",)], initial[("bar",)]),
     }
     expected_initial_final_diff = {
-        Change(RENAME, initial[("foo",)], final[("foo.txt",)]),
-        Change(RENAME, initial[("bar",)], final[("zab", "bar")]),
+        Change(RENAME, initial[("foo",)], final[("zab", "bar")]),
+        Change(RENAME, initial[("bar",)], final[("foo.txt",)]),
     }
 
     assert (
