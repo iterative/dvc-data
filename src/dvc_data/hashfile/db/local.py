@@ -9,6 +9,8 @@ from dvc_objects.errors import ObjectDBError, ObjectFormatError
 from dvc_objects.fs.utils import copyfile, remove, tmp_fname
 from fsspec.callbacks import DEFAULT_CALLBACK
 
+from dvc_data.fsutils import _localfs_info
+
 from . import HashFileDB
 
 logger = logging.getLogger(__name__)
@@ -123,7 +125,7 @@ class LocalHashFileDB(HashFileDB):
         from dvc_data.hashfile.meta import Meta
 
         path = self.oid_to_path(oid)
-        info = _info or self.fs.info(path)
+        info = _info or _localfs_info(path)
         if stat.S_IMODE(info["mode"]) == self.CACHE_MODE:
             return Meta.from_info(info)
         return super().check(oid, check_hash, info)

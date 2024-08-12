@@ -9,6 +9,7 @@ from dvc_objects.fs.local import LocalFileSystem
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
 
 from dvc_data.callbacks import TqdmCallback
+from dvc_data.fsutils import _localfs_info
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.state import StateBase, StateNoop
 
@@ -234,7 +235,7 @@ def _walk_files(
     walk_iter = ignore.walk(fs, path) if ignore else fs.walk(path)
     for root, _, files in walk_iter:
         assert isinstance(root, str)
-        yield root, {file: fs.info(f"{root}{sep}{file}") for file in files}
+        yield root, {file: _localfs_info(f"{root}{sep}{file}") for file in files}
 
 
 def _build_tree(
