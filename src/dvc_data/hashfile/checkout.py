@@ -180,15 +180,15 @@ def _determine_files_to_relink(
     for change in diff.unchanged:
         old = change.old
         new = change.new
-        new_meta = new.meta
-        if new_meta is None:
+        old_meta = old.meta
+        if old_meta is None:
             mappend(change)
             continue
 
         p = path_join((path, *old.key))
         oid = new.oid
         oid_str = oid.value if oid is not None else None
-        if _needs_relink(p, cache, new_meta, new.cache_meta, oid_str):
+        if _needs_relink(p, cache, old_meta, new.cache_meta, oid_str):
             mappend(change)
 
 
