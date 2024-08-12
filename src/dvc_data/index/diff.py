@@ -261,13 +261,15 @@ def _detect_renames(changes: Iterable[Change]):
     # Sort the lists to maintain the same order
     # as older implementation.
     added.sort(key=_get_key)
-    deleted.sort(key=_get_key, reverse=True)
+    deleted.sort(key=_get_key)
 
     # Create a dictionary for fast lookup of deletions by hash_info
-    deleted_dict = defaultdict(list)
+    deleted_dict = defaultdict(deque)
     for change in deleted:
         # We checked change.old for all deleted above, so cast
-        deleted_dict[cast(DataIndexEntry, change.old).hash_info].append(change)
+        change_hash = cast(DataIndexEntry, change.old).hash_info
+        # appendleft to get queue behaviour (we pop off right)
+        deleted_dict[change_hash].appendleft(change)
 
     for change in added:
         # We checked change.new for all new above, so cast
