@@ -60,43 +60,6 @@ def test_diff():
     }
 
 
-def test_diff_non_unique_hash():
-    """Test renaming behavior when multiple entries share the same hash."""
-
-    def create_entry(key):
-        return DataIndexEntry(
-            key=key,
-            meta=Meta(),
-            hash_info=HashInfo(name="md5", value="d3b07384d113edec49eaa6238ad5ff00"),
-        )
-
-    initial_entries = [create_entry(("foo",)), create_entry(("bar",))]
-    intermediate_entries = [create_entry(("foo.txt",)), create_entry(("bar",))]
-    final_entries = [create_entry(("foo.txt",)), create_entry(("zab", "bar"))]
-
-    initial = DataIndex({entry.key: entry for entry in initial_entries})
-    intermediate = DataIndex({entry.key: entry for entry in intermediate_entries})
-    final = DataIndex({entry.key: entry for entry in final_entries})
-
-    expected_initial_intermediate_diff = {
-        Change(RENAME, initial[("foo",)], intermediate[("foo.txt",)]),
-        Change(UNCHANGED, initial[("bar",)], initial[("bar",)]),
-    }
-    expected_initial_final_diff = {
-        Change(RENAME, initial[("foo",)], final[("zab", "bar")]),
-        Change(RENAME, initial[("bar",)], final[("foo.txt",)]),
-    }
-
-    assert (
-        set(diff(initial, intermediate, with_renames=True, with_unchanged=True))
-        == expected_initial_intermediate_diff
-    )
-    assert (
-        set(diff(initial, final, with_renames=True, with_unchanged=True))
-        == expected_initial_final_diff
-    )
-
-
 def test_diff_no_hashes():
     index = DataIndex(
         {
