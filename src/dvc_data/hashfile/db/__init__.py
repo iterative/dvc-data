@@ -1,6 +1,4 @@
-import errno
 import logging
-import os
 from contextlib import suppress
 from copy import copy
 from typing import TYPE_CHECKING, Callable, ClassVar, Optional, Union
@@ -16,6 +14,7 @@ if TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
     from fsspec import Callback
 
+    from dvc_data.hashfile.meta import Meta
     from dvc_data.hashfile.state import StateBase
     from dvc_data.hashfile.tree import Tree
 
@@ -51,7 +50,7 @@ def get_index(odb) -> "ObjectDBIndexBase":
 class HashFileDB(ObjectDB):
     DEFAULT_VERIFY = False
     DEFAULT_CACHE_TYPES: ClassVar[list[str]] = ["copy"]
-    CACHE_MODE: Optional[int] = None
+    CACHE_MODE: ClassVar[Optional[int]] = None
 
     def __init__(self, fs: "FileSystem", path: str, read_only: bool = False, **config):
         from dvc_data.hashfile.state import StateNoop
@@ -142,7 +141,8 @@ class HashFileDB(ObjectDB):
         self,
         oid: str,
         check_hash: bool = True,
-    ):
+        _info: Optional[dict] = None,
+    ) -> "Meta":
         """Compare the given hash with the (corresponding) actual one if
         check_hash is specified, or just verify the existence of the cache
         files on the filesystem.
@@ -157,20 +157,17 @@ class HashFileDB(ObjectDB):
         - Remove the file from cache if it doesn't match the actual hash
         """
         from dvc_data.hashfile.hash import hash_file
+        from dvc_data.hashfile.meta import Meta
 
         obj = self.get(oid)
-        if self.is_protected(obj.path):
-            return
-
         if not check_hash:
             assert obj.fs
-            if not obj.fs.exists(obj.path):
-                raise FileNotFoundError(
-                    errno.ENOENT, os.strerror(errno.ENOENT), obj.path
-                )
-            return
+            info = _info or obj.fs.info(obj.path)
+            return Meta.from_info(info)
 
-        _, actual = hash_file(obj.path, obj.fs, self.hash_name, self.state)
+        meta, actual = hash_file(
+            obj.path, obj.fs, self.hash_name, self.state, info=_info
+        )
 
         assert actual.name == self.hash_name
         assert actual.value
@@ -181,10 +178,10 @@ class HashFileDB(ObjectDB):
 
             raise ObjectFormatError(f"{obj} is corrupted")
 
-        if check_hash:
-            # making cache file read-only so we don't need to check it
-            # next time
-            self.protect(obj.path)
+        # making cache file read-only so we don't need to check it
+        # next time
+        self.protect(obj.path)
+        return meta
 
     def _remove_unpacked_dir(self, hash_):
         pass
