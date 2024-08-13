@@ -368,7 +368,7 @@ def checkout(  # noqa: PLR0913
     except CheckoutError as exc:
         failed.extend(exc.paths)
 
-    if diff and state:
+    if (diff or relink) and state:
         state.save_link(path, fs)
 
     if failed or not diff:
