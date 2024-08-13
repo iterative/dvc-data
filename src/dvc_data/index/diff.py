@@ -256,8 +256,6 @@ def _detect_renames(changes: Iterable[Change]):
     def _get_key(change):
         return change.key
 
-    # Sort the lists to maintain the same order
-    # as older implementation.
     added.sort(key=_get_key)
     deleted.sort(key=_get_key)
 
