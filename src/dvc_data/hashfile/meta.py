@@ -64,19 +64,20 @@ class Meta:
             version_id = info.get("generation")
 
         return Meta(
-            isdir=info["type"] == "directory",
-            size=info.get("size"),
-            isexec=is_exec(info.get("mode", 0)),
-            version_id=version_id,
-            etag=etag,
-            checksum=checksum,
-            md5=info.get("md5"),
-            inode=info.get("ino"),
-            mtime=info.get("mtime"),
-            remote=info.get("remote"),
-            is_link=info.get("islink", False),
-            nlink=info.get("nlink", 1),
-            destination=info.get("destination"),
+            info["type"] == "directory",
+            info.get("size"),
+            None,
+            is_exec(info.get("mode", 0)),
+            version_id,
+            etag,
+            checksum,
+            info.get("md5"),
+            info.get("ino"),
+            info.get("mtime"),
+            info.get("remote"),
+            info.get("islink", False),
+            info.get("destination"),
+            info.get("nlink", 1),
         )
 
     @classmethod
