@@ -1,7 +1,7 @@
 import itertools
 from collections import defaultdict, deque
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from attrs import define
 from fsspec.callbacks import DEFAULT_CALLBACK, Callback
