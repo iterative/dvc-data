@@ -242,15 +242,13 @@ def _diff(  # noqa: C901
 
 
 def _detect_renames(changes: Iterable[Change]):
-    added = []
-    deleted = []
+    added: list[Change] = []
+    deleted: list[Change] = []
 
     for change in changes:
         if change.typ == ADD:
-            assert change.new
             added.append(change)
         elif change.typ == DELETE:
-            assert change.old
             deleted.append(change)
         else:
             yield change
@@ -266,30 +264,24 @@ def _detect_renames(changes: Iterable[Change]):
     # Create a dictionary for fast lookup of deletions by hash_info
     deleted_dict: dict[Optional[HashInfo], deque[Change]] = defaultdict(deque)
     for change in deleted:
-        # We checked change.old for all deleted above, so cast
-        change_hash = cast(DataIndexEntry, change.old).hash_info
+        change_hash = change.old.hash_info if change.old else None
         # appendleft to get queue behaviour (we pop off right)
         deleted_dict[change_hash].appendleft(change)
 
     for change in added:
-        # We checked change.new for all new above, so cast
-        new_entry = cast(DataIndexEntry, change.new)
-
-        if not new_entry.hash_info:
-            yield change
-            continue
+        new_hash_info = change.new.hash_info if change.new else None
 
         # If the new entry is the same as a deleted change,
         # it is in fact a rename.
         # Note: get instead of __getitem__, to avoid creating
         # unnecessary entries.
-        if deleted_dict.get(new_entry.hash_info):
-            deletion = deleted_dict[new_entry.hash_info].pop()
+        if new_hash_info and (queue := deleted_dict.get(new_hash_info)):
+            deletion = queue.pop()
 
             yield Change(
                 RENAME,
                 deletion.old,
-                new_entry,
+                change.new,
             )
         else:
             yield change
