@@ -180,6 +180,9 @@ def _determine_files_to_relink(
     for change in diff.unchanged:
         old = change.old
         new = change.new
+        if new.oid and new.oid.isdir:
+            continue
+
         old_meta = old.meta
         if old_meta is None:
             mappend(change)
