@@ -263,13 +263,13 @@ def _detect_renames(changes: Iterable[Change]):
 
     # Create a dictionary for fast lookup of deletions by hash_info
     deleted_dict: dict[Optional[HashInfo], deque[Change]] = defaultdict(deque)
-    for change in deleted:
-        change_hash = change.old.hash_info if change.old else None
+    for deletion in deleted:
+        change_hash = deletion.old.hash_info if deletion.old else None
         # appendleft to get queue behaviour (we pop off right)
-        deleted_dict[change_hash].appendleft(change)
+        deleted_dict[change_hash].appendleft(deletion)
 
-    for change in added:
-        new_hash_info = change.new.hash_info if change.new else None
+    for addition in added:
+        new_hash_info = addition.new.hash_info if addition.new else None
 
         # If the new entry is the same as a deleted change,
         # it is in fact a rename.
@@ -281,10 +281,10 @@ def _detect_renames(changes: Iterable[Change]):
             yield Change(
                 RENAME,
                 deletion.old,
-                change.new,
+                addition.new,
             )
         else:
-            yield change
+            yield addition
 
     # Yield the remaining unmatched deletions
     if deleted_dict:
