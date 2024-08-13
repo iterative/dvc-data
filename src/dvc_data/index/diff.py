@@ -1,4 +1,5 @@
-from collections import deque
+import itertools
+from collections import defaultdict, deque
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
@@ -241,8 +242,8 @@ def _diff(  # noqa: C901
 
 
 def _detect_renames(changes: Iterable[Change]):
-    added = []
-    deleted = []
+    added: list[Change] = []
+    deleted: list[Change] = []
 
     for change in changes:
         if change.typ == ADD:
@@ -255,35 +256,37 @@ def _detect_renames(changes: Iterable[Change]):
     def _get_key(change):
         return change.key
 
-    added[:] = sorted(added, key=_get_key)
-    deleted[:] = sorted(deleted, key=_get_key)
+    added.sort(key=_get_key)
+    deleted.sort(key=_get_key)
 
-    for change in added:
-        new_entry = change.new
-        assert new_entry
+    # Create a dictionary for fast lookup of deletions by hash_info
+    deleted_dict: dict[Optional[HashInfo], deque[Change]] = defaultdict(deque)
+    for deletion in deleted:
+        change_hash = deletion.old.hash_info if deletion.old else None
+        # appendleft to get queue behaviour (we pop off right)
+        deleted_dict[change_hash].appendleft(deletion)
 
-        if not new_entry.hash_info:
-            yield change
-            continue
+    for addition in added:
+        new_hash_info = addition.new.hash_info if addition.new else None
 
-        index, old_entry = None, None
-        for idx, ch in enumerate(deleted):
-            assert ch.old
-            if ch.old.hash_info == new_entry.hash_info:
-                index, old_entry = idx, ch.old
-                break
+        # If the new entry is the same as a deleted change,
+        # it is in fact a rename.
+        # Note: get instead of __getitem__, to avoid creating
+        # unnecessary entries.
+        if new_hash_info and (queue := deleted_dict.get(new_hash_info)):
+            deletion = queue.pop()
 
-        if index is not None:
-            del deleted[index]
             yield Change(
                 RENAME,
-                old_entry,
-                new_entry,
+                deletion.old,
+                addition.new,
             )
         else:
-            yield change
+            yield addition
 
-    yield from deleted
+    # Yield the remaining unmatched deletions
+    if deleted_dict:
+        yield from itertools.chain.from_iterable(deleted_dict.values())
 
 
 def diff(  # noqa: PLR0913
