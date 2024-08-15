@@ -1,4 +1,5 @@
 import os
+from contextlib import closing
 
 import pytest
 from dvc_objects.fs import MemoryFileSystem
@@ -13,13 +14,17 @@ from dvc_data.hashfile.utils import get_mtime_and_size
 from dvc_data.json_compat import dumps as json_dumps
 
 
-def test_hashes(tmp_path):
+@pytest.fixture
+def state(tmp_path):
+    with closing(State(tmp_path, tmp_path / "tmp")) as _state:
+        yield _state
+
+
+def test_hashes(tmp_path, state: State):
     path = tmp_path / "foo"
     path.write_text("foo content", encoding="utf-8")
 
     fs = LocalFileSystem()
-    state = State(tmp_path, tmp_path / "tmp")
-
     hash_info = HashInfo(name="md5", value="6dbda444875c24ec1bbdb433456be11f")
 
     state.save(str(path), fs, hash_info)
@@ -60,8 +65,7 @@ def test_hashes(tmp_path):
     assert list(state.get_many((str(path),), fs, {})) == [(str(path), None, None)]
 
 
-def test_hashes_get_not_a_local_fs(tmp_path):
-    state = State(tmp_path, tmp_path / "tmp")
+def test_hashes_get_not_a_local_fs(tmp_path, state: State):
     fs = MemoryFileSystem()
 
     assert state.get("not-existing-file", fs) == (None, None)
@@ -70,12 +74,11 @@ def test_hashes_get_not_a_local_fs(tmp_path):
     ]
 
 
-def test_hashes_get_invalid_data(tmp_path):
+def test_hashes_get_invalid_data(tmp_path, state: State):
     path = tmp_path / "foo"
     path.write_text("foo content", encoding="utf-8")
 
     fs = LocalFileSystem()
-    state = State(tmp_path, tmp_path / "tmp")
 
     # invalid json
     state.hashes[str(path)] = ""
@@ -112,10 +115,9 @@ def test_hashes_get_invalid_data(tmp_path):
     assert list(state.get_many((str(path),), fs, {})) == [(str(path), None, None)]
 
 
-def test_hashes_without_version(tmp_path):
+def test_hashes_without_version(tmp_path, state: State):
     # If there is no version, it is considered as old md5-dos2unix hashes.
     # dvc-data does not write this format anymore, but it should be able to read it
-    state = State(tmp_path, tmp_path / "tmp")
     fs = LocalFileSystem()
 
     path = tmp_path / "foo"
@@ -140,8 +142,7 @@ def test_hashes_without_version(tmp_path):
     ]
 
 
-def test_hashes_save_not_existing(tmp_path):
-    state = State(tmp_path, tmp_path / "tmp")
+def test_hashes_save_not_existing(tmp_path, state: State):
     fs = LocalFileSystem()
 
     with pytest.raises(FileNotFoundError):
@@ -151,8 +152,7 @@ def test_hashes_save_not_existing(tmp_path):
     assert len(state.hashes) == 0
 
 
-def test_hashes_save_when_fs_is_not_a_local_fs(tmp_path):
-    state = State(tmp_path, tmp_path / "tmp")
+def test_hashes_save_when_fs_is_not_a_local_fs(tmp_path, state: State):
     fs = MemoryFileSystem()
 
     state.save("not-existing-file", fs, HashInfo("md5", "value"))
@@ -162,14 +162,13 @@ def test_hashes_save_when_fs_is_not_a_local_fs(tmp_path):
     assert len(state.hashes) == 0
 
 
-def test_state_many(tmp_path):
+def test_state_many(tmp_path, state: State):
     foo = tmp_path / "foo"
     foo.write_text("foo content", encoding="utf-8")
 
     bar = tmp_path / "bar"
     bar.write_text("bar content", encoding="utf-8")
 
-    state = State(tmp_path, tmp_path / "tmp")
     fs = LocalFileSystem()
 
     hash_info_foo = HashInfo("md5", file_md5(foo, fs))
@@ -219,7 +218,7 @@ def test_state_noop(tmp_path):
     ]
 
 
-def test_links(tmp_path):
+def test_links(tmp_path, state: State):
     foo, bar = tmp_path / "foo", tmp_path / "bar"
     dataset = tmp_path / "dataset"
     dataset.mkdir()
@@ -229,7 +228,6 @@ def test_links(tmp_path):
         path.write_text(f"{path.name} content", encoding="utf-8")
 
     fs = LocalFileSystem()
-    state = State(tmp_path, tmp_path / "tmp")
 
     state.save_link(os.fspath(foo), fs)
     state.save_link(os.fspath(bar), fs)

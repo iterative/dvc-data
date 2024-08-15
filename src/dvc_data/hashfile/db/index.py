@@ -96,8 +96,11 @@ class ObjectDBIndex(ObjectDBIndexBase):
         self.index_dir = os.path.join(tmp_dir, self.INDEX_DIR, name)
         self.fs = LocalFileSystem()
         self.fs.makedirs(self.index_dir, exist_ok=True)
-        cache = Cache(self.index_dir, eviction_policy="none", type="index")
-        self.index = Index.fromcache(cache)
+        self._cache = Cache(self.index_dir, eviction_policy="none", type="index")
+        self.index = Index.fromcache(self._cache)
+
+    def close(self) -> None:
+        return self._cache.close()
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.index)
