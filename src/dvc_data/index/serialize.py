@@ -1,4 +1,5 @@
 import json
+from contextlib import closing
 
 from dvc_data.hashfile.cache import Cache
 
@@ -7,7 +8,7 @@ from .index import DataIndex, DataIndexEntry
 
 def write_db(index: DataIndex, path: str) -> None:
     cache = Cache(path)
-    with cache.transact():
+    with closing(cache), cache.transact():
         for key, entry in index.iteritems():
             cache["/".join(key)] = entry.to_dict()
 
@@ -16,7 +17,7 @@ def read_db(path: str) -> DataIndex:
     index = DataIndex()
     cache = Cache(path)
 
-    with cache.transact():
+    with closing(cache), cache.transact():
         for key in cache:
             value = cache.get(key)
             entry = DataIndexEntry.from_dict(value)
