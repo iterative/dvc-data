@@ -235,12 +235,16 @@ class Link:
     ):
         self._links = links
         self._callback = callback
+        self._created_dirs: set[str] = set()
 
     def __call__(
         self, cache: "HashFileDB", from_path: str, to_fs: "FileSystem", to_path: str
     ):
         parent = to_fs.parent(to_path)
-        to_fs.makedirs(parent)
+        if parent not in self._created_dirs:
+            to_fs.makedirs(parent)
+            self._created_dirs.add(parent)
+
         try:
             transfer(
                 cache.fs,
