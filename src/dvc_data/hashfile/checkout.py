@@ -110,7 +110,14 @@ def _checkout_file(
     cache_path = cache.oid_to_path(change.new.oid.value)
     if change.old.oid:
         if relink:
-            if fs.iscopy(path) and cache.cache_types[0] == "copy":
+            old_meta = change.old.meta
+            if old_meta is None:
+                file_is_copy = fs.iscopy(path)
+            else:
+                file_is_copy = not old_meta.is_link and old_meta.nlink == 1
+
+            cache_is_copy = cache.cache_types[0] == "copy"
+            if file_is_copy and change.new.oid == change.old.oid and cache_is_copy:
                 cache.unprotect(path)
             else:
                 _relink(

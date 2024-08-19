@@ -11,7 +11,9 @@ from dvc_data.hashfile import checkout as checkout_mod
 from dvc_data.hashfile.build import build
 from dvc_data.hashfile.checkout import LinkError, _determine_files_to_relink, checkout
 from dvc_data.hashfile.db import HashFileDB
+from dvc_data.hashfile.db.local import LocalHashFileDB
 from dvc_data.hashfile.diff import Change, DiffResult, TreeEntry
+from dvc_data.hashfile.transfer import transfer as otransfer
 
 
 @pytest.mark.parametrize("cache_type", ["copy", "hardlink", "symlink", "reflink"])
@@ -70,9 +72,10 @@ def _check_link(path, target, link_type):
 
 @pytest.mark.parametrize("link", ["copy", "hardlink", "symlink", "reflink"])
 @pytest.mark.parametrize("cache_type", ["copy", "hardlink", "symlink", "reflink"])
-def test_checkout_relinking(tmp_path, cache_type, link):
+@pytest.mark.parametrize("db_cls", [HashFileDB, LocalHashFileDB])
+def test_checkout_relinking(tmp_path, cache_type, link, db_cls):
     fs = LocalFileSystem()
-    cache = HashFileDB(fs, tmp_path, type=[cache_type])
+    cache = db_cls(fs, tmp_path, type=[cache_type])
 
     foo_oid = "acbd18db4cc2f85cedef654fccc4a4d8"
     cache.add_bytes(foo_oid, b"foo")
@@ -108,12 +111,19 @@ def test_checkout_relinking(tmp_path, cache_type, link):
         tmp_path / "dataset" / "bar", cache.oid_to_path(bar_oid), cache_type
     )
 
+    expected = cache_type not in ("copy", "reflink") and isinstance(
+        cache, LocalHashFileDB
+    )
+    assert cache.is_protected(str(tmp_path / "dataset" / "foo")) == expected
+    assert cache.is_protected(str(tmp_path / "dataset" / "bar")) == expected
+
 
 @pytest.mark.parametrize("link", ["copy", "hardlink", "symlink", "reflink"])
 @pytest.mark.parametrize("cache_type", ["copy", "hardlink", "symlink", "reflink"])
-def test_checkout_relinking_optimization(mocker, tmp_path, cache_type, link):
+@pytest.mark.parametrize("db_cls", [HashFileDB, LocalHashFileDB])
+def test_checkout_relinking_optimization(mocker, tmp_path, cache_type, link, db_cls):
     fs = LocalFileSystem()
-    cache = HashFileDB(fs, tmp_path, type=[cache_type])
+    cache = db_cls(fs, tmp_path, type=[cache_type])
 
     foo_oid = "acbd18db4cc2f85cedef654fccc4a4d8"
     cache.add_bytes(foo_oid, b"foo")
@@ -166,3 +176,36 @@ def test_checkout_relinking_optimization(mocker, tmp_path, cache_type, link):
     assert _check_link(
         tmp_path / "dataset" / "bar", cache.oid_to_path(bar_oid), cache_type
     )
+
+    expected = cache_type not in ("copy", "reflink") and isinstance(
+        cache, LocalHashFileDB
+    )
+    assert cache.is_protected(str(tmp_path / "dataset" / "foo")) == expected
+    assert cache.is_protected(str(tmp_path / "dataset" / "bar")) == expected
+
+
+@pytest.mark.parametrize("relink", [True, False])
+def test_recheckout_old_obj(tmp_path, relink):
+    fs = LocalFileSystem()
+    cache = HashFileDB(fs, str(tmp_path))
+
+    fs.makedirs(tmp_path / "dir" / "sub")
+    fs.pipe(
+        {
+            str(tmp_path / "dir" / "foo"): b"foo",
+            str(tmp_path / "dir" / "bar"): b"bar",
+            str(tmp_path / "dir" / "sub" / "file"): b"file",
+        }
+    )
+    staging, _, obj = build(cache, str(tmp_path / "dir"), fs, "md5")
+    otransfer(staging, cache, {obj.hash_info}, shallow=False)
+
+    (tmp_path / "dir" / "sub" / "file").unlink()
+    fs.pipe(
+        {str(tmp_path / "dir" / "foo"): b"food", str(tmp_path / "dir" / "bar"): b"baz"}
+    )
+
+    checkout(str(tmp_path / "dir"), fs, obj, cache, force=True, relink=relink)
+
+    assert (tmp_path / "dir" / "foo").read_text() == "foo"
+    assert (tmp_path / "dir" / "bar").read_text() == "bar"
