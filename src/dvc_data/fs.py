@@ -91,10 +91,10 @@ class DataFileSystem(AbstractFileSystem):
 
         return key
 
-    def _get_fs_path(self, path: "AnyFSPath") -> FileInfo:
+    def _get_fs_path(self, path: "AnyFSPath", info=None) -> FileInfo:
         from .index import StorageKeyError
 
-        info = self.info(path)
+        info = info or self.info(path)
         if info["type"] == "directory":
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path)
 
@@ -190,6 +190,7 @@ class DataFileSystem(AbstractFileSystem):
         rpath: "AnyFSPath",
         lpath: "AnyFSPath",
         callback: "Callback" = DEFAULT_CALLBACK,
+        info: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         from dvc_objects.fs.generic import transfer
@@ -198,7 +199,7 @@ class DataFileSystem(AbstractFileSystem):
         from dvc_data.index import ObjectStorage
 
         try:
-            typ, storage, cache_storage, hi, fs, path = self._get_fs_path(rpath)
+            typ, storage, cache_storage, hi, fs, path = self._get_fs_path(rpath, info)
         except IsADirectoryError:
             os.makedirs(lpath, exist_ok=True)
             return None
