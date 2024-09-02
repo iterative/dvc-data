@@ -1,5 +1,5 @@
-from contextlib import closing
 import logging
+from contextlib import closing
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
