@@ -22,6 +22,10 @@ class ObjectDBIndexBase(ABC):
         pass
 
     @abstractmethod
+    def close(self) -> None:
+        pass
+
+    @abstractmethod
     def __iter__(self) -> Iterator[str]:
         pass
 
@@ -57,6 +61,9 @@ class ObjectDBIndexNoop(ObjectDBIndexBase):
         tmp_dir: "AnyFSPath",
         name: str,
     ) -> None:
+        pass
+
+    def close(self) -> None:
         pass
 
     def __iter__(self) -> Iterator[str]:
