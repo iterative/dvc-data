@@ -1,4 +1,6 @@
+import os
 from copy import deepcopy
+from functools import partial
 from os.path import realpath, samefile
 from pathlib import Path
 
@@ -6,6 +8,7 @@ import pytest
 from attrs import evolve
 from dvc_objects.fs.generic import transfer
 from dvc_objects.fs.local import LocalFileSystem, localfs
+from dvc_objects.fs.system import inode
 
 from dvc_data.hashfile import checkout as checkout_mod
 from dvc_data.hashfile.build import build
@@ -13,7 +16,9 @@ from dvc_data.hashfile.checkout import LinkError, _determine_files_to_relink, ch
 from dvc_data.hashfile.db import HashFileDB
 from dvc_data.hashfile.db.local import LocalHashFileDB
 from dvc_data.hashfile.diff import Change, DiffResult, TreeEntry
+from dvc_data.hashfile.state import State
 from dvc_data.hashfile.transfer import transfer as otransfer
+from dvc_data.hashfile.utils import get_mtime_and_size
 
 
 @pytest.mark.parametrize("cache_type", ["copy", "hardlink", "symlink", "reflink"])
@@ -209,3 +214,76 @@ def test_recheckout_old_obj(tmp_path, relink):
 
     assert (tmp_path / "dir" / "foo").read_text() == "foo"
     assert (tmp_path / "dir" / "bar").read_text() == "bar"
+
+
+def get_inode_and_mtime(path):
+    return inode(path), get_mtime_and_size(os.fspath(path), localfs)[0]
+
+
+def test_checkout_save_link_dir(request, tmp_path):
+    fs = LocalFileSystem()
+    state = State(tmp_path, tmp_dir=tmp_path / "tmp")
+    request.addfinalizer(state.close)
+
+    cache = HashFileDB(fs, str(tmp_path), state=state)
+
+    directory = tmp_path / "dir"
+    directory.mkdir()
+    (directory / "foo").write_text("foo", encoding="utf-8")
+    (directory / "bar").write_text("bar", encoding="utf-8")
+
+    staging, _, obj = build(cache, os.fspath(directory), fs, "md5")
+    otransfer(staging, cache, {obj.hash_info}, shallow=False)
+    chkout = partial(checkout, os.fspath(directory), fs, obj, cache=cache, state=state)
+
+    chkout()
+    assert "dir" not in state.links
+
+    chkout(relink=True)
+    assert state.links["dir"] == get_inode_and_mtime(directory)
+
+    # modify file
+    (directory / "foo").write_text("food", encoding="utf-8")
+    chkout(force=True)
+    assert state.links["dir"] == get_inode_and_mtime(directory)
+
+    # remove file
+    (directory / "bar").unlink()
+    chkout()
+    assert state.links["dir"] == get_inode_and_mtime(directory)
+
+    # add file
+    (directory / "foobar").write_text("foobar", encoding="utf-8")
+    chkout(force=True)
+    assert state.links["dir"] == get_inode_and_mtime(directory)
+
+
+def test_checkout_save_link_file(request, tmp_path):
+    fs = LocalFileSystem()
+    state = State(tmp_path, tmp_dir=tmp_path / "tmp")
+    request.addfinalizer(state.close)
+
+    cache = HashFileDB(fs, os.fspath(tmp_path), state=state)
+
+    file = tmp_path / "foo"
+    file.write_text("foo", encoding="utf-8")
+
+    staging, _, obj = build(cache, os.fspath(file), fs, "md5")
+    otransfer(staging, cache, {obj.hash_info}, shallow=False)
+    chkout = partial(checkout, os.fspath(file), fs, obj, cache=cache, state=state)
+
+    chkout()
+    assert "foo" not in state.links
+
+    chkout(relink=True)
+    assert state.links["foo"] == get_inode_and_mtime(file)
+
+    # modify file
+    file.write_text("food", encoding="utf-8")
+    chkout(force=True)
+    assert state.links["foo"] == get_inode_and_mtime(file)
+
+    # remove file
+    file.unlink()
+    chkout()
+    assert state.links["foo"] == get_inode_and_mtime(file)

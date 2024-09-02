@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from dvc_objects.fs.generic import test_links, transfer
 from dvc_objects.fs.local import LocalFileSystem
+from dvc_objects.fs.system import inode
 from fsspec.callbacks import DEFAULT_CALLBACK
 
 from dvc_data.fsutils import _localfs_info
@@ -267,6 +268,23 @@ class Link:
             raise LinkError(to_path) from exc
 
 
+def _save_link(
+    path: str,
+    fs: "FileSystem",
+    diff: DiffResult,
+    updated_mtimes: dict[str, float],
+    state: "StateBase",
+) -> None:
+    if not isinstance(fs, LocalFileSystem):
+        return
+
+    from .utils import _get_mtime_from_changes
+
+    mtime = _get_mtime_from_changes(path, fs, diff, updated_mtimes)
+    ino = inode(path)
+    return state.set_link(path, ino, mtime)
+
+
 def _checkout(  # noqa: C901
     diff: DiffResult,
     path: str,
@@ -279,6 +297,8 @@ def _checkout(  # noqa: C901
     prompt: Optional[Callable[[str], bool]] = None,
 ):
     if not diff:
+        if relink and state is not None:
+            _save_link(path, fs, diff, {}, state)
         return
 
     links = test_links(cache.cache_types, cache.fs, cache.path, fs, path)
@@ -294,6 +314,7 @@ def _checkout(  # noqa: C901
     failed = []
     hashes_to_update: list[tuple[str, HashInfo, dict]] = []
     is_local_fs = isinstance(fs, LocalFileSystem)
+    updated_mtimes = {}
     for change in chain(diff.added, diff.modified):
         entry_path = fs.join(path, *change.new.key) if change.new.key != ROOT else path
         assert change.new.oid
@@ -319,9 +340,11 @@ def _checkout(  # noqa: C901
             if is_local_fs:
                 info = _localfs_info(entry_path)
                 hashes_to_update.append((entry_path, change.new.oid, info))
+                updated_mtimes[entry_path] = info["mtime"]
 
     if state is not None:
         state.save_many(hashes_to_update, fs)
+        _save_link(path, fs, diff, updated_mtimes, state)
 
     if failed:
         raise CheckoutError(failed)
@@ -378,9 +401,6 @@ def checkout(  # noqa: PLR0913
         )
     except CheckoutError as exc:
         failed.extend(exc.paths)
-
-    if (diff or relink) and state:
-        state.save_link(path, fs)
 
     if failed or not diff:
         if progress_callback and obj:

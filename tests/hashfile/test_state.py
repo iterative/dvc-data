@@ -206,6 +206,11 @@ def test_state_many(tmp_path, state: State):
     ]
 
 
+def test_set_link(tmp_path, state):
+    state.set_link(tmp_path / "foo", 42, "mtime")
+    assert state.links["foo"] == (42, "mtime")
+
+
 def test_state_noop(tmp_path):
     state = StateNoop()
     fs = LocalFileSystem()
@@ -216,6 +221,12 @@ def test_state_noop(tmp_path):
         ("foo", None, None),
         ("bar", None, None),
     ]
+
+    state.set_link(tmp_path / "foo", 42, "mtime")
+    assert state.get_unused_links([], fs) == []
+
+    state.save_link(tmp_path / "foo", fs)
+    assert state.get_unused_links([], fs) == []
 
 
 def test_links(tmp_path, state: State):
