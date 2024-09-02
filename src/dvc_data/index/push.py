@@ -1,4 +1,5 @@
 import logging
+from contextlib import closing
 from functools import partial
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -73,20 +74,21 @@ def push(
 
         if isinstance(cache, ObjectStorage) and isinstance(data, ObjectStorage):
             with TqdmCallback(unit="file", desc=f"Pushing to {data.fs.protocol}") as cb:
-                result = transfer(
-                    cache.odb,
-                    data.odb,
-                    [
-                        entry.hash_info
-                        for _, entry in fs_index.iteritems()
-                        if entry.hash_info
-                    ],
-                    jobs=jobs,
-                    dest_index=get_index(data.odb),
-                    cache_odb=data.odb,
-                    validate_status=_log_missing,
-                    callback=cb,
-                )
+                with closing(get_index(data.odb)) as dest_index:
+                    result = transfer(
+                        cache.odb,
+                        data.odb,
+                        [
+                            entry.hash_info
+                            for _, entry in fs_index.iteritems()
+                            if entry.hash_info
+                        ],
+                        jobs=jobs,
+                        dest_index=dest_index,
+                        cache_odb=data.odb,
+                        validate_status=_log_missing,
+                        callback=cb,
+                    )
                 pushed += len(result.transferred)
                 failed += len(result.failed)
         else:

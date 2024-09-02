@@ -1,4 +1,5 @@
 import logging
+from contextlib import closing
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
@@ -124,21 +125,22 @@ def fetch(
 
         with cb:
             if isinstance(cache, ObjectStorage) and isinstance(data, ObjectStorage):
-                result = transfer(
-                    data.odb,
-                    cache.odb,
-                    [
-                        entry.hash_info
-                        for _, entry in fs_index.iteritems()
-                        if entry.hash_info
-                    ],
-                    jobs=jobs,
-                    src_index=get_index(data.odb),
-                    cache_odb=cache.odb,
-                    verify=data.odb.verify,
-                    validate_status=_log_missing,
-                    callback=cb,
-                )
+                with closing(get_index(data.odb)) as src_index:
+                    result = transfer(
+                        data.odb,
+                        cache.odb,
+                        [
+                            entry.hash_info
+                            for _, entry in fs_index.iteritems()
+                            if entry.hash_info
+                        ],
+                        jobs=jobs,
+                        src_index=src_index,
+                        cache_odb=cache.odb,
+                        verify=data.odb.verify,
+                        validate_status=_log_missing,
+                        callback=cb,
+                    )
                 fetched += len(result.transferred)
                 failed += len(result.failed)
             elif isinstance(cache, ObjectStorage):
