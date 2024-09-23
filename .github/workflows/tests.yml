@@ -37,10 +37,11 @@ jobs:
         python-version: ${{ matrix.pyv }}
         allow-prereleases: true
 
-    - uses: hynek/setup-cached-uv@v2
+    - uses: astral-sh/setup-uv@v3
       with:
+        enable-cache: true
         cache-suffix: ${{ matrix.pyv }}
-        cache-dependency-path: pyproject.toml
+        cache-dependency-glob: pyproject.toml
     - name: Install nox
       run: uv pip install --system nox --upgrade
 

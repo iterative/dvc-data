@@ -33,7 +33,7 @@ jobs:
         ref: ${{ github.event.pull_request.base.sha }}
         fetch-depth: 0
 
-    - uses: hynek/setup-cached-uv@v2
+    - uses: astral-sh/setup-uv@v3
     - name: Install nox
       run: uv pip install --system nox --upgrade
 
