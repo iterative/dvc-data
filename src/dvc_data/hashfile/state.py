@@ -62,6 +62,10 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
+    def set_link(self, path, inode, mtime):
+        pass
+
+    @abstractmethod
     def save_link(self, path, fs):
         pass
 
@@ -101,6 +105,9 @@ class StateNoop(StateBase):
         self, items: Iterable[str], fs: "FileSystem", infos: dict[str, dict]
     ) -> Iterator[Union[tuple[str, None, None], tuple[str, "Meta", "HashInfo"]]]:
         yield from zip_longest(items, [], [])
+
+    def set_link(self, path, inode, mtime):
+        pass
 
     def save_link(self, path, fs):
         pass
@@ -281,8 +288,10 @@ class State(StateBase):
             return
 
         inode = get_inode(path)
-        relative_path = relpath(path, self.root_dir)
+        return self.set_link(path, inode, mtime)
 
+    def set_link(self, path, inode, mtime):
+        relative_path = relpath(path, self.root_dir)
         with self.links as ref:
             ref[relative_path] = (inode, mtime)
 
