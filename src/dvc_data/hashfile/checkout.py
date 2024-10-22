@@ -214,11 +214,16 @@ def _diff(
 ):
     if old is None:
         try:
+            name = (
+                obj.hash_info.name
+                if obj and obj.hash_info and obj.hash_info.name
+                else cache.hash_name
+            )
             _, _, old = build(
                 cache,
                 path,
                 fs,
-                obj.hash_info.name if obj and obj.hash_info else cache.hash_name,
+                name,
                 dry_run=True,
                 ignore=ignore,
             )
