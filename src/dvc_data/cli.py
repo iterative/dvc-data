@@ -5,11 +5,13 @@ import math
 import os
 import posixpath
 import random
+import stat
 import sys
 from collections import deque
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
+from typing import Optional
 
 import click
 import typer
@@ -58,6 +60,15 @@ dir_file_type = typer.Argument(
     readable=True,
     resolve_path=True,
     allow_dash=True,
+    path_type=str,
+)
+
+dir_file_type_no_dash_no_resolve = typer.Argument(
+    ...,
+    exists=True,
+    file_okay=True,
+    dir_okay=True,
+    readable=True,
     path_type=str,
 )
 
@@ -571,6 +582,48 @@ def update_tree(oid, patch_file, add, modify, move, copy, remove, test):
     obj.digest()
     print(obj)
     odb.add(obj.path, obj.fs, obj.oid, hardlink=True)
+
+
+@app.command(help="Check object link")
+def check_link(  # noqa: C901
+    path: Path = dir_file_type_no_dash_no_resolve, object_dir: Optional[Path] = None
+):
+    if object_dir is None:
+        object_dir = Repo.discover().object_dir
+
+    fs = LocalFileSystem()
+
+    def get_object_inodes(path) -> dict[int, str]:
+        ret = {}
+        for entry in os.scandir(path):
+            if entry.is_dir(follow_symlinks=False) and len(entry.name) == 2:
+                for e in os.scandir(entry.path):
+                    if e.is_file(follow_symlinks=False):
+                        ret[e.inode()] = e.path
+        return ret
+
+    object_inodes = None
+    files = [os.fspath(path)] if path.is_file() else fs.find(os.fspath(path))
+    for file in files:
+        try:
+            info = fs.info(file)
+        except OSError as e:
+            if e.errno != errno.ENOENT or not os.path.islink(file):
+                raise
+            infos = ["broken", os.readlink(file)]
+            mode = 0
+        else:
+            infos = ["unknown"]
+            inode = info["ino"]
+            if info["islink"]:
+                infos = ["symlink", info["destination"]]
+            elif info["nlink"] > 1:
+                if object_inodes is None:
+                    object_inodes = get_object_inodes(object_dir)
+                if object_path := object_inodes.get(inode):
+                    infos = ["hardlink", object_path]
+            mode = info["mode"]
+        print(stat.filemode(mode), file, *infos)
 
 
 @app.command(help="Checkout from the object into a given path")

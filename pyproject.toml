@@ -208,5 +208,5 @@ known-first-party = ["dvc_data"]
 [tool.ruff.lint.pylint]
 max-args = 10
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "src/dvc_data/cli.py" = ["T201", "B008"]
