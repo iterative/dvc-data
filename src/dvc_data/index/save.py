@@ -95,7 +95,7 @@ def build_tree(
     assert tree_meta.nfiles is not None
     tree = Tree()
     for key, entry in index.iteritems(prefix=prefix):
-        if key == prefix or entry.meta and entry.meta.isdir:
+        if key == prefix or (entry.meta and entry.meta.isdir):
             continue
         tree_key = key[len(prefix) :]
         tree.add(tree_key, entry.meta, entry.hash_info)
