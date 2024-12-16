@@ -19,4 +19,4 @@ else:
         return orjson.dumps(data).decode("utf8")
 
 
-__all__ = ["loads", "dumps"]
+__all__ = ["dumps", "loads"]

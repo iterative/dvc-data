@@ -20,4 +20,4 @@ def batched(iterable: Iterable[T], n: int) -> Iterator[tuple[T, ...]]:
         yield batch
 
 
-__all__ = ["cached_property", "batched"]
+__all__ = ["batched", "cached_property"]
