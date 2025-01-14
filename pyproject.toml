@@ -40,8 +40,7 @@ Source = "https://github.com/iterative/dvc-data"
 
 [project.optional-dependencies]
 cli = [
-    "typer>=0.6",
-    "rich>=10.11.0,<14.0.0",
+    "typer-slim>=0.12",
 ]
 all = [
     "dvc-data[cli]",
@@ -52,12 +51,12 @@ tests = [
     "pytest-cov>=4.1.0",
     "pytest-mock",
     "pytest-benchmark>=4",
-    "pytest-servers[s3]==0.5.7",
+    "pytest-servers==0.5.7",
 ]
 dev = [
     "dvc-data[all]",
     "dvc-data[tests]",
-    "blake3>=0.3.1; python_version < '3.13'",
+    "blake3>=0.3.1",
     "mypy==1.14.0",
     "types-tqdm",
 ]
