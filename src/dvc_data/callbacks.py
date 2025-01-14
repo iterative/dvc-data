@@ -2,14 +2,12 @@ import logging
 import os
 import re
 import sys
-from threading import RLock
 from typing import Any, BinaryIO, ClassVar, Optional, Union
 
 import fsspec
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
-tqdm.set_lock(RLock())
 
 
 def env2bool(var, undefined=False):
