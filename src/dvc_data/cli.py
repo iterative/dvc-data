@@ -1,6 +1,5 @@
 import enum
 import errno
-import json
 import math
 import os
 import posixpath
@@ -18,7 +17,6 @@ import typer
 from attrs import asdict
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.fs import LocalFileSystem, MemoryFileSystem
-from rich.traceback import install
 from tqdm import tqdm
 
 from dvc_data.callbacks import TqdmCallback
@@ -35,12 +33,9 @@ from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.obj import HashFile
 from dvc_data.hashfile.state import State
 from dvc_data.hashfile.transfer import transfer as _transfer
-from dvc_data.hashfile.tree import Tree, merge
+from dvc_data.hashfile.tree import Tree
 from dvc_data.hashfile.tree import du as _du
 from dvc_data.repo import NotARepoError, Repo
-
-install(show_locals=True, suppress=[typer, click])
-
 
 file_type = typer.Argument(
     ...,
@@ -418,172 +413,6 @@ def diff(
             print(state, info, sep=": ")
 
 
-@app.command(help="Merge two trees and optionally write to the database.")
-def merge_tree(oid1: str, oid2: str, force: bool = False):
-    odb = get_odb()
-    oid1 = from_shortoid(odb, oid1)
-    oid2 = from_shortoid(odb, oid2)
-    obj1 = load(odb, odb.get(oid1).hash_info)
-    obj2 = load(odb, odb.get(oid2).hash_info)
-    assert isinstance(obj1, Tree)
-    assert isinstance(obj2, Tree), "not a tree obj"
-
-    if not force:
-        # detect conflicts
-        d = _diff(obj1, obj2, odb)
-        modified = [
-            posixpath.join(*change.old.key)
-            for change in d.modified
-            if change.old.key != ROOT
-        ]
-        if modified:
-            print("Following files in conflicts:", *modified, sep="\n")
-            raise typer.Exit(1)
-
-    tree = merge(odb, None, obj1.hash_info, obj2.hash_info)
-    tree.digest()
-    print(tree)
-    odb.add(tree.path, tree.fs, tree.oid, hardlink=True)
-
-
-def process_patch(patch_file, **kwargs):
-    patch = []
-    if patch_file:
-        with typer.open_file(patch_file) as f:
-            text = f.read()
-            patch = json.loads(text)
-            for appl in patch:
-                op = appl.get("op")
-                path = appl.get("path")
-                if op and path and op in ("add", "modify"):
-                    appl["path"] = os.fspath(patch_file.parent.joinpath(path))
-
-    for op, items in kwargs.items():
-        for item in items:
-            if isinstance(item, tuple):
-                path, to = item
-                extra = {"path": os.fspath(path), "to": to}
-            else:
-                extra = {"path": item}
-            patch.append({"op": op, **extra})
-
-    return patch
-
-
-def apply_op(odb, obj, application):
-    assert "op" in application
-    op = application["op"]
-    path = application["path"]
-    keys = tuple(path.split("/"))
-    if op in ("add", "modify"):
-        new = tuple(application["to"].split("/"))
-        if op == "add" and new in obj._dict:
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path)
-
-        fs = LocalFileSystem()
-        _, meta, new_obj = _build(odb, path, fs, "md5")
-        odb.add(path, fs, new_obj.hash_info.value, hardlink=False)
-        return obj.add(new, meta, new_obj.hash_info)
-
-    if keys not in obj._dict:
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-    if op == "test":
-        return
-    if op == "remove":
-        obj._dict.pop(keys)
-        obj.__dict__.pop("_trie", None)
-        return
-    if op in ("copy", "move"):
-        new = tuple(application["to"].split("/"))
-        obj.add(new, *obj.get(keys))
-        if op == "move":
-            obj._dict.pop(keys)
-        return
-    raise ValueError(f"unknown {op=}")
-
-
-def multi_value(*opts, **kwargs):
-    return click.option(*opts, multiple=True, required=False, **kwargs)
-
-
-cl_path = click.Path(
-    exists=True,
-    file_okay=True,
-    dir_okay=False,
-    readable=True,
-    path_type=Path,
-    resolve_path=True,
-)
-cl_path_dash = click.Path(
-    exists=True,
-    file_okay=True,
-    dir_okay=False,
-    readable=True,
-    allow_dash=True,
-    path_type=Path,
-    resolve_path=True,
-)
-
-
-@click.command()
-@click.argument("oid")
-@click.option("--patch-file", type=cl_path_dash)
-@multi_value(
-    "--add",
-    type=(cl_path, str),
-    help="Add file from specified local path to a given path in the tree",
-)
-@multi_value(
-    "--modify",
-    type=(cl_path, str),
-    help="Modify file with specified local path to a given path in the tree",
-)
-@multi_value("--move", type=(str, str), help="Move a file in the tree")
-@multi_value("--copy", type=(str, str), help="Copy path from a tree to another path")
-@multi_value("--remove", type=str, help="Remove path from a tree")
-@multi_value("--test", type=str, help="Check for the existence of the path")
-def update_tree(oid, patch_file, add, modify, move, copy, remove, test):
-    """Update tree contents virtually with a patch file in json format.
-
-    Example patch file for reference:
-
-    [\n
-        {"op": "remove", "path": "test/0/00004.png"},\n
-        {"op": "move", "path": "test/1/00003.png", "to": "test/0/00003.png"},\n
-        {"op": "copy", "path": "test/1/00003.png", "to": "test/1/11113.png"},\n
-        {"op": "test", "path": "test/1/00003.png"},\n
-        {"op": "add", "path": "local/path/to/patch.json", "to": "foo"},\n
-        {"op": "modify", "path": "local/path/to/patch.json", "to": "bar"}\n
-    ]\n
-
-    Example: ./cli.py update-tree f23d4 patch.json
-    """
-    odb = get_odb()
-    oid = from_shortoid(odb, oid)
-    obj = load(odb, odb.get(oid).hash_info)
-    assert isinstance(obj, Tree)
-
-    patch = process_patch(
-        patch_file,
-        add=add,
-        remove=remove,
-        modify=modify,
-        copy=copy,
-        move=move,
-        test=test,
-    )
-    for application in patch:
-        try:
-            apply_op(odb, obj, application)
-        except (FileExistsError, FileNotFoundError) as exc:
-            typer.echo(exc, err=True)
-            raise typer.Exit(1) from exc
-
-    obj.digest()
-    print(obj)
-    odb.add(obj.path, obj.fs, obj.oid, hardlink=True)
-
-
 @app.command(help="Check object link")
 def check_link(  # noqa: C901
     path: Path = dir_file_type_no_dash_no_resolve, object_dir: Optional[Path] = None
@@ -654,7 +483,6 @@ def checkout(
 cmd = typer.main.get_command(app)
 wrapper = click.version_option()
 main = wrapper(cmd)
-main.add_command(update_tree, "update-tree")  # type: ignore[attr-defined]
 
 
 if __name__ == "__main__":
