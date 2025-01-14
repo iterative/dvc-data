@@ -136,7 +136,7 @@ show-fixes = true
 preview = true
 explicit-preview-rules = true
 ignore = [
-    "ISC001", # single-line-implicit-string-concatenation
+    "A005", # stdlib-module-shadowing
     "PLR2004", # magic-value-comparison
     "PLW2901", # redefined-loop-name
     "RET501", # unnecessary-return-none
