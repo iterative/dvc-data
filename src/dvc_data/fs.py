@@ -8,7 +8,7 @@ from collections import deque
 from typing import Any, BinaryIO, NamedTuple, Optional
 
 from fsspec import AbstractFileSystem
-from fsspec.callbacks import DEFAULT_CALLBACK
+from fsspec.callbacks import DEFAULT_CALLBACK, NoOpCallback
 
 if typing.TYPE_CHECKING:
     from dvc_objects.fs.base import AnyFSPath, FileSystem
@@ -20,6 +20,13 @@ if typing.TYPE_CHECKING:
     from .index import DataIndex, DataIndexEntry, ObjectStorage
 
 logger = logging.getLogger(__name__)
+
+
+class _WrappedCallback(NoOpCallback):
+    # check `_get_file` for more details
+    def branched(self, path_1, path_2, **kwargs):
+        # NOTE: only safe for a single use
+        return self.kw.get("callback", DEFAULT_CALLBACK)
 
 
 class FileInfo(NamedTuple):
@@ -220,7 +227,12 @@ class DataFileSystem(AbstractFileSystem):
                     path,
                     fs,
                     os.fspath(lpath),
-                    callback=callback,
+                    # `transfer` supports uploading multiple files, so it uses the
+                    # passed callback to iterate for no. of files.
+                    # So, we wrap the given callback in a `NoOpCallback` and return it
+                    # in `branch` so that file copy callback gets properly called.
+                    # This is safe for transferring a single file.
+                    callback=_WrappedCallback(callback=callback),
                     links=copy.copy(storage.odb.cache_types),
                 )
                 return
