@@ -51,7 +51,7 @@ class DataIndexEntry:
         if hash_info:
             ret.hash_info = HashInfo.from_dict(hash_info)
 
-        ret.loaded = cast(bool, d["loaded"])
+        ret.loaded = cast("bool", d["loaded"])
 
         return ret
 
@@ -203,7 +203,7 @@ class ObjectStorage(Storage):
         if not entry.hash_info:
             return False
 
-        value = cast(str, entry.hash_info.value)
+        value = cast("str", entry.hash_info.value)
 
         if self.index is None:
             return self.odb.exists(value)
@@ -525,7 +525,7 @@ class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
         return ret
 
     def add(self, entry: DataIndexEntry):
-        self[cast(DataIndexKey, entry.key)] = entry
+        self[cast("DataIndexKey", entry.key)] = entry
 
     @abstractmethod
     def ls(self, root_key: DataIndexKey, detail=True):

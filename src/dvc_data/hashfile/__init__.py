@@ -25,7 +25,7 @@ def check(odb: "HashFileDB", obj: "HashFile", **kwargs):
 def load(odb: "HashFileDB", hash_info: "HashInfo") -> "HashFile":
     if hash_info.isdir:
         return Tree.load(odb, hash_info)
-    return odb.get(cast(str, hash_info.value))
+    return odb.get(cast("str", hash_info.value))
 
 
 def iterobjs(obj: Union["Tree", "HashFile"]) -> Iterator[Union["Tree", "HashFile"]]:
