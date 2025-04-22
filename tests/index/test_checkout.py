@@ -105,7 +105,7 @@ def test_checkout_broken_dir(tmp_upath, odb, as_filesystem):
     assert not (tmp_upath / "broken").exists()
 
 
-def test_my_test(tmp_upath, odb, as_filesystem):
+def test_checkout_delete_nested_dir(tmp_upath, odb, as_filesystem):
     old = DataIndex(
         {
             ("dir1",): DataIndexEntry(
