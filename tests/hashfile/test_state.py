@@ -262,7 +262,7 @@ def test_links(tmp_path, state: State):
     assert set(state.get_unused_links(links, fs)) == set()
     assert set(
         state.get_unused_links(
-            (links[:1] + [os.path.join(tmp_path, "not-existing-file")]),
+            ([*links[:1], os.path.join(tmp_path, "not-existing-file")]),
             fs,
         )
     ) == {"bar", "dataset"}
