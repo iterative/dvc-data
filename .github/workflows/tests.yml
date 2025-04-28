@@ -37,7 +37,7 @@ jobs:
         python-version: ${{ matrix.pyv }}
         allow-prereleases: true
 
-    - uses: astral-sh/setup-uv@v5
+    - uses: astral-sh/setup-uv@v6
       with:
         enable-cache: true
         cache-suffix: ${{ matrix.pyv }}
