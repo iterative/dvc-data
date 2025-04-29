@@ -103,3 +103,32 @@ def test_checkout_broken_dir(tmp_upath, odb, as_filesystem):
         (tmp_upath / "data" / "baz"),
     }
     assert not (tmp_upath / "broken").exists()
+
+
+def test_checkout_delete_nested_dir(tmp_upath, odb, as_filesystem):
+    old = DataIndex(
+        {
+            ("dir1",): DataIndexEntry(
+                key=("dir1",),
+                meta=Meta(isdir=True),
+            ),
+            ("dir1", "subdir1"): DataIndexEntry(
+                key=("dir1", "subdir1"),
+                meta=Meta(isdir=True),
+            ),
+        }
+    )
+    diff = compare(None, old)
+    apply(diff, str(tmp_upath), as_filesystem(tmp_upath.fs))
+
+    assert (tmp_upath / "dir1").exists()
+    assert (tmp_upath / "dir1").is_dir()
+    assert (tmp_upath / "dir1" / "subdir1").exists()
+    assert (tmp_upath / "dir1" / "subdir1").is_dir()
+
+    new = DataIndex({})
+    diff = compare(old, new, delete=True)
+    apply(diff, str(tmp_upath), as_filesystem(tmp_upath.fs))
+
+    assert not (tmp_upath / "dir1" / "subdir1").exists()
+    assert not (tmp_upath / "dir1").exists()

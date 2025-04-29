@@ -160,7 +160,8 @@ def _create_files(  # noqa: C901, PLR0912, PLR0913
 
 
 def _delete_dirs(entries, path, fs):
-    for entry in entries:
+    reversed_by_key = sorted(entries, key=lambda entry: entry.key, reverse=True)
+    for entry in reversed_by_key:
         try:
             fs.rmdir(fs.join(path, *entry.key))
         except OSError:
