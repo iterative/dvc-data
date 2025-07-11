@@ -69,6 +69,7 @@ def push(
 ):
     pushed, failed = 0, 0
     for fs_index in idxs:
+        logger.info("index: %s", fs_index)
         data = fs_index.storage_map[()].data
         cache = fs_index.storage_map[()].cache
 

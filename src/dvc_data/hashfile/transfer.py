@@ -192,12 +192,13 @@ def transfer(  # noqa: PLR0913
     """
     from .status import compare_status
 
-    logger.debug(
+    logger.warning(
         "Preparing to transfer data from '%s' to '%s'",
         src.fs.unstrip_protocol(src.path),
         dest.fs.unstrip_protocol(dest.path),
     )
     if src == dest:
+        logger.warning("Source and destination ODBs are the same, nothing to transfer.")
         return TransferResult(set(), set())
 
     status = compare_status(
@@ -212,7 +213,10 @@ def transfer(  # noqa: PLR0913
         shallow=shallow,
     )
 
+    logger.warning("validate_status: %s", validate_status)
+
     if validate_status:
+        logger.warning("status: %s", status)
         validate_status(status)
 
     if not status.new:
