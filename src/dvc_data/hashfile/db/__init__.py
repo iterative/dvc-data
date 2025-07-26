@@ -61,7 +61,8 @@ class HashFileDB(ObjectDB):
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
-        self.hash_name = config.get("hash_name", self.fs.PARAM_CHECKSUM)
+        self.hash_name: str = config.get("hash_name", self.fs.PARAM_CHECKSUM)  # type: ignore[assignment]
+        assert self.hash_name
 
     def get(self, oid: str) -> HashFile:
         return HashFile(
