@@ -28,16 +28,17 @@ def repo(request, monkeypatch):
 
 
 @pytest.mark.parametrize("link", ["reflink", "copy", "symlink", "hardlink"])
-def test_checkout(repo, benchmark, link):
+def test_checkout(request, repo, benchmark, link):
     fs_path = fspath(repo / "dataset")
     odb = get_odb(type=[link])
+    state = odb.state
+    request.addfinalizer(state.close)
 
     if not _test_links([link], localfs, odb.path, localfs, fs_path):
         pytest.skip(f"unsupported link type: {link}")
 
     gentree(repo / "dataset", 1000, "50Mb")
     obj = build(repo / "dataset", write=True)
-    state = odb.state
 
     def setup():
         for path in (state.tmp_dir, fs_path):
