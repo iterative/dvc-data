@@ -43,9 +43,9 @@ def get_hasher(name: str) -> "hashlib._Hash":
         name = "md5"
 
     try:
-        return getattr(hashlib, name)()
+        return getattr(hashlib, name)(usedforsecurity=False)
     except AttributeError:
-        return hashlib.new(name)
+        return hashlib.new(name, usedforsecurity=False)
 
 
 class HashStreamFile(io.IOBase):
