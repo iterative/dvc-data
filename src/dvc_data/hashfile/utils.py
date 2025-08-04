@@ -18,7 +18,7 @@ def to_nanoseconds(ts: float) -> int:
 
 def _tokenize_mtimes(files_mtimes: dict[str, float]) -> str:
     data = json.dumps(files_mtimes, sort_keys=True).encode("utf-8")
-    digest = hashlib.md5(data)  # noqa: S324
+    digest = hashlib.md5(data, usedforsecurity=False)
     return digest.hexdigest()
 
 
