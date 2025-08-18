@@ -35,6 +35,7 @@ from dvc_data.hashfile.state import State
 from dvc_data.hashfile.transfer import transfer as _transfer
 from dvc_data.hashfile.tree import Tree
 from dvc_data.hashfile.tree import du as _du
+from dvc_data.index.index import DataIndex
 from dvc_data.repo import NotARepoError, Repo
 
 file_type = typer.Argument(
@@ -478,6 +479,88 @@ def checkout(
             state=odb.state,
             progress_callback=callback,
         )
+
+
+index = Application(name="index")
+app.add_typer(index)
+
+
+def print_table(rows):
+    if not rows:
+        return
+    indexes = [i for i, _ in enumerate(rows[0]) if any(row[i] for row in rows[1:])]
+    filtered_rows = [[row[i] for i in indexes] for row in rows]
+    col_widths = [max(len(str(cell)) for cell in col) for col in zip(*filtered_rows)]
+    for row in filtered_rows:
+        print(*(cell.ljust(col_widths[i]) for i, cell in enumerate(row)))
+
+
+@index.command(name="ls", help="List objects in the index")
+def index_ls(path: str = typer.Argument(""), site_cache_dir: Path = typer.Option(...)):  # noqa: C901
+    index = DataIndex.open(site_cache_dir / "index" / "data" / "db.db")
+
+    def build_row(key, info, prefix="", absolute=False):
+        if not key:
+            key = (posixpath.sep,)
+        elif not absolute:
+            key = (key[-1],)
+        if info["type"] == "directory":
+            key = (*key, "")
+
+        path = posixpath.join(*key)
+        size = ""
+        if info["type"] != "directory" and info["size"] is not None:
+            size = str(info["size"])
+        entry = info["entry"]
+        version_id = ""
+        hash_name = ""
+        hash_value = ""
+        loaded = ""
+        nfiles = ""
+        if entry:
+            if entry.meta and entry.meta:
+                meta = entry.meta
+                nfiles = str(meta.nfiles) if meta.nfiles is not None else ""
+                version_id = meta.version_id if meta.version_id is not None else ""
+            if entry.hash_info:
+                hash_name = entry.hash_info.name
+                hash_value = entry.hash_info.value
+            if info["type"] == "directory" and entry.loaded is None:
+                loaded = "no"
+
+        return [
+            "x" if info["isexec"] else "",
+            size,
+            version_id,
+            hash_name,
+            hash_value,
+            loaded,
+            nfiles,
+            prefix + path,
+        ]
+
+    def collect_rows(start_path, prefix=""):
+        if not prefix:
+            info = index.info(start_path)
+            yield build_row(start_path, info, prefix, absolute=True)
+
+        entries = list(index.ls(start_path))
+        entries_count = len(entries)
+        for i, (key, info) in enumerate(entries):
+            connector = "└── " if i == entries_count - 1 else "├── "
+            yield build_row(key, info, prefix + connector)
+
+            if info["type"] == "directory":
+                extension = "    " if i == entries_count - 1 else "│   "
+                yield from collect_rows(key, prefix + extension)
+
+    path = path.strip(posixpath.sep)
+    if path in ("", posixpath.curdir):
+        root: tuple[str, ...] = ()
+    else:
+        root = tuple(path.split(posixpath.sep))
+    header = ["exec", "size", "version_id", "hash", "value", "loaded", "files", ""]
+    print_table([header, *collect_rows(root)])
 
 
 cmd = typer.main.get_command(app)
