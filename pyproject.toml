@@ -9,6 +9,7 @@ name = "dvc-data"
 description = "DVC's data management subsystem"
 readme = "README.rst"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Iterative", email = "support@dvc.org" }]
 classifiers = [
     "Programming Language :: Python :: 3",
