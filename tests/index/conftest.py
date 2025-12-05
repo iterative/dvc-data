@@ -1,15 +1,16 @@
 import os
 
 import pytest
+from dvc_objects.fs.local import LocalFileSystem
 
 from dvc_data.hashfile.db import HashFileDB
 
 
 @pytest.fixture
-def make_odb(tmp_upath_factory, as_filesystem):
+def make_odb(tmp_path_factory):
     def _make_odb():
-        path = tmp_upath_factory.mktemp()
-        fs = as_filesystem(path.fs)
+        path = tmp_path_factory.mktemp("odb")
+        fs = LocalFileSystem()
         return HashFileDB(fs, os.fspath(path))
 
     return _make_odb

@@ -1,4 +1,5 @@
 import pytest
+from dvc_objects.fs.local import LocalFileSystem
 
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
@@ -25,14 +26,15 @@ def test_index():
     index[("foo",)] = DataIndexEntry()
 
 
-def test_md5(tmp_upath, odb, as_filesystem):
-    (tmp_upath / "foo").write_bytes(b"foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
-    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+def test_md5(tmp_path):
+    (tmp_path / "foo").write_bytes(b"foo\n")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_path / "data" / "baz").write_bytes(b"baz\n")
 
-    fs = as_filesystem(tmp_upath.fs)
-    index = build(str(tmp_upath), fs)
+    fs = LocalFileSystem()
+
+    index = build(str(tmp_path), fs)
     index = md5(index)
     assert index[("foo",)].hash_info == HashInfo(
         "md5",
@@ -48,14 +50,15 @@ def test_md5(tmp_upath, odb, as_filesystem):
     )
 
 
-def test_save(tmp_upath, odb, as_filesystem):
-    (tmp_upath / "foo").write_bytes(b"foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
-    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+def test_save(tmp_path, odb):
+    (tmp_path / "foo").write_bytes(b"foo\n")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_path / "data" / "baz").write_bytes(b"baz\n")
 
-    fs = as_filesystem(tmp_upath.fs)
-    index = build(str(tmp_upath), fs)
+    fs = LocalFileSystem()
+
+    index = build(str(tmp_path), fs)
     index = md5(index)
     save(index, odb=odb)
     assert odb.exists("d3b07384d113edec49eaa6238ad5ff00")
@@ -64,45 +67,45 @@ def test_save(tmp_upath, odb, as_filesystem):
     assert odb.exists("258622b1688250cb619f3c9ccaefb7eb")
 
 
-def test_add(tmp_upath, as_filesystem):
-    (tmp_upath / "foo").write_bytes(b"foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
-    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+def test_add(tmp_path):
+    (tmp_path / "foo").write_bytes(b"foo\n")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_path / "data" / "baz").write_bytes(b"baz\n")
 
-    fs = as_filesystem(tmp_upath.fs)
-    index = build(str(tmp_upath), fs)
+    fs = LocalFileSystem()
+    index = build(str(tmp_path), fs)
     index = DataIndex()
 
-    add(index, str(tmp_upath / "foo"), fs, ("foo",))
+    add(index, str(tmp_path / "foo"), fs, ("foo",))
     assert len(index) == 1
     assert index[("foo",)].meta.size == 4
     assert index.storage_map.get_data(index[("foo",)]) == (
         fs,
-        str(tmp_upath / "foo"),
+        str(tmp_path / "foo"),
     )
 
-    add(index, str(tmp_upath / "data"), fs, ("data",))
+    add(index, str(tmp_path / "data"), fs, ("data",))
     assert len(index) == 4
     assert index[("foo",)].meta.size == 4
     assert index.storage_map.get_data(index[("foo",)]) == (
         fs,
-        str(tmp_upath / "foo"),
+        str(tmp_path / "foo"),
     )
     assert index[("data",)].meta.isdir
     assert index[("data", "bar")].meta.size == 4
     assert index.storage_map.get_data(index[("data", "bar")]) == (
         fs,
-        str(tmp_upath / "data" / "bar"),
+        str(tmp_path / "data" / "bar"),
     )
     assert index[("data", "baz")].meta.size == 4
     assert index.storage_map.get_data(index[("data", "baz")]) == (
         fs,
-        str(tmp_upath / "data" / "baz"),
+        str(tmp_path / "data" / "baz"),
     )
 
 
-def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
+def test_fetch(tmp_path, make_odb, odb):
     from dvc_data.index.fetch import collect, fetch
 
     index = DataIndex(
@@ -128,31 +131,31 @@ def test_fetch(tmp_upath, make_odb, odb, as_filesystem):
     index.storage_map.add_cache(ObjectStorage((), cache_odb))
     index.storage_map.add_remote(ObjectStorage((), odb))
 
-    (tmp_upath / "fetched").mkdir()
+    (tmp_path / "fetched").mkdir()
     data = collect([index], "remote")
     fetch(data)
     diff = checkout.compare(None, index)
     checkout.apply(
         diff,
-        str(tmp_upath / "checkout"),
-        as_filesystem(tmp_upath.fs),
+        str(tmp_path / "checkout"),
+        LocalFileSystem(),
         storage="cache",
     )
-    assert (tmp_upath / "checkout" / "foo").read_text() == "foo\n"
-    assert (tmp_upath / "checkout" / "data").is_dir()
-    assert (tmp_upath / "checkout" / "data" / "bar").read_text() == "bar\n"
-    assert (tmp_upath / "checkout" / "data" / "baz").read_text() == "baz\n"
-    assert set((tmp_upath / "checkout").iterdir()) == {
-        (tmp_upath / "checkout" / "foo"),
-        (tmp_upath / "checkout" / "data"),
+    assert (tmp_path / "checkout" / "foo").read_text() == "foo\n"
+    assert (tmp_path / "checkout" / "data").is_dir()
+    assert (tmp_path / "checkout" / "data" / "bar").read_text() == "bar\n"
+    assert (tmp_path / "checkout" / "data" / "baz").read_text() == "baz\n"
+    assert set((tmp_path / "checkout").iterdir()) == {
+        (tmp_path / "checkout" / "foo"),
+        (tmp_path / "checkout" / "data"),
     }
-    assert set((tmp_upath / "checkout" / "data").iterdir()) == {
-        (tmp_upath / "checkout" / "data" / "bar"),
-        (tmp_upath / "checkout" / "data" / "baz"),
+    assert set((tmp_path / "checkout" / "data").iterdir()) == {
+        (tmp_path / "checkout" / "data" / "bar"),
+        (tmp_path / "checkout" / "data" / "baz"),
     }
 
 
-def test_push(tmp_upath, make_odb, odb, as_filesystem):
+def test_push(tmp_path, make_odb, odb):
     from dvc_data.index.collect import collect
     from dvc_data.index.push import push
 
@@ -188,21 +191,21 @@ def test_push(tmp_upath, make_odb, odb, as_filesystem):
     diff = checkout.compare(None, index)
     checkout.apply(
         diff,
-        str(tmp_upath / "checkout"),
-        as_filesystem(tmp_upath.fs),
+        str(tmp_path / "checkout"),
+        LocalFileSystem(),
         storage="remote",
     )
-    assert (tmp_upath / "checkout" / "foo").read_text() == "foo\n"
-    assert (tmp_upath / "checkout" / "data").is_dir()
-    assert (tmp_upath / "checkout" / "data" / "bar").read_text() == "bar\n"
-    assert (tmp_upath / "checkout" / "data" / "baz").read_text() == "baz\n"
-    assert set((tmp_upath / "checkout").iterdir()) == {
-        (tmp_upath / "checkout" / "foo"),
-        (tmp_upath / "checkout" / "data"),
+    assert (tmp_path / "checkout" / "foo").read_text() == "foo\n"
+    assert (tmp_path / "checkout" / "data").is_dir()
+    assert (tmp_path / "checkout" / "data" / "bar").read_text() == "bar\n"
+    assert (tmp_path / "checkout" / "data" / "baz").read_text() == "baz\n"
+    assert set((tmp_path / "checkout").iterdir()) == {
+        (tmp_path / "checkout" / "foo"),
+        (tmp_path / "checkout" / "data"),
     }
-    assert set((tmp_upath / "checkout" / "data").iterdir()) == {
-        (tmp_upath / "checkout" / "data" / "bar"),
-        (tmp_upath / "checkout" / "data" / "baz"),
+    assert set((tmp_path / "checkout" / "data").iterdir()) == {
+        (tmp_path / "checkout" / "data" / "bar"),
+        (tmp_path / "checkout" / "data" / "baz"),
     }
 
 
@@ -389,17 +392,18 @@ def test_view_traverse(odb):
     ]
 
 
-def test_update(tmp_upath, odb, as_filesystem):
-    (tmp_upath / "foo").write_bytes(b"foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
-    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+def test_update(tmp_path):
+    (tmp_path / "foo").write_bytes(b"foo\n")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_path / "data" / "baz").write_bytes(b"baz\n")
 
-    fs = as_filesystem(tmp_upath.fs)
-    old = build(str(tmp_upath), fs)
+    fs = LocalFileSystem()
+
+    old = build(str(tmp_path), fs)
     old = md5(old)
 
-    index = build(str(tmp_upath), fs)
+    index = build(str(tmp_path), fs)
     update(index, old)
     assert index[("foo",)].hash_info == HashInfo(
         "md5",

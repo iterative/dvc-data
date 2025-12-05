@@ -6,17 +6,17 @@ from dvc_data.hashfile.db.index import ObjectDBIndex
 
 
 @pytest.fixture
-def index(tmp_upath):
-    with closing(ObjectDBIndex(tmp_upath, "foo")) as _index:
+def index(tmp_path):
+    with closing(ObjectDBIndex(tmp_path, "foo")) as _index:
         yield _index
 
 
-def test_roundtrip(request, tmp_upath, index):
+def test_roundtrip(request, tmp_path, index):
     expected_dir = {"1234.dir"}
     expected_file = {"5678"}
     index.update(expected_dir, expected_file)
 
-    new_index = ObjectDBIndex(tmp_upath, "foo")
+    new_index = ObjectDBIndex(tmp_path, "foo")
     request.addfinalizer(new_index.close)
 
     assert set(new_index.dir_hashes()) == expected_dir
