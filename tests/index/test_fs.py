@@ -1,4 +1,5 @@
 import pytest
+from dvc_objects.fs.local import LocalFileSystem
 
 from dvc_data.fs import DataFileSystem
 from dvc_data.hashfile.hash_info import HashInfo
@@ -12,7 +13,7 @@ from dvc_data.index import (
 )
 
 
-def test_fs(tmp_upath, odb, as_filesystem):
+def test_fs(odb):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
@@ -48,11 +49,12 @@ def test_fs(tmp_upath, odb, as_filesystem):
     ]
 
 
-def test_fs_file_storage(tmp_upath, as_filesystem):
-    (tmp_upath / "foo").write_bytes(b"foo\n")
-    (tmp_upath / "data").mkdir()
-    (tmp_upath / "data" / "bar").write_bytes(b"bar\n")
-    (tmp_upath / "data" / "baz").write_bytes(b"baz\n")
+def test_fs_file_storage(tmp_path):
+    fs = LocalFileSystem()
+    (tmp_path / "foo").write_bytes(b"foo\n")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "bar").write_bytes(b"bar\n")
+    (tmp_path / "data" / "baz").write_bytes(b"baz\n")
 
     index = DataIndex(
         {
@@ -64,9 +66,7 @@ def test_fs_file_storage(tmp_upath, as_filesystem):
             ),
         }
     )
-    index.storage_map.add_cache(
-        FileStorage((), as_filesystem(tmp_upath.fs), str(tmp_upath))
-    )
+    index.storage_map.add_cache(FileStorage((), fs, str(tmp_path)))
     fs = DataFileSystem(index)
     assert fs.exists("foo")
     assert fs.cat("foo") == b"foo\n"
@@ -89,7 +89,7 @@ def test_fs_file_storage(tmp_upath, as_filesystem):
     )
 
 
-def test_fs_broken(tmp_upath, odb, as_filesystem):
+def test_fs_broken(odb):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
@@ -154,7 +154,7 @@ def test_fs_broken(tmp_upath, odb, as_filesystem):
     assert fs.ls("/broken", detail=True) == []
 
 
-def test_fs_du(tmp_upath, odb, as_filesystem):
+def test_fs_du():
     index = DataIndex(
         {
             ("file_no_meta",): DataIndexEntry(

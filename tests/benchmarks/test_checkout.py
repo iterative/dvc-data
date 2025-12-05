@@ -46,7 +46,7 @@ def test_checkout(request, repo, benchmark, link):
                 shutil.rmtree(path)
             except FileNotFoundError:
                 pass
-        State(state.root_dir, state.tmp_dir, state.ignore)  # recreate db
+        State(state.root_dir, state.tmp_dir, state.ignore).close()  # recreate db
 
     assert benchmark.pedantic(
         checkout,

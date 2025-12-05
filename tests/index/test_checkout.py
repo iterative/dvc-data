@@ -1,10 +1,14 @@
+from dvc_objects.fs.local import LocalFileSystem
+
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 from dvc_data.index import DataIndex, DataIndexEntry, ObjectStorage
 from dvc_data.index.checkout import apply, compare
 
+localfs = LocalFileSystem()
 
-def test_checkout(tmp_upath, odb, as_filesystem):
+
+def test_checkout(tmp_path, odb):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
@@ -26,22 +30,22 @@ def test_checkout(tmp_upath, odb, as_filesystem):
     )
     index.storage_map.add_cache(ObjectStorage((), odb))
     diff = compare(None, index)
-    apply(diff, str(tmp_upath), as_filesystem(tmp_upath.fs))
-    assert (tmp_upath / "foo").read_text() == "foo\n"
-    assert (tmp_upath / "data").is_dir()
-    assert (tmp_upath / "data" / "bar").read_text() == "bar\n"
-    assert (tmp_upath / "data" / "baz").read_text() == "baz\n"
-    assert set(tmp_upath.iterdir()) == {
-        (tmp_upath / "foo"),
-        (tmp_upath / "data"),
+    apply(diff, str(tmp_path), localfs)
+    assert (tmp_path / "foo").read_text() == "foo\n"
+    assert (tmp_path / "data").is_dir()
+    assert (tmp_path / "data" / "bar").read_text() == "bar\n"
+    assert (tmp_path / "data" / "baz").read_text() == "baz\n"
+    assert set(tmp_path.iterdir()) == {
+        (tmp_path / "foo"),
+        (tmp_path / "data"),
     }
-    assert set((tmp_upath / "data").iterdir()) == {
-        (tmp_upath / "data" / "bar"),
-        (tmp_upath / "data" / "baz"),
+    assert set((tmp_path / "data").iterdir()) == {
+        (tmp_path / "data" / "bar"),
+        (tmp_path / "data" / "baz"),
     }
 
 
-def test_checkout_file(tmp_upath, odb, as_filesystem):
+def test_checkout_file(tmp_path, odb):
     index = DataIndex(
         {
             (): DataIndexEntry(
@@ -55,11 +59,11 @@ def test_checkout_file(tmp_upath, odb, as_filesystem):
     )
     index.storage_map.add_cache(ObjectStorage((), odb))
     diff = compare(None, index)
-    apply(diff, str(tmp_upath / "foo"), as_filesystem(tmp_upath.fs))
-    assert (tmp_upath / "foo").read_text() == "foo\n"
+    apply(diff, str(tmp_path / "foo"), localfs)
+    assert (tmp_path / "foo").read_text() == "foo\n"
 
 
-def test_checkout_broken_dir(tmp_upath, odb, as_filesystem):
+def test_checkout_broken_dir(tmp_path, odb):
     index = DataIndex(
         {
             ("foo",): DataIndexEntry(
@@ -89,23 +93,23 @@ def test_checkout_broken_dir(tmp_upath, odb, as_filesystem):
     )
     index.storage_map.add_cache(ObjectStorage((), odb))
     diff = compare(None, index)
-    apply(diff, str(tmp_upath), as_filesystem(tmp_upath.fs))
-    assert (tmp_upath / "foo").read_text() == "foo\n"
-    assert (tmp_upath / "data").is_dir()
-    assert (tmp_upath / "data" / "bar").read_text() == "bar\n"
-    assert (tmp_upath / "data" / "baz").read_text() == "baz\n"
-    assert set(tmp_upath.iterdir()) == {
-        (tmp_upath / "foo"),
-        (tmp_upath / "data"),
+    apply(diff, str(tmp_path), localfs)
+    assert (tmp_path / "foo").read_text() == "foo\n"
+    assert (tmp_path / "data").is_dir()
+    assert (tmp_path / "data" / "bar").read_text() == "bar\n"
+    assert (tmp_path / "data" / "baz").read_text() == "baz\n"
+    assert set(tmp_path.iterdir()) == {
+        (tmp_path / "foo"),
+        (tmp_path / "data"),
     }
-    assert set((tmp_upath / "data").iterdir()) == {
-        (tmp_upath / "data" / "bar"),
-        (tmp_upath / "data" / "baz"),
+    assert set((tmp_path / "data").iterdir()) == {
+        (tmp_path / "data" / "bar"),
+        (tmp_path / "data" / "baz"),
     }
-    assert not (tmp_upath / "broken").exists()
+    assert not (tmp_path / "broken").exists()
 
 
-def test_checkout_delete_nested_dir(tmp_upath, odb, as_filesystem):
+def test_checkout_delete_nested_dir(tmp_path, odb):
     old = DataIndex(
         {
             ("dir1",): DataIndexEntry(
@@ -119,16 +123,16 @@ def test_checkout_delete_nested_dir(tmp_upath, odb, as_filesystem):
         }
     )
     diff = compare(None, old)
-    apply(diff, str(tmp_upath), as_filesystem(tmp_upath.fs))
+    apply(diff, str(tmp_path), localfs)
 
-    assert (tmp_upath / "dir1").exists()
-    assert (tmp_upath / "dir1").is_dir()
-    assert (tmp_upath / "dir1" / "subdir1").exists()
-    assert (tmp_upath / "dir1" / "subdir1").is_dir()
+    assert (tmp_path / "dir1").exists()
+    assert (tmp_path / "dir1").is_dir()
+    assert (tmp_path / "dir1" / "subdir1").exists()
+    assert (tmp_path / "dir1" / "subdir1").is_dir()
 
     new = DataIndex({})
     diff = compare(old, new, delete=True)
-    apply(diff, str(tmp_upath), as_filesystem(tmp_upath.fs))
+    apply(diff, str(tmp_path), localfs)
 
-    assert not (tmp_upath / "dir1" / "subdir1").exists()
-    assert not (tmp_upath / "dir1").exists()
+    assert not (tmp_path / "dir1" / "subdir1").exists()
+    assert not (tmp_path / "dir1").exists()

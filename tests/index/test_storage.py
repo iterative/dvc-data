@@ -1,16 +1,16 @@
+from dvc_objects.fs.local import LocalFileSystem
+
 from dvc_data.index import FileStorage, ObjectStorage, StorageInfo, StorageMapping
 
 
-def test_map_get(tmp_upath, as_filesystem, odb):
+def test_map_get(tmp_path, odb):
     smap = StorageMapping()
 
-    data = FileStorage(key=(), fs=as_filesystem(tmp_upath.fs), path=str(tmp_upath))
-    cache = FileStorage(
-        key=("dir",), fs=as_filesystem(tmp_upath.fs), path=str(tmp_upath)
-    )
-    remote = FileStorage(
-        key=("dir", "subdir"), fs=as_filesystem(tmp_upath.fs), path=str(tmp_upath)
-    )
+    fs = LocalFileSystem()
+
+    data = FileStorage(key=(), fs=fs, path=str(tmp_path))
+    cache = FileStorage(key=("dir",), fs=fs, path=str(tmp_path))
+    remote = FileStorage(key=("dir", "subdir"), fs=fs, path=str(tmp_path))
     foo_cache = ObjectStorage(key=("dir", "foo"), odb=odb)
 
     smap[()] = StorageInfo(data=data)
