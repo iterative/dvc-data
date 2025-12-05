@@ -3,6 +3,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, MutableMapping
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import attrs
@@ -224,6 +225,76 @@ class ObjectStorage(Storage):
         finally:
             self.index.commit()
 
+    def bulk_exists(
+        self,
+        entries: list["DataIndexEntry"],
+        refresh: bool = False,
+        max_workers: int = 20,
+    ) -> dict["DataIndexEntry", bool]:
+        results = {}
+
+        if not entries:
+            return results
+
+        entries_with_hash = [e for e in entries if e.hash_info]
+        entries_without_hash = [e for e in entries if not e.hash_info]
+
+        for entry in entries_without_hash:
+            results[entry] = False
+
+        if self.index is None:
+            for entry in entries_with_hash:
+                value = cast("str", entry.hash_info.value)
+                results[entry] = self.odb.exists(value)
+            return results
+
+        if not refresh:
+            for entry in entries_with_hash:
+                value = cast("str", entry.hash_info.value)
+                key = self.odb._oid_parts(value)
+                results[entry] = key in self.index
+            return results
+
+        fs = self.fs
+
+        def check_exists(entry: "DataIndexEntry") -> tuple["DataIndexEntry", bool]:
+            try:
+                _, path = self.get(entry)
+                return entry, fs.exists(path)
+            except Exception:
+                return entry, False
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(check_exists, entry): entry
+                for entry in entries_with_hash
+            }
+
+            for future in as_completed(futures):
+                entry, exists = future.result()
+                value = cast("str", entry.hash_info.value)
+                key = self.odb._oid_parts(value)
+
+                if exists:
+                    from .build import build_entry
+
+                    try:
+                        _, path = self.get(entry)
+                        built_entry = build_entry(path, fs)
+                        self.index[key] = built_entry
+                        results[entry] = True
+                    except Exception:
+                        self.index.pop(key, None)
+                        results[entry] = False
+                else:
+                    self.index.pop(key, None)
+                    results[entry] = False
+
+        if self.index is not None:
+            self.index.commit()
+
+        return results
+
 
 class FileStorage(Storage):
     def __init__(
@@ -441,6 +512,58 @@ class StorageMapping(MutableMapping):
             raise StorageKeyError(entry.key)
 
         return storage.remote.exists(entry, **kwargs)
+
+    def bulk_cache_exists(
+        self, entries: list[DataIndexEntry], **kwargs
+    ) -> dict[DataIndexEntry, bool]:
+        by_storage: dict[Optional[Storage], list[DataIndexEntry]] = {}
+        for entry in entries:
+            storage_info = self[entry.key]
+            storage = storage_info.cache if storage_info else None
+            if storage not in by_storage:
+                by_storage[storage] = []
+            by_storage[storage].append(entry)
+
+        results = {}
+        for storage, storage_entries in by_storage.items():
+            if storage is None:
+                for entry in storage_entries:
+                    raise StorageKeyError(entry.key)
+
+            if hasattr(storage, "bulk_exists"):
+                storage_results = storage.bulk_exists(storage_entries, **kwargs)
+                results.update(storage_results)
+            else:
+                for entry in storage_entries:
+                    results[entry] = storage.exists(entry, **kwargs)
+
+        return results
+
+    def bulk_remote_exists(
+        self, entries: list[DataIndexEntry], **kwargs
+    ) -> dict[DataIndexEntry, bool]:
+        by_storage: dict[Optional[Storage], list[DataIndexEntry]] = {}
+        for entry in entries:
+            storage_info = self[entry.key]
+            storage = storage_info.remote if storage_info else None
+            if storage not in by_storage:
+                by_storage[storage] = []
+            by_storage[storage].append(entry)
+
+        results = {}
+        for storage, storage_entries in by_storage.items():
+            if storage is None:
+                for entry in storage_entries:
+                    raise StorageKeyError(entry.key)
+
+            if hasattr(storage, "bulk_exists"):
+                storage_results = storage.bulk_exists(storage_entries, **kwargs)
+                results.update(storage_results)
+            else:
+                for entry in storage_entries:
+                    results[entry] = storage.exists(entry, **kwargs)
+
+        return results
 
 
 class BaseDataIndex(ABC, MutableMapping[DataIndexKey, DataIndexEntry]):
