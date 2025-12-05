@@ -7,6 +7,7 @@ import random
 import stat
 import sys
 from collections import deque
+from contextlib import closing
 from itertools import accumulate
 from pathlib import Path
 from posixpath import relpath
@@ -278,15 +279,16 @@ def build(
         fs = MemoryFileSystem()
         fs.put_file(sys.stdin.buffer, fs_path)
 
-    object_store, _, obj = _build(odb, fs_path, fs, name="md5")
-    if write:
-        _transfer(
-            object_store,
-            odb,
-            {obj.hash_info},
-            hardlink=True,
-            shallow=shallow,
-        )
+    with closing(odb.state):
+        object_store, _, obj = _build(odb, fs_path, fs, name="md5")
+        if write:
+            _transfer(
+                object_store,
+                odb,
+                {obj.hash_info},
+                hardlink=True,
+                shallow=shallow,
+            )
     print(obj)
     return obj
 
